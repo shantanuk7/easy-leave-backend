@@ -57,4 +57,36 @@ jacocoTestReport {
 		xml.required = true
 		html.required = true
 	}
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+					'**/LeaveManagementSystemApplication.class'
+			])
+		}))
+	}
 }
+
+jacocoTestCoverageVerification{
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+					'**/LeaveManagementSystemApplication.class'
+			])
+		}))
+	}
+	violationRules {
+		rule {
+			limit {
+				counter = 'LINE'
+				value = 'COVEREDRATIO'
+				minimum = 1.0
+			}
+			limit {
+				counter = 'BRANCH'
+				value = 'COVEREDRATIO'
+				minimum = 1.0
+			}
+		}
+	}
+}
+check.dependsOn jacocoTestCoverageVerification
