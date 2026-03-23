@@ -15,7 +15,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "name", unique = true, nullable = false, length = 50)
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
     @Column(name = "email", nullable = false, unique = true)
@@ -37,6 +37,10 @@ public class User {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+    @PreUpdate
+    public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 }

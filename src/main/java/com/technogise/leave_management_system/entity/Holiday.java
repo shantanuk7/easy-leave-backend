@@ -8,7 +8,10 @@ import java.util.Date;
 import java.util.UUID;
 
 @Entity(name = "holidays")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Holiday {
 
     @Id
@@ -34,6 +37,11 @@ public class Holiday {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 }
