@@ -14,7 +14,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class LeaveCategories {
+public class LeaveCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
