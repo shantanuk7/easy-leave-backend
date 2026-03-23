@@ -2,26 +2,25 @@ package com.technogise.leave_management_system.entity;
 
 import com.technogise.leave_management_system.enums.UserRole;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity
+@Entity(name = "users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "name",unique = true, length = 50)
+    @Column(name = "name", unique = true, length = 50)
     private String name;
 
     @Column(name = "email", nullable = false, unique = true)
@@ -31,7 +30,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    @Column(name="joining_date", nullable = false)
+    @Column(name = "joining_date", nullable = false)
     private Date joiningDate;
 
     @Column(name = "created_at", nullable = false, updatable = false)
