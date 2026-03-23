@@ -3,16 +3,11 @@ package com.technogise.leave_management_system.entity;
 import com.technogise.leave_management_system.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
+@AllArgsConstructor @NoArgsConstructor @Getter @Setter
 @Entity(name = "users")
 public class User {
 
@@ -20,7 +15,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "name", unique = true, length = 50)
+    @Column(name = "name", unique = true, nullable = false, length = 50)
     private String name;
 
     @Column(name = "email", nullable = false, unique = true)

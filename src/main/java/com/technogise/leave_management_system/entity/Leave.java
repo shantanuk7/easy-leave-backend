@@ -2,21 +2,15 @@ package com.technogise.leave_management_system.entity;
 
 import com.technogise.leave_management_system.enums.DurationType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import lombok.*;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
+@AllArgsConstructor @NoArgsConstructor @Getter @Setter
 @Entity(name = "leaves")
 public class Leave {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -33,14 +27,18 @@ public class Leave {
     @JoinColumn(name = "holiday_id", nullable = true)
     private Holiday holiday;
 
-    @Column(name="date", nullable = false)
+    @Column(name = "date", nullable = false)
     private Date date;
 
-    @Column(name= "start_time",nullable = false)
+    @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
 
-    @Column(name = "duration",nullable = false)
+    @Column(name = "duration", nullable = false)
+    @Enumerated(EnumType.STRING)
     private DurationType duration;
+
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT", length = 1000)
+    private String description;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

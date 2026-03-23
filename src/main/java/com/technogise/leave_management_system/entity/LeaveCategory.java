@@ -1,25 +1,19 @@
 package com.technogise.leave_management_system.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity(name = "leave_categories")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class LeaveCategory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "name",unique = true, length = 50)
+    @Column(name = "name", unique = true, nullable = false, length = 50)
     private String name;
 
     @Column(name = "allocated_days", nullable = false)
