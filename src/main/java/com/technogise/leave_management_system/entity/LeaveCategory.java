@@ -19,7 +19,7 @@ public class LeaveCategory {
     @Column(name = "allocated_days", nullable = false)
     private String allocatedDays;
 
-    @Column(name = "leave_year", nullable = false, length = 25)
+    @Column(name = "leave_year", nullable = false)
     private String year;
 
     @Column(name = "created_at", nullable = false, updatable = false)
