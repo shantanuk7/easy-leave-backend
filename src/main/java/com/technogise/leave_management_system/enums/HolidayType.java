@@ -1,6 +1,6 @@
 package com.technogise.leave_management_system.enums;
 
-public enum HoildayType {
+public enum HolidayType {
     OPTIONAL,
     FIXED,
 }
