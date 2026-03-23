@@ -30,6 +30,16 @@ jobs:
       - name: Build
         run: ./gradlew build -x test --no-daemon
 
+      - name: Run Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest --no-daemon
+
+      - name: Upload Checkstyle Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report
+          path: build/reports/checkstyle/
+
       - name: Run Tests
         run: ./gradlew test --no-daemon
 
