@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.enums.DurationType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Date;
 import java.util.UUID;
 
@@ -30,7 +31,7 @@ public class Leave {
     private Date date;
 
     @Column(name = "start_time", nullable = false)
-    private LocalDateTime startTime;
+    private LocalTime startTime;
 
     @Column(name = "duration", nullable = false)
     @Enumerated(EnumType.STRING)
