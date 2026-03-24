@@ -16,12 +16,6 @@ public class LeaveCategory {
     @Column(name = "name", unique = true, nullable = false, length = 50)
     private String name;
 
-    @Column(name = "allocated_days", nullable = false)
-    private String allocatedDays;
-
-    @Column(name = "leave_year", nullable = false)
-    private String year;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
