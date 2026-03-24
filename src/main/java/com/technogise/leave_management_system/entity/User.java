@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.technogise.leave_management_system.enums.UserRole;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -24,6 +25,12 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "name", nullable = false, updatable = false)
+    private String name;
+
+    @Column(name = "role", nullable = false)
+    private UserRole role;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
