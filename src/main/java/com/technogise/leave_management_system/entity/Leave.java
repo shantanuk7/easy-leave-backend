@@ -22,7 +22,7 @@ public class Leave {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY,optional = false)
     @JoinColumn(name = "leave_category_id",nullable = false)
     private LeaveCategory leaveCategory;
 
@@ -36,7 +36,7 @@ public class Leave {
     @Enumerated(EnumType.STRING)
     private DurationType duration;
 
-    @Column(name = "description", nullable = false, columnDefinition = "TEXT", length = 1000)
+    @Column(name = "description", nullable = false, length = 1000)
     private String description;
 
     @Column(name = "created_at", nullable = false, updatable = false)
