@@ -5,7 +5,10 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@AllArgsConstructor @NoArgsConstructor @Getter @Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 @Entity(name = "users")
 public class User {
 

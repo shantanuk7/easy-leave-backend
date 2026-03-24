@@ -6,7 +6,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity(name = "leave_categories")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class LeaveCategory {
 
     @Id

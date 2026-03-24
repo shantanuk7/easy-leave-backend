@@ -7,7 +7,10 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
 
-@AllArgsConstructor @NoArgsConstructor @Getter @Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 @Entity(name = "leaves")
 public class Leave {
 
