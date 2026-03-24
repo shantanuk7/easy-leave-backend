@@ -8,14 +8,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException exception) {
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).
                 body(new ErrorResponse("404",exception.getCode(), exception.getMessage()));
     }
-    @ExceptionHandler(InvalidQueryParameterException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidQueryParameter(InvalidQueryParameterException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).
                 body(new ErrorResponse("400",exception.getCode(), exception.getMessage()));
+    }
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(BadRequestException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).
+                body(new ErrorResponse("403",exception.getCode(), exception.getMessage()));
     }
 }
