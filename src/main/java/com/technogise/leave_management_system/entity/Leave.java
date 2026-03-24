@@ -23,7 +23,7 @@ public class Leave {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "leave_category_id", nullable = true)
+    @JoinColumn(name = "leave_category_id",nullable = false)
     private LeaveCategory leaveCategory;
 
     @Column(name = "date", nullable = false)
