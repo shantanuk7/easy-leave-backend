@@ -13,4 +13,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).
                 body(new ErrorResponse("404",exception.getCode(), exception.getMessage()));
     }
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQueryParameter(InvalidQueryParameterException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).
+                body(new ErrorResponse("400",exception.getCode(), exception.getMessage()));
+    }
 }
