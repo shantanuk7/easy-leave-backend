@@ -11,6 +11,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import com.technogise.leave_management_system.enums.UserRole;
 import java.time.LocalDateTime;
 import java.util.UUID;
