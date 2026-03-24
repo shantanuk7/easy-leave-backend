@@ -23,10 +23,6 @@ public class Leave {
     @JoinColumn(name = "leave_category_id", nullable = true)
     private LeaveCategory leaveCategory;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "holiday_id", nullable = true)
-    private Holiday holiday;
-
     @Column(name = "date", nullable = false)
     private Date date;
 
