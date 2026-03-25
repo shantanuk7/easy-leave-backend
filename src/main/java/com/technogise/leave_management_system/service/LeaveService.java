@@ -9,6 +9,7 @@ import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import com.technogise.leave_management_system.dto.LeaveRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -20,6 +21,10 @@ import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATIO
 import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
 import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
 import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class LeaveService {
@@ -80,4 +85,18 @@ public class LeaveService {
                 leave.getDescription()
         )).toList();
     }
+
+    public List<LeaveResponse> applyLeave(LeaveRequest leaveRequest) {
+
+        List<LeaveResponse> leaveResponses = new ArrayList<>();
+
+        for (LocalDate date : leaveRequest.getDates()) {
+            LeaveResponse response = new LeaveResponse();
+            response.setDate(date);
+            response.setLeaveCategoryName("Selected Category");
+            leaveResponses.add(response);
+        }
+
+        return leaveResponses;
+        }
 }

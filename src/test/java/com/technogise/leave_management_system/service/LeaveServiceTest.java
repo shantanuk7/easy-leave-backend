@@ -7,6 +7,7 @@ import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.dto.LeaveRequest;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 @ExtendWith(MockitoExtension.class)
@@ -208,6 +215,25 @@ public class LeaveServiceTest {
         );
     }
 
+    private LeaveRequest createValidLeaveRequest() {
+        LeaveRequest request = new LeaveRequest();
+        request.setLeaveCategoryId(UUID.randomUUID());
+        request.setDates(List.of(LocalDate.now()));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(00,00,00));
+        request.setDescription("Dummy Leave Request description");
+        return request;
+    }
+
+    private LeaveResponse createValidLeaveResponse() {
+        LeaveResponse response = new LeaveResponse();
+        response.setDate(LocalDate.now());
+        response.setLeaveCategoryName("Dummy Leave Category");
+        response.setStartTime(LocalTime.of(00,00,00));
+        response.setDescription("Dummy Leave Request description");
+        return response;
+    }
+
     @Test
     void shouldAssert_whenLeaveRepository_mockedSuccessfully() {
         assertInstanceOf(LeaveRepository.class, leaveRepository);
@@ -216,6 +242,13 @@ public class LeaveServiceTest {
     @Test
     void shouldAssert_whenLeaveService_mockedSuccessfully() {
         assertInstanceOf(LeaveService.class, leaveService);
+    }
+
+    @Test
+    void shouldReturnLeaveResponses_whenRequest_IsValid() {
+        LeaveRequest request = createValidLeaveRequest();
+        List<LeaveResponse> leaveResponses = leaveService.applyLeave(request);
+        assertInstanceOf(LeaveResponse.class,leaveResponses.getFirst());
     }
 
 }
