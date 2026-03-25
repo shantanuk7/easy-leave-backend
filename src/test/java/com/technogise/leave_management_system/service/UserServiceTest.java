@@ -13,8 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 
@@ -38,11 +37,20 @@ class UserServiceTest {
     }
 
     @Test
-    void shouldThrowNotFoundException_whenUserIsNotFound() {
+    void shouldThrowNotFoundException_whenUserId_doesNotExist() {
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
                 () -> userService.getUserByUserId(userId));
+    }
+
+    @Test
+    void shouldReturnUser_whenUserId_doesExist() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User()));
+
+        User user = userService.getUserByUserId(userId);
+
+        assertInstanceOf(User.class, user);
     }
 }
