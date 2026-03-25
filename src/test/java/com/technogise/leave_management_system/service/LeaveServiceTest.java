@@ -207,8 +207,15 @@ public class LeaveServiceTest {
                 leaveService.getAllLeaves(employee.getId(), "self", null)
         );
     }
+
     @Test
     void shouldAssert_whenLeaveRepository_mockedSuccessfully() {
         assertInstanceOf(LeaveRepository.class, leaveRepository);
     }
+
+    @Test
+    void shouldAssert_whenLeaveService_mockedSuccessfully() {
+        assertInstanceOf(LeaveService.class, leaveService);
+    }
+
 }
