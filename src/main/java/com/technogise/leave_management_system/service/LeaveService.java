@@ -1,9 +1,10 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.User;
-import com.technogise.leave_management_system.exception.InvalidQueryParameterException;
-import com.technogise.leave_management_system.exception.ResourceNotFoundException;
+import com.technogise.leave_management_system.exception.BadRequestException;
+import com.technogise.leave_management_system.exception.NotFoundException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.data.domain.Sort;
@@ -23,37 +24,38 @@ public class LeaveService {
     }
     public User findUserById(UUID id) {
         return userRepository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("NOT_FOUND", "User not found with id: " + id));
+                () -> new NotFoundException("NOT_FOUND", "User not found with id: " + id));
     }
-    public List<LeaveResponse> getAllLeaves(UUID userId, String status, UUID requestedEmployeeId) {
-        User user = findUserById(userId);
-        List<LeaveResponse> leaveList = leaveRepository
-                .findAllByUserId(userId, Sort.by(Sort.Direction.DESC, "createdAt"))
-                .stream()
-                .map(leave -> new LeaveResponse(
-                        leave.getId(),
-                        leave.getDate(),
-                        user.getName(),
-                        leave.getLeaveCategory().getName(),
-                        leave.getDuration(),
-                        leave.getStartTime(),
-                        leave.getUpdatedAt(),
-                        leave.getDescription()
-                )).toList();
-        if(status != null) {
-            if ("upcoming".equalsIgnoreCase(status)) {
-                leaveList = leaveList.stream()
-                        .filter(leave -> leave.getDate() != null && leave.getDate().after(new Date()))
-                        .toList();
-            } else if ("completed".equalsIgnoreCase(status)) {
-                leaveList = leaveList.stream()
-                        .filter(leave -> leave.getDate() != null && leave.getDate().before(new Date()))
-                        .toList();
-            }
-            else {
-                throw new InvalidQueryParameterException("BAD_REQUEST","invalid status query parameter");
-            }
+    public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList){
+        if ("upcoming".equalsIgnoreCase(status)) {
+            leaveList = leaveList.stream()
+                    .filter(leave -> leave.getDate() != null && leave.getDate().after(new Date()))
+                    .toList();
+        } else if ("completed".equalsIgnoreCase(status)) {
+            leaveList = leaveList.stream()
+                    .filter(leave -> leave.getDate() != null && leave.getDate().before(new Date()))
+                    .toList();
+        }
+        else {
+            throw new BadRequestException("BAD_REQUEST","invalid status query parameter");
         }
         return leaveList;
+    }
+    public List<LeaveResponse> getAllLeaves(UUID userId, String status) {
+        User user = findUserById(userId);
+        List<Leave> leaveList = leaveRepository.findAllByUserId(userId, Sort.by(Sort.Direction.DESC, "createdAt"));
+        if(status != null) {
+            leaveList=filterLeavesByStatus(status,leaveList);
+        }
+        return leaveList.stream().map(leave -> new LeaveResponse(
+                leave.getId(),
+                leave.getDate(),
+                user.getName(),
+                leave.getLeaveCategory().getName(),
+                leave.getDuration(),
+                leave.getStartTime(),
+                leave.getUpdatedAt(),
+                leave.getDescription()
+        )).toList();
     }
 }
