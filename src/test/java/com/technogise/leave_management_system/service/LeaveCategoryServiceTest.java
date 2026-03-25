@@ -40,4 +40,11 @@ class LeaveCategoryServiceTest {
         assertThrows(NotFoundException.class, () -> leaveCategoryService.findLeaveCategoryById(leaveCategoryId));
     }
 
+    @Test
+    void shouldReturnLeaveCategory_whenLeaveCategoryId_exists() {
+        when(leaveCategoryRepository.findById( leaveCategoryId))
+                .thenReturn(Optional.of(new LeaveCategory()));
+
+        assertInstanceOf(LeaveCategory.class,leaveCategoryService.findLeaveCategoryById(leaveCategoryId));
+    }
 }
