@@ -3,6 +3,8 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.UserRole;
+import com.technogise.leave_management_system.exception.AccessDeniedException;
 import com.technogise.leave_management_system.exception.BadRequestException;
 import com.technogise.leave_management_system.exception.NotFoundException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
@@ -26,31 +28,43 @@ public class LeaveService {
         return userRepository.findById(id).orElseThrow(
                 () -> new NotFoundException("NOT_FOUND", "User not found with id: " + id));
     }
+
+    public List<Leave> filterLeavesByScope(String scope, User user){
+
+        if ("self".equalsIgnoreCase(scope)) {
+            return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "createdAt"));
+        } else if ("team".equalsIgnoreCase(scope)) {
+            if(user.getRole().equals(UserRole.MANAGER)){
+                return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+            }
+            throw new AccessDeniedException("FORBIDDEN","Not Allowed to access this resource");
+        }
+        throw new BadRequestException("BAD_REQUEST","invalid scope query parameter");
+    }
+
     public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList){
         if ("upcoming".equalsIgnoreCase(status)) {
-            leaveList = leaveList.stream()
+             return leaveList.stream()
                     .filter(leave -> leave.getDate() != null && leave.getDate().after(new Date()))
                     .toList();
         } else if ("completed".equalsIgnoreCase(status)) {
-            leaveList = leaveList.stream()
+            return leaveList.stream()
                     .filter(leave -> leave.getDate() != null && leave.getDate().before(new Date()))
                     .toList();
         }
-        else {
-            throw new BadRequestException("BAD_REQUEST","invalid status query parameter");
-        }
-        return leaveList;
+        throw new BadRequestException("BAD_REQUEST","invalid status query parameter");
     }
-    public List<LeaveResponse> getAllLeaves(UUID userId, String status) {
+    public List<LeaveResponse> getAllLeaves(UUID userId,String scope, String status) {
         User user = findUserById(userId);
-        List<Leave> leaveList = leaveRepository.findAllByUserId(userId, Sort.by(Sort.Direction.DESC, "createdAt"));
-        if(status != null) {
+        List<Leave> leaveList = filterLeavesByScope(scope,user);
+
+        if(status != null && !status.isBlank()) {
             leaveList=filterLeavesByStatus(status,leaveList);
         }
         return leaveList.stream().map(leave -> new LeaveResponse(
                 leave.getId(),
                 leave.getDate(),
-                user.getName(),
+                leave.getUser().getName(),
                 leave.getLeaveCategory().getName(),
                 leave.getDuration(),
                 leave.getStartTime(),
