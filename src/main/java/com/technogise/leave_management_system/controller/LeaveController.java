@@ -24,9 +24,10 @@ public class LeaveController {
     @GetMapping
     public ResponseEntity<SuccessResponse<List<LeaveResponse>>> findAllLeave(
             @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name= "scope", defaultValue = "self") String scope,
             @RequestHeader(name = "user_id",required = false) UUID userId
     ) {
-        List<LeaveResponse> leaveList = leaveService.getAllLeaves(userId,status);
+        List<LeaveResponse> leaveList = leaveService.getAllLeaves(userId,scope,status);
         return ResponseEntity.status(HttpStatus.OK).body(SuccessResponse.success("Leaves retrieved successfully",leaveList));
     }
 }
