@@ -1,7 +1,6 @@
 package com.technogise.leave_management_system.config;
 
 import com.technogise.leave_management_system.service.CustomOAuth2UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
