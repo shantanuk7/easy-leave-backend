@@ -109,7 +109,7 @@ public class LeaveService {
 
     public List<LeaveResponse> applyLeave(LeaveRequest leaveRequest, UUID userId) {
 
-        LeaveCategory leaveCategory = leaveCategoryService.findLeaveCategoryById(leaveRequest.getLeaveCategoryId());
+        LeaveCategory leaveCategory = leaveCategoryService.getLeaveCategoryById(leaveRequest.getLeaveCategoryId());
         User user = userService.getUserByUserId(userId);
 
         List<LeaveResponse> leaveResponse = new ArrayList<>();

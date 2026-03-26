@@ -16,7 +16,7 @@ public class LeaveCategoryService {
         this.leaveCategoryRepository = leaveCategoryRepository;
     }
 
-    public LeaveCategory findLeaveCategoryById(UUID leaveCategoryId) {
+    public LeaveCategory getLeaveCategoryById(UUID leaveCategoryId) {
         return leaveCategoryRepository.findById(leaveCategoryId)
                 .orElseThrow(() -> new NotFoundException("LeaveCategory not found"));
     }

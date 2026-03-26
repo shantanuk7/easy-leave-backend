@@ -33,18 +33,18 @@ class LeaveCategoryServiceTest {
     }
 
     @Test
-    void shouldThrowNotFoundException_whenLeaveCategoryId_doesNotExist() {
+    void shouldThrowNotFoundExceptionWhenLeaveCategoryIdDoesNotExist() {
         when(leaveCategoryRepository.findById(leaveCategoryId)).
                 thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> leaveCategoryService.findLeaveCategoryById(leaveCategoryId));
+        assertThrows(NotFoundException.class, () -> leaveCategoryService.getLeaveCategoryById(leaveCategoryId));
     }
 
     @Test
-    void shouldReturnLeaveCategory_whenLeaveCategoryId_exists() {
+    void shouldReturnLeaveCategoryWhenLeaveCategoryIdExists() {
         when(leaveCategoryRepository.findById( leaveCategoryId))
                 .thenReturn(Optional.of(new LeaveCategory()));
 
-        assertInstanceOf(LeaveCategory.class,leaveCategoryService.findLeaveCategoryById(leaveCategoryId));
+        assertInstanceOf(LeaveCategory.class,leaveCategoryService.getLeaveCategoryById(leaveCategoryId));
     }
 }

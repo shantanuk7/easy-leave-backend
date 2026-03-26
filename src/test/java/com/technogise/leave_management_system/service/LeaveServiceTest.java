@@ -259,22 +259,22 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldAssert_whenLeaveRepository_mockedSuccessfully() {
+    void shouldAssertWhenLeaveRepositoryMockedSuccessfully() {
         assertInstanceOf(LeaveRepository.class, leaveRepository);
     }
 
     @Test
-    void shouldAssert_whenLeaveService_mockedSuccessfully() {
+    void shouldAssertWhenLeaveServiceMockedSuccessfully() {
         assertInstanceOf(LeaveService.class, leaveService);
     }
 
     @Test
-    void shouldReturnLeaveResponses_whenLeaveRequestIsValid() {
+    void shouldReturnLeaveResponsesWhenLeaveRequestIsValid() {
         LeaveRequest request = createValidLeaveRequest();
         LeaveCategory leaveCategory = createValidLeaveCategory();
         User user = createValidUser();
 
-        when(leaveCategoryService.findLeaveCategoryById(leaveCategoryId))
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(leaveCategory);
         when(userService.getUserByUserId(userId))
                 .thenReturn(user);
@@ -285,7 +285,7 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldReturnXNumberOfLeaveResponses_whenXNumberOfDatesProvided() {
+    void shouldReturnXNumberOfLeaveResponsesWhenXNumberOfDatesProvided() {
         LeaveRequest request = createValidLeaveRequest();
         List<LocalDate> dates = List.of(
                 LocalDate.now(),
@@ -293,7 +293,7 @@ class LeaveServiceTest {
                 LocalDate.now().plusDays(2));
         request.setDates(dates);
 
-        when(leaveCategoryService.findLeaveCategoryById(leaveCategoryId))
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId))
                 .thenReturn(createValidUser());
