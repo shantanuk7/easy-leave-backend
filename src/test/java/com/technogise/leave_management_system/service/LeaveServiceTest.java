@@ -154,5 +154,18 @@ public class LeaveServiceTest {
         assertEquals("Employee", result.getFirst().employeeName);
     }
 
+    @Test
+    void shouldReturnEmployeeUpcomingLeaveWithStatusIsUpcomingAndScopeIsSelf() {
+        when(userRepository.findById(employee.getId()))
+                .thenReturn(Optional.of(employee));
+
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+                .thenReturn(List.of(employeeLeave));
+
+        List<LeaveResponse> result =
+                leaveService.getAllLeaves(employee.getId(), "self", "upcoming");
+        assertEquals(1, result.size());
+        assertEquals("Employee", result.getFirst().employeeName);
+    }
 }
 
