@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class GlobalExceptionHandlerTest {
+    private final GlobalExceptionHandler globalExceptionHandler = new GlobalExceptionHandler();
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
@@ -24,5 +25,11 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("User not found", response.getBody().getMessage());
+    void shouldReturnBadRequestStatusWithBodyWhenBadRequestExceptionIsThrown() {
+        BadRequestException exception = new BadRequestException("Invalid input");
+        ResponseEntity<String> response = globalExceptionHandler.handleBadRequestException(exception);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid input", response.getBody());
     }
+
 }
