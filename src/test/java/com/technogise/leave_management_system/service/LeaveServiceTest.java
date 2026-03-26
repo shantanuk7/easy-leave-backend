@@ -6,9 +6,7 @@ import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.ForbiddenException;
-import com.technogise.leave_management_system.exception.BadRequestException;
-import com.technogise.leave_management_system.exception.NotFoundException;
+import com.technogise.leave_management_system.exception.ApplicationException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,7 +81,7 @@ public class LeaveServiceTest {
     }
     @Test
     void shouldThrowAccessDeniedWhenEmployeeRequestsLeavesWithScopeTeam() {
-        assertThrows(ForbiddenException.class, () ->
+        assertThrows(ApplicationException.class, () ->
                 leaveService.filterLeavesByScope("team", employee)
         );
     }
@@ -99,7 +97,7 @@ public class LeaveServiceTest {
     }
     @Test
     void shouldThrowBadRequestWhenScopeParamIsInvalid() {
-        assertThrows(BadRequestException.class, () ->
+        assertThrows(ApplicationException.class, () ->
                 leaveService.filterLeavesByScope("invalid", employee)
         );
     }
@@ -124,7 +122,7 @@ public class LeaveServiceTest {
     }
     @Test
     void shouldThrowBadRequestWhenStatusParamIsInvalid() {
-        assertThrows(BadRequestException.class, () ->
+        assertThrows(ApplicationException.class, () ->
                 leaveService.filterLeavesByStatus("invalid", List.of(employeeLeave)));
     }
     @Test
@@ -171,7 +169,7 @@ public class LeaveServiceTest {
     void shouldThrowNotFoundWhenUserDoesNotExist() {
         when(userRepository.findById(employee.getId()))
                 .thenReturn(Optional.empty());
-        assertThrows(NotFoundException.class, () ->
+        assertThrows(ApplicationException.class, () ->
                 leaveService.getAllLeaves(employee.getId(), "self", null)
         );
     }

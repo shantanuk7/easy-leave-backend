@@ -6,8 +6,7 @@ import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.ForbiddenException;
-import com.technogise.leave_management_system.exception.BadRequestException;
+import com.technogise.leave_management_system.exception.ApplicationException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.service.LeaveService;
@@ -15,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -231,28 +231,28 @@ public class LeaveControllerTest {
     @Test
     void shouldReturn400WhenScopeIsNotValid() throws Exception {
         when(leaveService.getAllLeaves(employee.getId(),"ppp",null))
-                .thenThrow(new BadRequestException("BAD_REQUEST","Invalid scope query parameter"));
+                .thenThrow(new ApplicationException(HttpStatus.BAD_REQUEST,"BAD_REQUEST","Invalid scope query parameter"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", employee.getId())
                         .param("scope", "ppp")
                 )
                 .andExpect(status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("400"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("400"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Invalid scope query parameter"));
     }
     @Test
     void shouldReturn403WhenEmployeeTryToGetLeaveListWithTeamScope() throws Exception {
         when(leaveService.getAllLeaves(employee.getId(),"team",null))
-                .thenThrow(new ForbiddenException("FORBIDDEN","Not Allowed to access this resource"));
+                .thenThrow(new ApplicationException(HttpStatus.FORBIDDEN,"FORBIDDEN","Not Allowed to access this resource"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", employee.getId())
                         .param("scope", "team")
                 )
                 .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("403"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("403"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("FORBIDDEN"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Not Allowed to access this resource"));
     }
