@@ -4,12 +4,15 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.entity.LeaveCategory;
+import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.ApplicationException;
 import com.technogise.leave_management_system.dto.LeaveRequest;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,15 +36,23 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class LeaveServiceTest {
+class LeaveServiceTest {
+
     @Mock
     private LeaveRepository leaveRepository;
 
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private UserService userService;
+
+    @Mock
+    private LeaveCategoryService leaveCategoryService;
+
     @InjectMocks
     private LeaveService leaveService;
 
@@ -215,23 +226,36 @@ public class LeaveServiceTest {
         );
     }
 
+    private UUID userId;
+    private UUID leaveCategoryId;
+
+    @BeforeEach
+    void setUp() {
+        userId = UUID.randomUUID();
+        leaveCategoryId = UUID.randomUUID();
+    }
+
     private LeaveRequest createValidLeaveRequest() {
         LeaveRequest request = new LeaveRequest();
-        request.setLeaveCategoryId(UUID.randomUUID());
+        request.setLeaveCategoryId(leaveCategoryId);
         request.setDates(List.of(LocalDate.now()));
         request.setDuration(DurationType.FULL_DAY);
-        request.setStartTime(LocalTime.of(00,00,00));
+        request.setStartTime(LocalTime.of(9, 0, 0));
         request.setDescription("Dummy Leave Request description");
         return request;
     }
 
-    private LeaveResponse createValidLeaveResponse() {
-        LeaveResponse response = new LeaveResponse();
-        response.setDate(LocalDate.now());
-        response.setLeaveCategoryName("Dummy Leave Category");
-        response.setStartTime(LocalTime.of(00,00,00));
-        response.setDescription("Dummy Leave Request description");
-        return response;
+    private LeaveCategory createValidLeaveCategory() {
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setId(leaveCategoryId);
+        leaveCategory.setName("Sick Leave");
+        return leaveCategory;
+    }
+
+    private User createValidUser() {
+        User user = new User();
+        user.setId(userId);
+        return user;
     }
 
     @Test
@@ -245,10 +269,19 @@ public class LeaveServiceTest {
     }
 
     @Test
-    void shouldReturnLeaveResponses_whenRequest_IsValid() {
+    void shouldReturnLeaveResponses_whenLeaveRequestIsValid() {
         LeaveRequest request = createValidLeaveRequest();
-        List<LeaveResponse> leaveResponses = leaveService.applyLeave(request);
-        assertInstanceOf(LeaveResponse.class,leaveResponses.getFirst());
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        User user = createValidUser();
+
+        when(leaveCategoryService.findLeaveCategoryById(leaveCategoryId))
+                .thenReturn(leaveCategory);
+        when(userService.getUserByUserId(userId))
+                .thenReturn(user);
+
+        List<LeaveResponse> leaveResponses = leaveService.applyLeave(request, userId);
+
+        assertInstanceOf(LeaveResponse.class, leaveResponses.getFirst());
     }
 
 }

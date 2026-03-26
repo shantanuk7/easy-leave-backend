@@ -1,6 +1,14 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.LeaveResponse;
+
+import com.technogise.leave_management_system.entity.Leave;
+import com.technogise.leave_management_system.entity.LeaveCategory;
+import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.UserRole;
+import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.repository.LeaveRepository;
+
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
@@ -10,6 +18,9 @@ import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import com.technogise.leave_management_system.dto.LeaveRequest;
+import com.technogise.leave_management_system.repository.UserRepository;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -22,17 +33,24 @@ import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
 import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
 import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
 
-import java.time.LocalDate;
+
 import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class LeaveService {
+
     private final UserRepository userRepository;
+
     private final LeaveRepository leaveRepository;
-    public LeaveService(UserRepository userRepository, LeaveRepository leaveRepository) {
-        this.userRepository = userRepository;
+
+    private final UserService userService;
+    private final LeaveCategoryService leaveCategoryService;
+
+    public LeaveService(LeaveRepository leaveRepository, UserService userService, LeaveCategoryService leaveCategoryService,UserRepository userRepository) {
         this.leaveRepository = leaveRepository;
+        this.userService = userService;
+        this.userRepository = userRepository;
+        this.leaveCategoryService = leaveCategoryService;
     }
     public User findUserById(UUID id) {
         return userRepository.findById(id).orElseThrow(
@@ -86,17 +104,35 @@ public class LeaveService {
         )).toList();
     }
 
-    public List<LeaveResponse> applyLeave(LeaveRequest leaveRequest) {
 
-        List<LeaveResponse> leaveResponses = new ArrayList<>();
 
-        for (LocalDate date : leaveRequest.getDates()) {
+
+    public List<LeaveResponse> applyLeave(LeaveRequest leaveRequest, UUID userId) {
+
+        LeaveCategory leaveCategory = leaveCategoryService.findLeaveCategoryById(leaveRequest.getLeaveCategoryId());
+        User user = userService.getUserByUserId(userId);
+
+        List<LeaveResponse> leaveResponse = new ArrayList<>();
+
+        for ( LocalDate date : leaveRequest.getDates()) {
+            Leave leave = new Leave();
+            leave.setDate(date);
+            leave.setLeaveCategory(leaveCategory);
+            leave.setDescription(leaveRequest.getDescription());
+            leave.setStartTime(leaveRequest.getStartTime());
+            leave.setDuration(leaveRequest.getDuration());
+            leave.setUser(user);
+
+            leaveRepository.save(leave);
+
             LeaveResponse response = new LeaveResponse();
+            response.setLeaveCategoryName(leaveCategory.getName());
+            response.setDescription(leave.getDescription());
+            response.setStartTime(leave.getStartTime());
             response.setDate(date);
-            response.setLeaveCategoryName("Selected Category");
-            leaveResponses.add(response);
-        }
 
-        return leaveResponses;
+            leaveResponse.add(response);
         }
+        return leaveResponse;
+    }
 }
