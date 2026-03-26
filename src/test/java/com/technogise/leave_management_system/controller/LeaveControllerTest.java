@@ -85,4 +85,147 @@ public class LeaveControllerTest {
         managerLeave.setUpdatedAt(LocalDateTime.now());
     }
 
+    @Test
+    void shouldReturn200AndListOfLeavesWhenEmployeeRequestsSelfLeaves() throws Exception {
+        List<LeaveResponse> response = List.of(
+                new LeaveResponse(
+                        employeeLeave.getId(),
+                        employeeLeave.getDate(),
+                        employee.getName(),
+                        leaveCategory.getName(),
+                        employeeLeave.getDuration(),
+                        employeeLeave.getStartTime(),
+                        employeeLeave.getUpdatedAt(),
+                        employeeLeave.getDescription()
+                )
+        );
+
+        when(leaveService.getAllLeaves(employee.getId(), "self", null))
+                .thenReturn(response);
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .header("user_id", employee.getId())
+                        .param("scope", "self"))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration")
+                        .value(response.getFirst().getDuration().toString()));
+    }
+    @Test
+    void shouldReturn200AndListOfLeavesWhenManagerRequestsSelfLeaves() throws Exception {
+        List<LeaveResponse> response = List.of(
+                new LeaveResponse(
+                        managerLeave.getId(),
+                        managerLeave.getDate(),
+                        manager.getName(),
+                        leaveCategory.getName(),
+                        managerLeave.getDuration(),
+                        managerLeave.getStartTime(),
+                        managerLeave.getUpdatedAt(),
+                        managerLeave.getDescription()
+                )
+        );
+        when(leaveService.getAllLeaves(manager.getId(), "self", null))
+                .thenReturn(response);
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .header("user_id", manager.getId())
+                        .param("scope", "self"))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration")
+                        .value(response.getFirst().getDuration().toString()));
+    }
+    @Test
+    void shouldReturn200AndListOfLeavesWhenManagerRequestsTeamLeaves() throws Exception {
+        List<LeaveResponse> response = List.of(
+                new LeaveResponse(
+                        managerLeave.getId(),
+                        managerLeave.getDate(),
+                        manager.getName(),
+                        leaveCategory.getName(),
+                        managerLeave.getDuration(),
+                        managerLeave.getStartTime(),
+                        managerLeave.getUpdatedAt(),
+                        managerLeave.getDescription()
+                ),
+                new LeaveResponse(
+                        employeeLeave.getId(),
+                        employeeLeave.getDate(),
+                        employee.getName(),
+                        leaveCategory.getName(),
+                        employeeLeave.getDuration(),
+                        employeeLeave.getStartTime(),
+                        employeeLeave.getUpdatedAt(),
+                        employeeLeave.getDescription()
+                )
+        );
+        when(leaveService.getAllLeaves(manager.getId(),"team", null))
+                .thenReturn(response);
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .header("user_id", manager.getId())
+                        .param("scope", "team"))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].date")
+                        .value(response.getFirst().getDate().toString()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].employeeName")
+                        .value(response.getFirst().getEmployeeName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].type")
+                        .value(response.getFirst().getType()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].reason")
+                        .value(response.getFirst().getReason()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].date")
+                    .value(response.get(1).getDate().toString()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].employeeName")
+                        .value(response.get(1).getEmployeeName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].type")
+                        .value(response.get(1).getType()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].reason")
+                        .value(response.get(1).getReason()));
+    }
+    @Test
+    void shouldReturn200AndListOfLeavesFilterByStatus() throws Exception {
+        List<LeaveResponse> response = List.of(
+                new LeaveResponse(
+                        managerLeave.getId(),
+                        managerLeave.getDate(),
+                        manager.getName(),
+                        leaveCategory.getName(),
+                        managerLeave.getDuration(),
+                        managerLeave.getStartTime(),
+                        managerLeave.getUpdatedAt(),
+                        managerLeave.getDescription()
+                ),
+                new LeaveResponse(
+                        employeeLeave.getId(),
+                        employeeLeave.getDate(),
+                        employee.getName(),
+                        leaveCategory.getName(),
+                        employeeLeave.getDuration(),
+                        employeeLeave.getStartTime(),
+                        employeeLeave.getUpdatedAt(),
+                        employeeLeave.getDescription()
+                )
+        );
+        when(leaveService.getAllLeaves(manager.getId(),"team","completed" ))
+                .thenReturn(response);
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .header("user_id", manager.getId())
+                        .param("scope", "team")
+                        .param("status", "completed")
+                )
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].date")
+                        .value(response.getFirst().getDate().toString()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].employeeName")
+                        .value(response.getFirst().getEmployeeName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].type")
+                        .value(response.getFirst().getType()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].reason")
+                        .value(response.getFirst().getReason()));
+    }
 }
