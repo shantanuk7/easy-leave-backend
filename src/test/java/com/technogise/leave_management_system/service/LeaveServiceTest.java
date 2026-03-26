@@ -167,5 +167,13 @@ public class LeaveServiceTest {
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
     }
+    @Test
+    void shouldThrowNotFoundWhenUserDoesNotExist() {
+        when(userRepository.findById(employee.getId()))
+                .thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () ->
+                leaveService.getAllLeaves(employee.getId(), "self", null)
+        );
+    }
 }
 
