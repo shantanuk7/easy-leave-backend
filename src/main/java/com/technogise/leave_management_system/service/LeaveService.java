@@ -12,7 +12,7 @@ import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,12 +29,11 @@ public class LeaveService {
                 () -> new NotFoundException("NOT_FOUND", "User not found with id: " + id));
     }
 
-    public List<Leave> filterLeavesByScope(String scope, User user){
-
+    public List<Leave> filterLeavesByScope(String scope, User user) {
         if ("self".equalsIgnoreCase(scope)) {
             return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "createdAt"));
         } else if ("team".equalsIgnoreCase(scope)) {
-            if(user.getRole().equals(UserRole.MANAGER)){
+            if (user.getRole().equals(UserRole.MANAGER)) {
                 return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
             throw new AccessDeniedException("FORBIDDEN","Not Allowed to access this resource");
@@ -42,14 +41,14 @@ public class LeaveService {
         throw new BadRequestException("BAD_REQUEST","invalid scope query parameter");
     }
 
-    public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList){
+    public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
         if ("upcoming".equalsIgnoreCase(status)) {
-             return leaveList.stream()
-                    .filter(leave -> leave.getDate() != null && leave.getDate().after(new Date()))
+            return leaveList.stream()
+                    .filter(leave -> leave.getDate() != null && leave.getDate().isAfter(LocalDate.now()))
                     .toList();
         } else if ("completed".equalsIgnoreCase(status)) {
             return leaveList.stream()
-                    .filter(leave -> leave.getDate() != null && leave.getDate().before(new Date()))
+                    .filter(leave -> leave.getDate() != null && leave.getDate().isBefore(LocalDate.now()))
                     .toList();
         }
         throw new BadRequestException("BAD_REQUEST","invalid status query parameter");
@@ -58,8 +57,8 @@ public class LeaveService {
         User user = findUserById(userId);
         List<Leave> leaveList = filterLeavesByScope(scope,user);
 
-        if(status != null && !status.isBlank()) {
-            leaveList=filterLeavesByStatus(status,leaveList);
+        if (status != null && !status.isBlank()) {
+            leaveList = filterLeavesByStatus(status,leaveList);
         }
         return leaveList.stream().map(leave -> new LeaveResponse(
                 leave.getId(),
