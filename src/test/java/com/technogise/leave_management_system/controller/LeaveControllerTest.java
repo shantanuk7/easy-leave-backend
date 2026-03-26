@@ -228,4 +228,32 @@ public class LeaveControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].reason")
                         .value(response.getFirst().getReason()));
     }
+    @Test
+    void shouldReturn400WhenScopeIsNotValid() throws Exception {
+        when(leaveService.getAllLeaves(employee.getId(),"ppp",null))
+                .thenThrow(new BadRequestException("BAD_REQUEST","Invalid scope query parameter"));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .header("user_id", employee.getId())
+                        .param("scope", "ppp")
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("400"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Invalid scope query parameter"));
+    }
+    @Test
+    void shouldReturn403WhenEmployeeTryToGetLeaveListWithTeamScope() throws Exception {
+        when(leaveService.getAllLeaves(employee.getId(),"team",null))
+                .thenThrow(new ForbiddenException("FORBIDDEN","Not Allowed to access this resource"));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .header("user_id", employee.getId())
+                        .param("scope", "team")
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("403"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("FORBIDDEN"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Not Allowed to access this resource"));
+    }
 }
