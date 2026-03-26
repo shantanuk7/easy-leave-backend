@@ -4,12 +4,11 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.ForbiddenException;
-import com.technogise.leave_management_system.exception.BadRequestException;
-import com.technogise.leave_management_system.exception.NotFoundException;
+import com.technogise.leave_management_system.exception.ApplicationException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -26,7 +25,7 @@ public class LeaveService {
     }
     public User findUserById(UUID id) {
         return userRepository.findById(id).orElseThrow(
-                () -> new NotFoundException("NOT_FOUND", "User not found with id: " + id));
+                () -> new ApplicationException(HttpStatus.NOT_FOUND,"NOT_FOUND", "User not found with id: " + id));
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -36,9 +35,9 @@ public class LeaveService {
             if (user.getRole().equals(UserRole.MANAGER)) {
                 return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
-            throw new ForbiddenException("FORBIDDEN","Not Allowed to access this resource");
+            throw new ApplicationException(HttpStatus.FORBIDDEN,"FORBIDDEN","Not Allowed to access this resource");
         }
-        throw new BadRequestException("BAD_REQUEST","invalid scope query parameter");
+        throw new ApplicationException(HttpStatus.BAD_REQUEST,"BAD_REQUEST","Invalid scope query parameter");
     }
 
     public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
@@ -51,7 +50,7 @@ public class LeaveService {
                     .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
                     .toList();
         }
-        throw new BadRequestException("BAD_REQUEST","invalid status query parameter");
+        throw new ApplicationException(HttpStatus.BAD_REQUEST,"BAD_REQUEST","invalid status query parameter");
     }
     public List<LeaveResponse> getAllLeaves(UUID userId,String scope, String status) {
         User user = findUserById(userId);
