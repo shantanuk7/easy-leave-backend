@@ -284,4 +284,23 @@ class LeaveServiceTest {
         assertInstanceOf(LeaveResponse.class, leaveResponses.getFirst());
     }
 
+    @Test
+    void shouldReturnXNumberOfLeaveResponses_whenXNumberOfDatesProvided() {
+        LeaveRequest request = createValidLeaveRequest();
+        List<LocalDate> dates = List.of(
+                LocalDate.now(),
+                LocalDate.now().plusDays(1),
+                LocalDate.now().plusDays(2));
+        request.setDates(dates);
+
+        when(leaveCategoryService.findLeaveCategoryById(leaveCategoryId))
+                .thenReturn(createValidLeaveCategory());
+        when(userService.getUserByUserId(userId))
+                .thenReturn(createValidUser());
+
+        List<LeaveResponse> leaveResponses = leaveService.applyLeave(request, userId);
+
+        assertEquals(dates.size(), leaveResponses.size());
+    }
+
 }
