@@ -6,9 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Date;
 import java.util.UUID;
 
 @Getter
@@ -17,7 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class LeaveResponse {
     public UUID id;
-    public Date date;
+    public LocalDate date;
     public String employeeName;
     public String type;
     public DurationType duration;

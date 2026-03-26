@@ -17,9 +17,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Date;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -42,7 +43,7 @@ public class Leave {
     private LeaveCategory leaveCategory;
 
     @Column(name = "date", nullable = false)
-    private Date date;
+    private LocalDate date;
 
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
