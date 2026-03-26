@@ -15,3 +15,4 @@ public class ApplicationException extends RuntimeException {
         this.statusCode = statusCode;
     }
 }
+
