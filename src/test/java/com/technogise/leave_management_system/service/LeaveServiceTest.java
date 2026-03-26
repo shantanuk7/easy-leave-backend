@@ -71,6 +71,7 @@ public class LeaveServiceTest {
         employeeLeave.setCreatedAt(LocalDateTime.now());
         employeeLeave.setUpdatedAt(LocalDateTime.now());
     }
+
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
@@ -93,7 +94,7 @@ public class LeaveServiceTest {
 
         List<Leave> result = leaveService.filterLeavesByScope("team", manager);
         assertEquals(2, result.size());
-        assertEquals(employeeLeave, result.getFirst());
+        assertEquals(managerLeave, result.getFirst());
         assertEquals(employeeLeave, result.getLast());
     }
     @Test
@@ -102,5 +103,56 @@ public class LeaveServiceTest {
                 leaveService.filterLeavesByScope("invalid", employee)
         );
     }
+
+    @Test
+    void shouldReturnUpcomingLeavesWhenStatusIsUpcoming() {
+        Leave futureLeave = new Leave();
+        futureLeave.setDate(LocalDate.now().plusDays(1));
+        List<Leave> result = leaveService.filterLeavesByStatus("upcoming", List.of(futureLeave));
+        assertEquals(1, result.size());
+        assertEquals(futureLeave, result.getFirst());
+        assertEquals(futureLeave.getLeaveCategory(), result.getFirst().getLeaveCategory());
+    }
+    @Test
+    void shouldReturnPastLeavesWhenStatusIsCompleted() {
+        Leave completedLeave = new Leave();
+        completedLeave.setDate(LocalDate.now().minusDays(1));
+        List<Leave> result = leaveService.filterLeavesByStatus("completed", List.of(completedLeave));
+        assertEquals(1, result.size());
+        assertEquals(completedLeave, result.getFirst());
+        assertEquals(completedLeave.getStartTime(), result.getFirst().getStartTime());
+    }
+    @Test
+    void shouldThrowBadRequestWhenStatusParamIsInvalid() {
+        assertThrows(BadRequestException.class, () ->
+                leaveService.filterLeavesByStatus("invalid", List.of(employeeLeave)));
+    }
+    @Test
+    void shouldNotApplyStatusFilterWhenStatusIsNull() {
+        when(userRepository.findById(employee.getId()))
+                .thenReturn(Optional.of(employee));
+
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+                .thenReturn(List.of(employeeLeave));
+
+        List<LeaveResponse> result =
+                leaveService.getAllLeaves(employee.getId(), "self", null);
+        assertEquals(1, result.size());
+        assertEquals("Employee", result.getFirst().employeeName);
+    }
+    @Test
+    void shouldNotApplyStatusFilterWhenStatusIsBlank() {
+        when(userRepository.findById(employee.getId()))
+                .thenReturn(Optional.of(employee));
+
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+                .thenReturn(List.of(employeeLeave));
+
+        List<LeaveResponse> result =
+                leaveService.getAllLeaves(employee.getId(), "self", "");
+        assertEquals(1, result.size());
+        assertEquals("Employee", result.getFirst().employeeName);
+    }
+
 }
 
