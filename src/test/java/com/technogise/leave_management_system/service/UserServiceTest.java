@@ -37,7 +37,7 @@ class UserServiceTest {
     }
 
     @Test
-    void shouldThrowNotFoundException_whenUserId_doesNotExist() {
+    void shouldThrowNotFoundExceptionWhenUserIdDoesNotExist() {
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
@@ -46,7 +46,7 @@ class UserServiceTest {
     }
 
     @Test
-    void shouldReturnUser_whenUserId_doesExist() {
+    void shouldReturnUserWhenUserIdDoesExist() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(new User()));
 
         User user = userService.getUserByUserId(userId);
