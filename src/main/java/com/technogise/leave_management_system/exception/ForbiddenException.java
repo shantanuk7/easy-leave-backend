@@ -3,9 +3,9 @@ package com.technogise.leave_management_system.exception;
 import lombok.Getter;
 
 @Getter
-public class AccessDeniedException extends RuntimeException {
+public class ForbiddenException extends RuntimeException {
     private final String code;
-    public AccessDeniedException(String code, String message) {
+    public ForbiddenException(String code, String message) {
         super(message);
         this.code = code;
     }

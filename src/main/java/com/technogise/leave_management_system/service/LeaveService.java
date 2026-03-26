@@ -4,7 +4,7 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.AccessDeniedException;
+import com.technogise.leave_management_system.exception.ForbiddenException;
 import com.technogise.leave_management_system.exception.BadRequestException;
 import com.technogise.leave_management_system.exception.NotFoundException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
@@ -36,7 +36,7 @@ public class LeaveService {
             if (user.getRole().equals(UserRole.MANAGER)) {
                 return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
-            throw new AccessDeniedException("FORBIDDEN","Not Allowed to access this resource");
+            throw new ForbiddenException("FORBIDDEN","Not Allowed to access this resource");
         }
         throw new BadRequestException("BAD_REQUEST","invalid scope query parameter");
     }
@@ -44,11 +44,11 @@ public class LeaveService {
     public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
         if ("upcoming".equalsIgnoreCase(status)) {
             return leaveList.stream()
-                    .filter(leave -> leave.getDate() != null && leave.getDate().isAfter(LocalDate.now()))
+                    .filter(leave -> leave.getDate().isAfter(LocalDate.now()))
                     .toList();
         } else if ("completed".equalsIgnoreCase(status)) {
             return leaveList.stream()
-                    .filter(leave -> leave.getDate() != null && leave.getDate().isBefore(LocalDate.now()))
+                    .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
                     .toList();
         }
         throw new BadRequestException("BAD_REQUEST","invalid status query parameter");

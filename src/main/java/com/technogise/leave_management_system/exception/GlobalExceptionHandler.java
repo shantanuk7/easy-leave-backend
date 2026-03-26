@@ -18,8 +18,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).
                 body(new ErrorResponse("400",exception.getCode(), exception.getMessage()));
     }
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException exception) {
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(ForbiddenException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).
                 body(new ErrorResponse("403",exception.getCode(), exception.getMessage()));
     }
