@@ -23,10 +23,10 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 
 #### Query Parameters
 
-| Parameter | Required | Default | Accepted Values         |
-|-----------|----------|---------|-------------------------|
-| `scope`   | No       | `self`  | `self`, `team`          |
-| `status`  | No       | —       | `upcoming`, `completed` |
+| Parameter | Required | Default | Accepted Values                   |
+|-----------|----------|---------|-----------------------------------|
+| `scope`   | No       | `self`  | `self`, `team`                    |
+| `status`  | No       | —       | `upcoming`,`ongoing`, `completed` |
 
 ---
 
@@ -41,11 +41,12 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 
 #### How Status Works
 
-| Status      | What it returns                              |
-|-------------|----------------------------------------------|
-| _(not set)_ | All leaves regardless of date                |
-| `upcoming`  | Only leaves with a date **after** today      |
-| `completed` | Only leaves with a date **before** today     |
+| Status      | What it returns                          |
+|-------------|------------------------------------------|
+| _(not set)_ | All leaves regardless of date            |
+| `upcoming`  | Only leaves with a date **after** today  |
+| `ongoing`   | Only leaves with a date  today           |
+| `completed` | Only leaves with a date **before** today |
 
 ---
 
