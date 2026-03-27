@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
@@ -15,6 +16,7 @@ import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -258,6 +261,15 @@ class LeaveServiceTest {
         return user;
     }
 
+    private Leave createValidLeave() {
+        Leave leave = new Leave();
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setStartTime(LocalTime.of(9, 0, 0));
+        leave.setDescription("Dummy Leave description");
+        leave.setDuration(DurationType.FULL_DAY);
+        return leave;
+    }
+
     @Test
     void shouldAssertWhenLeaveRepositoryMockedSuccessfully() {
         assertInstanceOf(LeaveRepository.class, leaveRepository);
@@ -266,6 +278,31 @@ class LeaveServiceTest {
     @Test
     void shouldAssertWhenLeaveServiceMockedSuccessfully() {
         assertInstanceOf(LeaveService.class, leaveService);
+    }
+
+    @Test
+    void shouldCreateLeaveInstanceWithValidRequest() {
+        LeaveRequest request = createValidLeaveRequest();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        User user = createValidUser();
+
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(leaveCategory);
+        when(userService.getUserByUserId(userId))
+                .thenReturn(user);
+
+        leaveService.applyLeave(request, userId);
+
+        ArgumentCaptor<Leave> leaveCaptor = ArgumentCaptor.forClass(Leave.class);
+        verify(leaveRepository).save(leaveCaptor.capture());
+
+        Leave savedLeave = leaveCaptor.getValue();
+        assertEquals(request.getDates().getFirst(), savedLeave.getDate());
+        assertEquals(leaveCategory, savedLeave.getLeaveCategory());
+        assertEquals(user, savedLeave.getUser());
+        assertEquals(request.getDescription(), savedLeave.getDescription());
+        assertEquals(request.getStartTime(), savedLeave.getStartTime());
+        assertEquals(request.getDuration(), savedLeave.getDuration());
     }
 
     @Test
