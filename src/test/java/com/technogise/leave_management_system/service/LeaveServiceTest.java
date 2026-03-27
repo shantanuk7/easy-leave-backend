@@ -69,7 +69,7 @@ public class LeaveServiceTest {
         leave.setId(UUID.randomUUID());
         leave.setUser(employee);
         leave.setLeaveCategory(leaveCategory);
-        leave.setDate(LocalDate.of(2026, 3, 30));
+        leave.setDate(LocalDate.now());
         leave.setDuration(DurationType.FULL_DAY);
         leave.setDescription("Personal Work");
         leave.setStartTime(LocalTime.now());
@@ -132,7 +132,7 @@ public class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         List<Leave> result = leaveService.filterLeavesByStatus("ongoing", List.of(leave,employeeLeave));
-        assertEquals(1, result.size());
+        assertEquals(2, result.size());
         assertEquals(leave, result.getFirst());
     }
     @Test
@@ -186,9 +186,9 @@ public class LeaveServiceTest {
     void shouldReturnEmployeeUpcomingLeaveWithStatusIsUpcomingAndScopeIsSelf() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
+        employeeLeave.setDate(LocalDate.now().plusDays(1));
         when(userRepository.findById(employee.getId()))
                 .thenReturn(Optional.of(employee));
-
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
                 .thenReturn(List.of(employeeLeave));
 
