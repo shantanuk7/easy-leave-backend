@@ -14,7 +14,7 @@ public class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    void shouldReturnErrorResponseWhenApplicationThrownException() {
+    void shouldReturnNotFoundErrorResponseWhenNotFoundApplicationExceptionThrown() {
         ApplicationException exception = new ApplicationException(
                 HttpStatus.NOT_FOUND,
                 "User not found"
