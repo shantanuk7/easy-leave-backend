@@ -19,6 +19,6 @@ public class LeaveCategoryService {
 
     public LeaveCategory getLeaveCategoryById(UUID leaveCategoryId) {
         return leaveCategoryRepository.findById(leaveCategoryId)
-                .orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,"LeaveCategory not found"));
+                .orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,"LeaveCategory not found with id: " + leaveCategoryId));
     }
 }

@@ -20,7 +20,7 @@ public class UserService {
 
     public User getUserByUserId(UUID id) {
         return userRepository.findById(id).orElseThrow(
-                () -> new ApplicationException(HttpStatus.NOT_FOUND, "User not found"));
+                () -> new ApplicationException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
     }
 }
 
