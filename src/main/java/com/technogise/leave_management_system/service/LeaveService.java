@@ -49,6 +49,10 @@ public class LeaveService {
             return leaveList.stream()
                     .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
                     .toList();
+        } else if ("ongoing".equalsIgnoreCase(status)) {
+            return leaveList.stream()
+                    .filter(leave -> leave.getDate().equals(LocalDate.now()))
+                    .toList();
         }
         throw new ApplicationException(HttpStatus.BAD_REQUEST,"Invalid status query parameter");
     }

@@ -112,6 +112,14 @@ public class LeaveServiceTest {
         assertEquals(futureLeave.getLeaveCategory(), result.getFirst().getLeaveCategory());
     }
     @Test
+    void shouldReturnOngoingLeavesWhenStatusIsOngoing(){
+        Leave leave = new Leave();
+        leave.setDate(LocalDate.now());
+        List<Leave> result = leaveService.filterLeavesByStatus("ongoing", List.of(leave,employeeLeave));
+        assertEquals(1, result.size());
+        assertEquals(leave, result.getFirst());
+    }
+    @Test
     void shouldReturnPastLeavesWhenStatusIsCompleted() {
         Leave completedLeave = new Leave();
         completedLeave.setDate(LocalDate.now().minusDays(1));
