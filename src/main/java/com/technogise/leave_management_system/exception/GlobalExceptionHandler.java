@@ -13,7 +13,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode())
                 .body(new ErrorResponse(
                         String.valueOf(ex.getStatusCode().value()),
-                        ex.getCode(),
+                        ex.getStatusCode().getReasonPhrase(),
                         ex.getMessage()
                 ));
     }
