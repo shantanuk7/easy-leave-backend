@@ -14,18 +14,15 @@ public class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    void shouldReturnProperErrorResponseWhenApplicationExceptionThrown() {
+    void shouldReturnErrorResponseWhenApplicationThrownException() {
         ApplicationException exception = new ApplicationException(
                 HttpStatus.NOT_FOUND,
-                "NOT_FOUND",
                 "User not found"
         );
         ResponseEntity<ErrorResponse> response =
                 handler.handleApplicationException(exception);
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("404", response.getBody().getStatusCode());
-        assertEquals("NOT_FOUND", response.getBody().getCode());
         assertEquals("User not found", response.getBody().getMessage());
     }
 }

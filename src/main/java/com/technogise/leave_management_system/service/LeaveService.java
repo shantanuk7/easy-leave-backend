@@ -25,7 +25,7 @@ public class LeaveService {
     }
     public User findUserById(UUID id) {
         return userRepository.findById(id).orElseThrow(
-                () -> new ApplicationException(HttpStatus.NOT_FOUND,"NOT_FOUND", "User not found with id: " + id));
+                () -> new ApplicationException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -35,9 +35,9 @@ public class LeaveService {
             if (user.getRole().equals(UserRole.MANAGER)) {
                 return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
-            throw new ApplicationException(HttpStatus.FORBIDDEN,"FORBIDDEN","Not Allowed to access this resource");
+            throw new ApplicationException(HttpStatus.FORBIDDEN,"Not Allowed to access this resource");
         }
-        throw new ApplicationException(HttpStatus.BAD_REQUEST,"BAD_REQUEST","Invalid scope query parameter");
+        throw new ApplicationException(HttpStatus.BAD_REQUEST,"Invalid scope query parameter");
     }
 
     public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
@@ -50,7 +50,7 @@ public class LeaveService {
                     .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
                     .toList();
         }
-        throw new ApplicationException(HttpStatus.BAD_REQUEST,"BAD_REQUEST","invalid status query parameter");
+        throw new ApplicationException(HttpStatus.BAD_REQUEST,"Invalid status query parameter");
     }
     public List<LeaveResponse> getAllLeaves(UUID userId,String scope, String status) {
         User user = findUserById(userId);
