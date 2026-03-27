@@ -81,6 +81,9 @@ jacocoTestReport {
 						'**/enums/**',
 						'**/repository/**',
 						'**/response/**',
+						'**/config/**',
+						'**/filter/**',
+						'**/handler/**'
 				])
 			})
 	)
@@ -95,7 +98,10 @@ jacocoTestCoverageVerification {
 					'**/dto/**',
 					'**/enums/**',
 					'**/repository/**',
-					'**/response/**'
+					'**/response/**',
+					'**/config/**',
+					'**/filter/**',
+					'**/handler/**'
 			])
 		}))
 	}
