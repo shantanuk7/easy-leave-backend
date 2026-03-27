@@ -25,7 +25,7 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 
 | Parameter | Required | Default | Accepted Values                   |
 |-----------|----------|---------|-----------------------------------|
-| `scope`   | No       | `self`  | `self`, `team`                    |
+| `scope`   | No       | `self`  | `self`, `organisation`            |
 | `status`  | No       | —       | `upcoming`,`ongoing`, `completed` |
 
 ---
@@ -60,7 +60,7 @@ Header: user_id: <your-uuid>
 
 **Manager fetching all team leaves**
 ```
-GET /api/leaves?scope=team
+GET /api/leaves?scope=organisation
 Header: user_id: <manager-uuid>
 ```
 
