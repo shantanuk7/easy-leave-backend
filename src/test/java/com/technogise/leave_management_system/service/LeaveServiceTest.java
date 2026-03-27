@@ -93,7 +93,7 @@ public class LeaveServiceTest {
     void shouldThrowAccessDeniedWhenEmployeeRequestsLeavesWithScopeOrganization() {
         User employee = createEmployee();
         assertThrows(ApplicationException.class, () ->
-                leaveService.filterLeavesByScope("team", employee)
+                leaveService.filterLeavesByScope("organization", employee)
         );
     }
     @Test

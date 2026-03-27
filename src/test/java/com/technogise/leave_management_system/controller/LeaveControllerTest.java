@@ -137,7 +137,7 @@ public class LeaveControllerTest {
                         .value(response.getFirst().getDuration().toString()));
     }
     @Test
-    void shouldReturn200AndListOfLeavesWhenManagerRequestsTeamLeaves() throws Exception {
+    void shouldReturn200AndListOfLeavesWhenManagerRequestsAllEmployeeLeaves() throws Exception {
         List<LeaveResponse> response = List.of(
                 new LeaveResponse(
                         managerLeave.getId(),
@@ -160,11 +160,11 @@ public class LeaveControllerTest {
                         employeeLeave.getDescription()
                 )
         );
-        when(leaveService.getAllLeaves(manager.getId(),"team", null))
+        when(leaveService.getAllLeaves(manager.getId(),"organization", null))
                 .thenReturn(response);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", manager.getId())
-                        .param("scope", "team"))
+                        .param("scope", "organization"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
@@ -209,11 +209,11 @@ public class LeaveControllerTest {
                         employeeLeave.getDescription()
                 )
         );
-        when(leaveService.getAllLeaves(manager.getId(),"team","completed" ))
+        when(leaveService.getAllLeaves(manager.getId(),"organization","completed" ))
                 .thenReturn(response);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", manager.getId())
-                        .param("scope", "team")
+                        .param("scope", "organization")
                         .param("status", "completed")
                 )
                 .andExpect(status().isOk())
@@ -230,25 +230,25 @@ public class LeaveControllerTest {
     }
     @Test
     void shouldReturn400WhenScopeIsNotValid() throws Exception {
-        when(leaveService.getAllLeaves(employee.getId(),"ppp",null))
+        when(leaveService.getAllLeaves(employee.getId(),"organization",null))
                 .thenThrow(new ApplicationException(HttpStatus.BAD_REQUEST,"Invalid scope query parameter"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", employee.getId())
-                        .param("scope", "ppp")
+                        .param("scope", "organization")
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("400"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Invalid scope query parameter"));
     }
     @Test
-    void shouldReturn403WhenEmployeeTryToGetLeaveListWithTeamScope() throws Exception {
-        when(leaveService.getAllLeaves(employee.getId(),"team",null))
+    void shouldReturn403WhenEmployeeTryToGetLeaveListWithOrganizationScope() throws Exception {
+        when(leaveService.getAllLeaves(employee.getId(),"organization",null))
                 .thenThrow(new ApplicationException(HttpStatus.FORBIDDEN,"Not Allowed to access this resource"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", employee.getId())
-                        .param("scope", "team")
+                        .param("scope", "organization")
                 )
                 .andExpect(status().isForbidden())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("403"))
