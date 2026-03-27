@@ -90,21 +90,21 @@ public class LeaveServiceTest {
         assertEquals(employeeLeave, result.getFirst());
     }
     @Test
-    void shouldThrowAccessDeniedWhenEmployeeRequestsLeavesWithScopeTeam() {
+    void shouldThrowAccessDeniedWhenEmployeeRequestsLeavesWithScopeOrganization() {
         User employee = createEmployee();
         assertThrows(ApplicationException.class, () ->
                 leaveService.filterLeavesByScope("team", employee)
         );
     }
     @Test
-    void shouldReturnAllEmployeeLeavesWhenManagerRequestsLeavesWithScopeTeam() {
+    void shouldReturnAllEmployeeLeavesWhenManagerRequestsLeavesWithScopeOrganization() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         User manager = createManager();
         when(leaveRepository.findAll(Sort.by("createdAt").descending()))
                 .thenReturn(List.of(employeeLeave));
 
-        List<Leave> result = leaveService.filterLeavesByScope("team", manager);
+        List<Leave> result = leaveService.filterLeavesByScope("organization", manager);
         assertEquals(1, result.size());
         assertEquals(employeeLeave, result.getLast());
     }

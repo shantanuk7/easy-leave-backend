@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static com.technogise.leave_management_system.enums.ScopeType.SELF;
-import static com.technogise.leave_management_system.enums.ScopeType.TEAM;
+import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATION;
 import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
 import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
 import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
@@ -37,7 +37,7 @@ public class LeaveService {
     public List<Leave> filterLeavesByScope(String scope, User user) {
         if (scope.equalsIgnoreCase(SELF.toString())) {
             return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "createdAt"));
-        } else if (scope.equalsIgnoreCase(TEAM.toString())) {
+        } else if (scope.equalsIgnoreCase(ORGANIZATION.toString())) {
             if (user.getRole().equals(UserRole.MANAGER)) {
                 return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
