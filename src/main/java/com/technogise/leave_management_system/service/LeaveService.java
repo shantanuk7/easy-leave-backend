@@ -17,7 +17,9 @@ import java.util.UUID;
 
 import static com.technogise.leave_management_system.enums.ScopeType.SELF;
 import static com.technogise.leave_management_system.enums.ScopeType.TEAM;
-import static com.technogise.leave_management_system.enums.StatusType.*;
+import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
+import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
+import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
 
 @Service
 public class LeaveService {
