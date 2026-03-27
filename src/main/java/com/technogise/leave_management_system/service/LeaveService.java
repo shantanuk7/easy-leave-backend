@@ -15,6 +15,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static com.technogise.leave_management_system.enums.ScopeType.SELF;
+import static com.technogise.leave_management_system.enums.ScopeType.TEAM;
+import static com.technogise.leave_management_system.enums.StatusType.*;
+
 @Service
 public class LeaveService {
     private final UserRepository userRepository;
@@ -29,9 +33,9 @@ public class LeaveService {
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
-        if ("self".equalsIgnoreCase(scope)) {
+        if (scope.equalsIgnoreCase(SELF.toString())) {
             return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "createdAt"));
-        } else if ("team".equalsIgnoreCase(scope)) {
+        } else if (scope.equalsIgnoreCase(TEAM.toString())) {
             if (user.getRole().equals(UserRole.MANAGER)) {
                 return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
@@ -41,15 +45,15 @@ public class LeaveService {
     }
 
     public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
-        if ("upcoming".equalsIgnoreCase(status)) {
+        if (status.equalsIgnoreCase(UPCOMING.toString())) {
             return leaveList.stream()
                     .filter(leave -> leave.getDate().isAfter(LocalDate.now()))
                     .toList();
-        } else if ("completed".equalsIgnoreCase(status)) {
+        } else if (status.equalsIgnoreCase(COMPLETED.toString())) {
             return leaveList.stream()
                     .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
                     .toList();
-        } else if ("ongoing".equalsIgnoreCase(status)) {
+        } else if (status.equalsIgnoreCase(ONGOING.toString())) {
             return leaveList.stream()
                     .filter(leave -> leave.getDate().equals(LocalDate.now()))
                     .toList();
