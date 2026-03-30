@@ -1,11 +1,13 @@
 package com.technogise.leave_management_system.handler;
 
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.exception.ApplicationException;
 import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -33,7 +35,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new  ApplicationException(HttpStatus.NOT_FOUND, "User not found"));
 
         SuccessResponse<User> successResponse = SuccessResponse.success("Login successful", user);
 
