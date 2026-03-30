@@ -42,4 +42,8 @@ public class JwtService {
             .parseSignedClaims(token)
             .getPayload();
     }
+
+    public boolean isTokenValid(String token, String email) {
+        return extractAllClaims(token).getSubject().equals(email);
+    }
 }

@@ -57,4 +57,16 @@ class JwtServiceTest {
         assertEquals("rajd@technogise.com", claims.getSubject());
         assertEquals("EMPLOYEE", claims.get("role", String.class));
     }
+
+    @Test
+    void shouldReturnTrueWhenTokenIsValid() {
+        String token = jwtService.generateToken(testUser);
+        assertTrue(jwtService.isTokenValid(token, "rajd@technogise.com"));
+    }
+
+    @Test
+    void shouldReturnFalseWhenTokenIsInvalid() {
+        String token = jwtService.generateToken(testUser);
+        assertFalse(jwtService.isTokenValid(token, "wrong@technogise.com"));
+    }
 }
