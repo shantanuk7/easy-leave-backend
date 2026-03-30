@@ -1,6 +1,8 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.entity.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -24,12 +26,20 @@ public class JwtService {
 
     public String generateToken(User user) {
         return Jwts.builder()
-                .subject(user.getEmail())
-                .claim("id", user.getId())
-                .claim("role", user.getRole())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(getSecretKey())
-                .compact();
+            .subject(user.getEmail())
+            .claim("id", user.getId())
+            .claim("role", user.getRole())
+            .issuedAt(new Date(System.currentTimeMillis()))
+            .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+            .signWith(getSecretKey())
+            .compact();
+    }
+
+    public Claims extractAllClaims(String token) {
+        return Jwts.parser()
+            .verifyWith(getSecretKey())
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
     }
 }
