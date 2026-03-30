@@ -1,7 +1,7 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.entity.LeaveCategory;
-import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveCategoryRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,6 +19,6 @@ public class LeaveCategoryService {
 
     public LeaveCategory getLeaveCategoryById(UUID leaveCategoryId) {
         return leaveCategoryRepository.findById(leaveCategoryId)
-                .orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,"LeaveCategory not found with id: " + leaveCategoryId));
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,"LeaveCategory not found with id: " + leaveCategoryId));
     }
 }
