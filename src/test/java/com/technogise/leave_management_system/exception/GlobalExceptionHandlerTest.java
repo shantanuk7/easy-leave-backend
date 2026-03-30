@@ -1,6 +1,5 @@
 package com.technogise.leave_management_system.exception;
 
-
 import com.technogise.leave_management_system.response.ErrorResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -21,37 +20,20 @@ class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
-
     @Test
     void shouldReturnNotFoundErrorResponseWhenNotFoundHttpExceptionThrown() {
         HttpException exception = new HttpException(
-    void shouldReturnNotFoundErrorResponseWhenNotFoundApplicationExceptionThrown() {
-        ApplicationException exception = new ApplicationException(
                 HttpStatus.NOT_FOUND,
                 "User not found"
         );
-        ResponseEntity<ErrorResponse> response =
-                handler.handleApplicationException(exception);
+
+        ResponseEntity<ErrorResponse> response = handler.handleApplicationException(exception);
+
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("User not found", response.getBody().getMessage());
-    void shouldReturnBadRequestStatusWithBodyWhenBadRequestExceptionIsThrown() {
-        BadRequestException exception = new BadRequestException("Invalid input");
-        ResponseEntity<String> response = globalExceptionHandler.handleBadRequestException(exception);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Invalid input", response.getBody());
-    void shouldReturnNotFoundErrorResponseWhenNotFoundApplicationThrownException() {
-        ApplicationException exception = new ApplicationException(
-                HttpStatus.NOT_FOUND,
-                "User not found"
-        );
-        ResponseEntity<ErrorResponse> response =
-                handler.handleApplicationException(exception);
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("User not found", response.getBody().getMessage());
+        assertEquals("404",       response.getBody().getStatusCode());
         assertEquals("Not Found", response.getBody().getCode());
+        assertEquals("User not found", response.getBody().getMessage());
     }
 
     @Test
@@ -64,7 +46,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("400",         response.getBody().getStatus());
+        assertEquals("400",         response.getBody().getStatusCode());
         assertEquals("Bad Request", response.getBody().getCode());
         assertEquals("Malformed JSON request", response.getBody().getMessage());
     }
@@ -73,7 +55,11 @@ class GlobalExceptionHandlerTest {
     void shouldReturnBadRequestWhenMethodArgumentNotValidExceptionThrown() {
         MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
         BindingResult bindingResult = mock(BindingResult.class);
-        FieldError fieldError = new FieldError("createLeaveRequest", "dates", "At least one date must be provided");
+        FieldError fieldError = new FieldError(
+                "createLeaveRequest",
+                "dates",
+                "At least one date must be provided"
+        );
 
         when(ex.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
@@ -82,7 +68,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("400",         response.getBody().getStatus());
+        assertEquals("400",         response.getBody().getStatusCode());
         assertEquals("Bad Request", response.getBody().getCode());
         assertEquals("At least one date must be provided", response.getBody().getMessage());
     }
@@ -96,8 +82,8 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("500", response.getBody().getStatus());
+        assertEquals("500",                   response.getBody().getStatusCode());
         assertEquals("Internal Server Error", response.getBody().getCode());
-        assertEquals(errorMessage, response.getBody().getMessage());
+        assertEquals(errorMessage,            response.getBody().getMessage());
     }
 }

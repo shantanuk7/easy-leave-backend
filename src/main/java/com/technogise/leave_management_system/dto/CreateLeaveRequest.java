@@ -1,7 +1,5 @@
 package com.technogise.leave_management_system.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.OptBoolean;
 import com.technogise.leave_management_system.enums.DurationType;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
@@ -38,7 +36,6 @@ public class CreateLeaveRequest {
     private DurationType duration;
 
     @NotNull(message = "Start time must not be null")
-    @JsonFormat(pattern = "HH:mm", shape = JsonFormat.Shape.STRING, lenient = OptBoolean.FALSE)
     private LocalTime startTime;
 
     @NotBlank(message = "Description must not be blank")
