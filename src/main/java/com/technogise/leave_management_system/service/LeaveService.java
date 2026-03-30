@@ -1,6 +1,8 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
@@ -107,32 +109,33 @@ public class LeaveService {
 
 
 
-    public List<LeaveResponse> applyLeave(LeaveRequest leaveRequest, UUID userId) {
+    public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest createLeaveRequest, UUID userId) {
 
-        LeaveCategory leaveCategory = leaveCategoryService.getLeaveCategoryById(leaveRequest.getLeaveCategoryId());
+        LeaveCategory leaveCategory = leaveCategoryService.getLeaveCategoryById(createLeaveRequest.getLeaveCategoryId());
         User user = userService.getUserByUserId(userId);
 
-        List<LeaveResponse> leaveResponse = new ArrayList<>();
+        List<CreateLeaveResponse> createLeaveResponse = new ArrayList<>();
 
-        for ( LocalDate date : leaveRequest.getDates()) {
+        for ( LocalDate date : createLeaveRequest.getDates()) {
             Leave leave = new Leave();
             leave.setDate(date);
             leave.setLeaveCategory(leaveCategory);
-            leave.setDescription(leaveRequest.getDescription());
-            leave.setStartTime(leaveRequest.getStartTime());
-            leave.setDuration(leaveRequest.getDuration());
+            leave.setDescription(createLeaveRequest.getDescription());
+            leave.setStartTime(createLeaveRequest.getStartTime());
+            leave.setDuration(createLeaveRequest.getDuration());
             leave.setUser(user);
 
             leaveRepository.save(leave);
 
-            LeaveResponse response = new LeaveResponse();
+            CreateLeaveResponse response = new CreateLeaveResponse();
             response.setLeaveCategoryName(leaveCategory.getName());
             response.setDescription(leave.getDescription());
             response.setStartTime(leave.getStartTime());
             response.setDate(date);
+            response.setDuration(leave.getDuration());
 
-            leaveResponse.add(response);
+            createLeaveResponse.add(response);
         }
-        return leaveResponse;
+        return createLeaveResponse;
     }
 }

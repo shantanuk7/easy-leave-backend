@@ -4,6 +4,8 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -238,8 +240,8 @@ class LeaveServiceTest {
         leaveCategoryId = UUID.randomUUID();
     }
 
-    private LeaveRequest createValidLeaveRequest() {
-        LeaveRequest request = new LeaveRequest();
+    private CreateLeaveRequest createValidLeaveRequest() {
+        CreateLeaveRequest request = new CreateLeaveRequest();
         request.setLeaveCategoryId(leaveCategoryId);
         request.setDates(List.of(LocalDate.now()));
         request.setDuration(DurationType.FULL_DAY);
@@ -282,7 +284,7 @@ class LeaveServiceTest {
 
     @Test
     void shouldCreateLeaveInstanceWithValidRequest() {
-        LeaveRequest request = createValidLeaveRequest();
+        CreateLeaveRequest request = createValidLeaveRequest();
         LeaveCategory leaveCategory = createValidLeaveCategory();
         User user = createValidUser();
 
@@ -307,7 +309,7 @@ class LeaveServiceTest {
 
     @Test
     void shouldReturnLeaveResponsesWhenLeaveRequestIsValid() {
-        LeaveRequest request = createValidLeaveRequest();
+        CreateLeaveRequest request = createValidLeaveRequest();
         LeaveCategory leaveCategory = createValidLeaveCategory();
         User user = createValidUser();
 
@@ -316,14 +318,14 @@ class LeaveServiceTest {
         when(userService.getUserByUserId(userId))
                 .thenReturn(user);
 
-        List<LeaveResponse> leaveResponses = leaveService.applyLeave(request, userId);
+        List<CreateLeaveResponse> createLeaveRespons = leaveService.applyLeave(request, userId);
 
-        assertInstanceOf(LeaveResponse.class, leaveResponses.getFirst());
+        assertInstanceOf(CreateLeaveResponse.class, createLeaveRespons.getFirst());
     }
 
     @Test
     void shouldReturnXNumberOfLeaveResponsesWhenXNumberOfDatesProvided() {
-        LeaveRequest request = createValidLeaveRequest();
+        CreateLeaveRequest request = createValidLeaveRequest();
         List<LocalDate> dates = List.of(
                 LocalDate.now(),
                 LocalDate.now().plusDays(1),
@@ -335,9 +337,9 @@ class LeaveServiceTest {
         when(userService.getUserByUserId(userId))
                 .thenReturn(createValidUser());
 
-        List<LeaveResponse> leaveResponses = leaveService.applyLeave(request, userId);
+        List<CreateLeaveResponse> createLeaveRespons = leaveService.applyLeave(request, userId);
 
-        assertEquals(dates.size(), leaveResponses.size());
+        assertEquals(dates.size(), createLeaveRespons.size());
     }
 
 }
