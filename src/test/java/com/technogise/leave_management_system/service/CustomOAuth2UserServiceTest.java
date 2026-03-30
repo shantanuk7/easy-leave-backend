@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -20,13 +21,15 @@ import static org.springframework.security.oauth2.core.OAuth2AccessToken.TokenTy
 @ExtendWith(MockitoExtension.class)
 @WireMockTest
 public class CustomOAuth2UserServiceTest {
+    @Mock
+    private UserService userService;
 
     private CustomOAuth2UserService customOAuth2UserService;
     private static final String ALLOWED_DOMAIN = "@technogise.com";
 
     @BeforeEach
     void setUp() {
-        customOAuth2UserService = new CustomOAuth2UserService(ALLOWED_DOMAIN);
+        customOAuth2UserService = new CustomOAuth2UserService(ALLOWED_DOMAIN, userService);
     }
 
     private OAuth2UserRequest buildRequest(WireMockRuntimeInfo wm) {

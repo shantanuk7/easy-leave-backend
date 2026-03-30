@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final String allowedDomain;
+    private final UserService userService;
 
-    public CustomOAuth2UserService(@Value("${app.allowed-email-domain}") String allowedDomain)
+    public CustomOAuth2UserService(@Value("${app.allowed-email-domain}") String allowedDomain, UserService userService)
     {
         this.allowedDomain = allowedDomain;
+        this.userService = userService;
     }
 
     @Override
@@ -21,11 +23,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         OAuth2User user = super.loadUser(userRequest);
         String email = user.getAttribute("email");
+        String name = user.getAttribute("name");
 
         if (!isAllowedEmail(email))
         {
             throw new OAuth2AuthenticationException("Unauthorized email domain");
         }
+
+        userService.findOrCreateUser(email, name);
 
         return user;
     }
