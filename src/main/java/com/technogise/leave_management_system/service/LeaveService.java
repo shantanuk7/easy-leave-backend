@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATION;
 import static com.technogise.leave_management_system.enums.ScopeType.SELF;
@@ -99,33 +101,46 @@ public class LeaveService {
     }
 
     @Transactional
-    public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest createLeaveRequest, UUID userId) {
-        LeaveCategory leaveCategory = leaveCategoryService.getLeaveCategoryById(createLeaveRequest.getLeaveCategoryId());
+    public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
+
         User user = userService.getUserByUserId(userId);
+        LeaveCategory category = leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
 
-        List<CreateLeaveResponse> createLeaveResponses = new ArrayList<>();
+        List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
+        Set<LocalDate> alreadyTakenDates = existingLeaves.stream()
+                .map(Leave::getDate)
+                .collect(Collectors.toSet());
 
-        for (LocalDate date : createLeaveRequest.getDates()) {
+        List<LocalDate> newDatesToApply = request.getDates().stream()
+                .filter(date -> !alreadyTakenDates.contains(date))
+                .toList();
+
+        if (newDatesToApply.isEmpty()) {
+            throw new HttpException(HttpStatus.CONFLICT, "All requested dates were already applied for.");
+        }
+
+        List<CreateLeaveResponse> responses = new ArrayList<>();
+        for (LocalDate date : newDatesToApply) {
             Leave leave = new Leave();
             leave.setDate(date);
-            leave.setLeaveCategory(leaveCategory);
-            leave.setDescription(createLeaveRequest.getDescription());
-            leave.setStartTime(createLeaveRequest.getStartTime());
-            leave.setDuration(createLeaveRequest.getDuration());
             leave.setUser(user);
+            leave.setLeaveCategory(category);
+            leave.setDescription(request.getDescription());
+            leave.setStartTime(request.getStartTime());
+            leave.setDuration(request.getDuration());
 
             leaveRepository.save(leave);
 
-            CreateLeaveResponse response = new CreateLeaveResponse();
-            response.setLeaveCategoryName(leaveCategory.getName());
-            response.setDescription(leave.getDescription());
-            response.setStartTime(leave.getStartTime());
-            response.setDate(date);
-            response.setDuration(leave.getDuration());
-
-            createLeaveResponses.add(response);
+            responses.add(new CreateLeaveResponse(
+                    leave.getId(),
+                    leave.getDate(),
+                    category.getName(),
+                    leave.getDuration(),
+                    leave.getStartTime(),
+                    leave.getDescription()
+            ));
         }
 
-        return createLeaveResponses;
+        return responses;
     }
 }

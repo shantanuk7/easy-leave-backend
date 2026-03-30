@@ -23,15 +23,15 @@ import org.springframework.data.domain.Sort;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class LeaveServiceTest {
@@ -60,7 +60,6 @@ class LeaveServiceTest {
         leaveCategoryId = UUID.randomUUID();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private User createEmployee() {
         User employee = new User();
@@ -124,7 +123,6 @@ class LeaveServiceTest {
         return user;
     }
 
-    // ── filterLeavesByScope ───────────────────────────────────────────────────
 
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
@@ -169,7 +167,6 @@ class LeaveServiceTest {
                 leaveService.filterLeavesByScope("invalid", employee));
     }
 
-    // ── filterLeavesByStatus ──────────────────────────────────────────────────
 
     @Test
     void shouldReturnUpcomingLeavesWhenStatusIsUpcoming() {
@@ -217,7 +214,6 @@ class LeaveServiceTest {
                 leaveService.filterLeavesByStatus("invalid", List.of(employeeLeave)));
     }
 
-    // ── getAllLeaves ───────────────────────────────────────────────────────────
 
     @Test
     void shouldNotApplyStatusFilterWhenStatusIsNull() {
@@ -271,7 +267,6 @@ class LeaveServiceTest {
                 leaveService.getAllLeaves(employee.getId(), "self", null));
     }
 
-    // ── applyLeave ────────────────────────────────────────────────────────────
 
     @Test
     void shouldAssertWhenLeaveRepositoryMockedSuccessfully() {
@@ -336,5 +331,54 @@ class LeaveServiceTest {
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
         assertEquals(dates.size(), responses.size());
+    }
+
+    @Test
+    void shouldSkipExistingDatesAndSaveOnlyNewOnesWhenOverlappingDatesExistInLeaveRequestAndApplyLeaveIsCalled() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        LocalDate dayOne = LocalDate.of(2026, 4, 1);
+        LocalDate dayTwo = LocalDate.of(2026, 4, 2); // This one already exists
+        LocalDate dayThree = LocalDate.of(2026, 4, 3);
+
+        Leave existingLeaveOnDayTwo = new Leave();
+        existingLeaveOnDayTwo.setDate(dayTwo);
+        existingLeaveOnDayTwo.setUser(user);
+
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                Arrays.asList(dayOne, dayTwo, dayThree),
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Dummy Leave Description"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
+
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+                .thenReturn(List.of(existingLeaveOnDayTwo));
+
+        List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
+        assertEquals(2, responses.size(), "Should only return responses for the 2 new days");
+
+        List<LocalDate> responseDates = responses.stream()
+                .map(CreateLeaveResponse::getDate)
+                .toList();
+
+        assertTrue(responseDates.contains(dayOne));
+        assertTrue(responseDates.contains(dayThree));
+        assertFalse(responseDates.contains(dayTwo));
+
+        ArgumentCaptor<Leave> leaveCaptor = ArgumentCaptor.forClass(Leave.class);
+        verify(leaveRepository, times(2)).save(leaveCaptor.capture());
+
+        List<LocalDate> actualSavedDates = leaveCaptor.getAllValues().stream()
+                .map(Leave::getDate)
+                .toList();
+
+        assertTrue(actualSavedDates.containsAll(Arrays.asList(dayOne, dayThree)));
+        assertFalse(actualSavedDates.contains(dayTwo));
     }
 }
