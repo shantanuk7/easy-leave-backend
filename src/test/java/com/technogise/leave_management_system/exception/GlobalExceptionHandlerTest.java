@@ -6,6 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -62,6 +67,24 @@ class GlobalExceptionHandlerTest {
         assertEquals("400",         response.getBody().getStatus());
         assertEquals("Bad Request", response.getBody().getCode());
         assertEquals("Malformed JSON request", response.getBody().getMessage());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenMethodArgumentNotValidExceptionThrown() {
+        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+        BindingResult bindingResult = mock(BindingResult.class);
+        FieldError fieldError = new FieldError("createLeaveRequest", "dates", "At least one date must be provided");
+
+        when(ex.getBindingResult()).thenReturn(bindingResult);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
+
+        ResponseEntity<ErrorResponse> response = handler.handleMethodArgumentNotValidException(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("400",         response.getBody().getStatus());
+        assertEquals("Bad Request", response.getBody().getCode());
+        assertEquals("At least one date must be provided", response.getBody().getMessage());
     }
 
 }
