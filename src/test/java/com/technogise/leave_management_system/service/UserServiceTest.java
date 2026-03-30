@@ -28,7 +28,7 @@ class UserServiceTest {
     private final String name = "Rakshit Saxena";
 
     @Test
-    void findOrCreateUserShouldReturnExistingUserWhenUserExists() {
+    void shouldReturnExistingUserWhenUserExists() {
 
         User existingUser = new User();
         existingUser.setEmail(email);
@@ -43,7 +43,7 @@ class UserServiceTest {
     }
 
     @Test
-    void findOrCreateUserShouldCreateAndReturnNewUserWhenUserDoesNotExist() {
+    void shouldCreateAndReturnNewUserWhenUserDoesNotExist() {
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
 
