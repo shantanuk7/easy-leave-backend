@@ -87,4 +87,17 @@ class GlobalExceptionHandlerTest {
         assertEquals("At least one date must be provided", response.getBody().getMessage());
     }
 
+    @Test
+    void shouldReturnInternalServerErrorWhenExceptionThrown() {
+        String errorMessage = "Something went wrong internally";
+        Exception ex = new RuntimeException(errorMessage);
+
+        ResponseEntity<ErrorResponse> response = handler.handleException(ex);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("500", response.getBody().getStatus());
+        assertEquals("Internal Server Error", response.getBody().getCode());
+        assertEquals(errorMessage, response.getBody().getMessage());
+    }
 }

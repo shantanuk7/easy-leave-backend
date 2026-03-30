@@ -40,4 +40,14 @@ public class GlobalExceptionHandler {
                         ex.getMostSpecificCause().getMessage())
                 );
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(
+                        "500",
+                        "Internal Server Error",
+                        ex.getMessage()
+                ));
+    }
 }
