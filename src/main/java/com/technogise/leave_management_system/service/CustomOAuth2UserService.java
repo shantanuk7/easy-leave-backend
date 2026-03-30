@@ -19,7 +19,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
 
-        OAuth2User user = fetchOAuth2User(userRequest);
+        OAuth2User user = super.loadUser(userRequest);
         String email = user.getAttribute("email");
 
         if (!isValidEmail(email))
@@ -28,9 +28,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         return user;
-    }
-    protected OAuth2User fetchOAuth2User(OAuth2UserRequest userRequest) {
-        return super.loadUser(userRequest);
     }
 
     private boolean isValidEmail(String email) {
