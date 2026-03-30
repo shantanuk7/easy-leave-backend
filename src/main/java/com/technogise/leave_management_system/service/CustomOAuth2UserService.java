@@ -22,7 +22,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User user = super.loadUser(userRequest);
         String email = user.getAttribute("email");
 
-        if (!isValidEmail(email))
+        if (!isAllowedEmail(email))
         {
             throw new OAuth2AuthenticationException("Unauthorized email domain");
         }
@@ -30,7 +30,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return user;
     }
 
-    private boolean isValidEmail(String email) {
+    private boolean isAllowedEmail(String email) {
         return email != null && email.endsWith(allowedDomain);
     }
 }
