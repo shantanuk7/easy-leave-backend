@@ -68,7 +68,7 @@ public class CustomOAuth2UserServiceTest {
     }
 
     @Test
-    void shouldReturnUserWhenEmailDomainIsValid(WireMockRuntimeInfo wm) {
+    void shouldReturnUserWhenEmailDomainIsAllowed(WireMockRuntimeInfo wm) {
         stubFor(get("/userinfo").willReturn(okJson("""
                 { "sub": "123", "email": "rakshit@technogise.com", "name": "Rakshit Saxena" }""")));
 
