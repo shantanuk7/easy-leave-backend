@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.technogise.leave_management_system.enums.DurationType;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
