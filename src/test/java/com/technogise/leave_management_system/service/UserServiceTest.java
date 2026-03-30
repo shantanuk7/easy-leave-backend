@@ -1,7 +1,7 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.entity.User;
-import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class UserServiceTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThrows(ApplicationException.class,
+        assertThrows(HttpException.class,
                 () -> userService.getUserByUserId(userId));
     }
 

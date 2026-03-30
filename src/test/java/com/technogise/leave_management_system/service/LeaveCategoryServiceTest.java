@@ -1,7 +1,7 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.entity.LeaveCategory;
-import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveCategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class LeaveCategoryServiceTest {
         when(leaveCategoryRepository.findById(leaveCategoryId)).
                 thenReturn(Optional.empty());
 
-        assertThrows(ApplicationException.class, () -> leaveCategoryService.getLeaveCategoryById(leaveCategoryId));
+        assertThrows(HttpException.class, () -> leaveCategoryService.getLeaveCategoryById(leaveCategoryId));
     }
 
     @Test
