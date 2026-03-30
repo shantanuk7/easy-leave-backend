@@ -69,4 +69,17 @@ class JwtServiceTest {
         String token = jwtService.generateToken(testUser);
         assertFalse(jwtService.isTokenValid(token, "wrong@technogise.com"));
     }
+
+    @Test
+    void shouldReturnTrueWhenTokenIsExpired() {
+        ReflectionTestUtils.setField(jwtService, "jwtExpiration", EXPIRED_EXPIRATION);
+        String token = jwtService.generateToken(testUser);
+        assertTrue(jwtService.isTokenExpired(token));
+    }
+
+    @Test
+    void shouldReturnFalseWhenTokenIsNotExpired() {
+        String token = jwtService.generateToken(testUser);
+        assertFalse(jwtService.isTokenExpired(token));
+    }
 }

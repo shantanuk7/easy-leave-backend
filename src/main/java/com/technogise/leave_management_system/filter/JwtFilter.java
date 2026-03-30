@@ -54,6 +54,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (email != null
             && jwtService.isTokenValid(token, email)
+            && !jwtService.isTokenExpired(token)
             && SecurityContextHolder.getContext().getAuthentication() == null
         ) {
             UsernamePasswordAuthenticationToken auth =
