@@ -381,4 +381,16 @@ class LeaveServiceTest {
         assertTrue(actualSavedDates.containsAll(Arrays.asList(dayOne, dayThree)));
         assertFalse(actualSavedDates.contains(dayTwo));
     }
+
+    @Test
+    void shouldAssertTrueWhenIdentifyWeekendCorrectly() {
+        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 4)));
+        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 5)));
+    }
+
+    @Test
+    void shouldAssertFalseWhenIdentifyWeekendCorrectly() {
+        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 6)));
+        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 7)));
+    }
 }

@@ -15,7 +15,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -100,23 +102,37 @@ public class LeaveService {
         )).toList();
     }
 
+
+
+    public boolean isWeekendDay(LocalDate date) {
+        DayOfWeek day = date.getDayOfWeek();
+        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    }
+
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
-
         User user = userService.getUserByUserId(userId);
         LeaveCategory category = leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
+
+        List<LocalDate> workingDaysOnly = request.getDates().stream()
+                .filter(date -> !isWeekendDay(date))
+                .toList();
+
+        if (workingDaysOnly.isEmpty()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply for leave on weekends.");
+        }
 
         List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
         Set<LocalDate> alreadyTakenDates = existingLeaves.stream()
                 .map(Leave::getDate)
                 .collect(Collectors.toSet());
 
-        List<LocalDate> newDatesToApply = request.getDates().stream()
+        List<LocalDate> newDatesToApply = workingDaysOnly.stream()
                 .filter(date -> !alreadyTakenDates.contains(date))
                 .toList();
 
         if (newDatesToApply.isEmpty()) {
-            throw new HttpException(HttpStatus.CONFLICT, "All requested dates were already applied for.");
+            throw new HttpException(HttpStatus.CONFLICT, "All selected working days have already been applied for.");
         }
 
         List<CreateLeaveResponse> responses = new ArrayList<>();
