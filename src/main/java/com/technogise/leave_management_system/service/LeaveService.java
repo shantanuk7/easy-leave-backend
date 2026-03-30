@@ -10,6 +10,7 @@ import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -97,6 +98,7 @@ public class LeaveService {
         )).toList();
     }
 
+    @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest createLeaveRequest, UUID userId) {
         LeaveCategory leaveCategory = leaveCategoryService.getLeaveCategoryById(createLeaveRequest.getLeaveCategoryId());
         User user = userService.getUserByUserId(userId);
