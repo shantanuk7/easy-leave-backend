@@ -4,6 +4,8 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.ApplicationException;
@@ -15,21 +17,29 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import tools.jackson.databind.ObjectMapper;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(LeaveController.class)
 public class LeaveControllerTest {
+class LeaveControllerTest {
 
     @MockitoBean
     private LeaveService leaveService;
@@ -54,10 +64,14 @@ public class LeaveControllerTest {
         employee.setId(UUID.randomUUID());
         employee.setName("Employee");
         employee.setRole(UserRole.EMPLOYEE);
+    @Autowired
+    private ObjectMapper objectMapper;
 
         manager.setId(UUID.randomUUID());
         manager.setName("Manager");
         manager.setRole(UserRole.MANAGER);
+    private final UUID userId     = UUID.randomUUID();
+    private final UUID categoryId = UUID.randomUUID();
 
         leaveCategory.setId(UUID.randomUUID());
         leaveCategory.setName("Annual Leave");
@@ -73,6 +87,15 @@ public class LeaveControllerTest {
         employeeLeave.setStartTime(LocalTime.now());
         employeeLeave.setCreatedAt(LocalDateTime.now());
         employeeLeave.setUpdatedAt(LocalDateTime.now());
+    private CreateLeaveRequest createValidLeaveRequest() {
+        CreateLeaveRequest leaveRequest = new CreateLeaveRequest();
+        leaveRequest.setDates(List.of(LocalDate.now()));
+        leaveRequest.setLeaveCategoryId(categoryId);
+        leaveRequest.setDescription("test leave description");
+        leaveRequest.setDuration(DurationType.FULL_DAY);
+        leaveRequest.setStartTime(LocalTime.of(12, 0, 0));
+        return leaveRequest;
+    }
 
         managerLeave.setId(UUID.randomUUID());
         managerLeave.setUser(manager);
@@ -83,6 +106,14 @@ public class LeaveControllerTest {
         managerLeave.setStartTime(LocalTime.now());
         managerLeave.setCreatedAt(LocalDateTime.now());
         managerLeave.setUpdatedAt(LocalDateTime.now());
+    private CreateLeaveResponse createValidLeaveResponse() {
+        CreateLeaveResponse leaveResponse = new CreateLeaveResponse();
+        leaveResponse.setLeaveCategoryName("Annual Leave");
+        leaveResponse.setDescription("test leave description");
+        leaveResponse.setDuration(DurationType.FULL_DAY);
+        leaveResponse.setStartTime(LocalTime.of(12, 0, 0));
+        leaveResponse.setDate(LocalDate.now());
+        return leaveResponse;
     }
 
     @Test
@@ -136,6 +167,7 @@ public class LeaveControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration")
                         .value(response.getFirst().getDuration().toString()));
     }
+
     @Test
     void shouldReturn200AndListOfLeavesWhenManagerRequestsAllEmployeeLeaves() throws Exception {
         List<LeaveResponse> response = List.of(
@@ -232,6 +264,9 @@ public class LeaveControllerTest {
     void shouldReturn400WhenScopeIsNotValid() throws Exception {
         when(leaveService.getAllLeaves(employee.getId(),"organization",null))
                 .thenThrow(new ApplicationException(HttpStatus.BAD_REQUEST,"Invalid scope query parameter"));
+    void shouldReturn201WithLeaveResponsesWhenRequestIsValid() throws Exception {
+        CreateLeaveRequest  request  = createValidLeaveRequest();
+        CreateLeaveResponse response = createValidLeaveResponse();
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .header("user_id", employee.getId())
@@ -240,6 +275,20 @@ public class LeaveControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("400"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Invalid scope query parameter"));
+        when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(userId)))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(post("/api/leaves")
+                        .header("user_id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leaves applied successfully"))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].leaveCategoryName").value("Annual Leave"))
+                .andExpect(jsonPath("$.data[0].description").value("test leave description"))
+                .andExpect(jsonPath("$.data[0].duration").value("FULL_DAY"));
     }
     @Test
     void shouldReturn403WhenEmployeeTryToGetLeaveListWithOrganizationScope() throws Exception {
