@@ -71,6 +71,18 @@ public class CustomOAuth2UserServiceTest {
     }
 
     @Test
+    void shouldThrowExceptionWhenEmailDomainContainsAllowedDomainAsSubstring(WireMockRuntimeInfo wm) {
+        customOAuth2UserService = new CustomOAuth2UserService("technogise.com", userService);
+
+        stubFor(get("/userinfo").willReturn(okJson("""
+            { "sub": "01", "email": "rakshit@hackertechnogise.com", "name": "Rakshit" }
+            """)));
+
+        assertThrows(OAuth2AuthenticationException.class,
+                () -> customOAuth2UserService.loadUser(buildRequest(wm)));
+    }
+
+    @Test
     void shouldReturnUserWhenEmailDomainIsAllowed(WireMockRuntimeInfo wm) {
         stubFor(get("/userinfo").willReturn(okJson("""
                 { "sub": "123", "email": "rakshit@technogise.com", "name": "Rakshit Saxena" }""")));
