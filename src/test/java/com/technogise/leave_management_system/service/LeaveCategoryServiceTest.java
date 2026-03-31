@@ -75,4 +75,16 @@ class LeaveCategoryServiceTest {
         assertEquals(mockResponse.getFirst().getId(), actualResponse.getFirst().getId());
         assertEquals(mockResponse.getFirst().getName(), actualResponse.getFirst().getName());
     }
+
+    @Test
+    void shouldReturnEmptyList_whenNoLeaveCategoriesExist(){
+        //Given
+        when(leaveCategoryRepository.findAll()).thenReturn(List.of());
+
+        //When
+        List<LeaveCategoryResponse> actualResponse = leaveCategoryService.getAllLeaveCategories();
+
+        //Then
+        assertEquals(0, actualResponse.size());
+    }
 }
