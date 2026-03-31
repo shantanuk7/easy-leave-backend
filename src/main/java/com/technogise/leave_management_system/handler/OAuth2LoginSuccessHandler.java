@@ -1,7 +1,7 @@
 package com.technogise.leave_management_system.handler;
 
 import com.technogise.leave_management_system.entity.User;
-import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.service.JwtService;
 import jakarta.servlet.http.Cookie;
@@ -45,7 +45,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new  ApplicationException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "User not found"));
 
         String token = jwtService.generateToken(user);
 
