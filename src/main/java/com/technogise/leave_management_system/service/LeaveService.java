@@ -9,7 +9,6 @@ import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
-import com.technogise.leave_management_system.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -33,32 +31,24 @@ import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
 @Service
 public class LeaveService {
 
-    private final UserRepository userRepository;
     private final LeaveRepository leaveRepository;
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
-                        LeaveCategoryService leaveCategoryService,
-                        UserRepository userRepository) {
+                        LeaveCategoryService leaveCategoryService) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
-        this.userRepository = userRepository;
         this.leaveCategoryService = leaveCategoryService;
-    }
-
-    public User findUserById(UUID id) {
-        return userRepository.findById(id).orElseThrow(
-                () -> new HttpException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
         if (scope.equalsIgnoreCase(SELF.toString())) {
-            return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "createdAt"));
+            return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
         } else if (scope.equalsIgnoreCase(ORGANIZATION.toString())) {
             if (user.getRole().equals(UserRole.MANAGER)) {
-                return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+                return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "date"));
             }
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
@@ -83,7 +73,7 @@ public class LeaveService {
     }
 
     public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status) {
-        User user = findUserById(userId);
+        User user = userService.getUserByUserId(userId);
         List<Leave> leaveList = filterLeavesByScope(scope, user);
 
         if (status != null && !status.isBlank()) {
@@ -102,7 +92,24 @@ public class LeaveService {
         )).toList();
     }
 
+    /**
+     * A date is valid to apply leave if:
+     * - It falls within the current year, AND
+     * - If it's a past date, it must still be within the current month
+     */
+    public boolean isValidLeaveDate(LocalDate date) {
+        LocalDate today = LocalDate.now();
 
+        if (date.getYear() != today.getYear()) {
+            return false;
+        }
+
+        if (date.isBefore(today)) {
+            return date.getMonth() == today.getMonth();
+        }
+
+        return true;
+    }
 
     public boolean isWeekendDay(LocalDate date) {
         DayOfWeek day = date.getDayOfWeek();
@@ -113,15 +120,20 @@ public class LeaveService {
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
         User user = userService.getUserByUserId(userId);
         LeaveCategory category = leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
-
-        List<LocalDate> workingDaysOnly = request.getDates().stream()
+        List<LocalDate> validDates = request.getDates().stream()
+                .filter(this::isValidLeaveDate)
+                .toList();
+        if (validDates.isEmpty()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Dates must be within the current month for past dates, or within the current year for future dates.");
+        }
+        List<LocalDate> workingDaysOnly = validDates.stream()
                 .filter(date -> !isWeekendDay(date))
                 .toList();
 
         if (workingDaysOnly.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply for leave on weekends.");
         }
-
         List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
         Set<LocalDate> alreadyTakenDates = existingLeaves.stream()
                 .map(Leave::getDate)
@@ -130,11 +142,10 @@ public class LeaveService {
         List<LocalDate> newDatesToApply = workingDaysOnly.stream()
                 .filter(date -> !alreadyTakenDates.contains(date))
                 .toList();
-
         if (newDatesToApply.isEmpty()) {
-            throw new HttpException(HttpStatus.CONFLICT, "All selected working days have already been applied for.");
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "All selected working days have already been applied for.");
         }
-
         List<CreateLeaveResponse> responses = new ArrayList<>();
         for (LocalDate date : newDatesToApply) {
             Leave leave = new Leave();
@@ -144,9 +155,7 @@ public class LeaveService {
             leave.setDescription(request.getDescription());
             leave.setStartTime(request.getStartTime());
             leave.setDuration(request.getDuration());
-
             leaveRepository.save(leave);
-
             responses.add(new CreateLeaveResponse(
                     leave.getId(),
                     leave.getDate(),
@@ -156,7 +165,6 @@ public class LeaveService {
                     leave.getDescription()
             ));
         }
-
         return responses;
     }
 }

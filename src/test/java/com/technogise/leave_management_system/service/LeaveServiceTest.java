@@ -10,7 +10,6 @@ import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
-import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +24,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,9 +37,6 @@ class LeaveServiceTest {
 
     @Mock
     private LeaveRepository leaveRepository;
-
-    @Mock
-    private UserRepository userRepository;
 
     @Mock
     private UserService userService;
@@ -122,13 +118,11 @@ class LeaveServiceTest {
         user.setId(userId);
         return user;
     }
-
-
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<Leave> result = leaveService.filterLeavesByScope("self", employee);
@@ -150,7 +144,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         User manager = createManager();
-        when(leaveRepository.findAll(Sort.by("createdAt").descending()))
+        when(leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<Leave> result = leaveService.filterLeavesByScope("organization", manager);
@@ -166,7 +160,6 @@ class LeaveServiceTest {
         assertThrows(HttpException.class, () ->
                 leaveService.filterLeavesByScope("invalid", employee));
     }
-
 
     @Test
     void shouldReturnUpcomingLeavesWhenStatusIsUpcoming() {
@@ -214,13 +207,12 @@ class LeaveServiceTest {
                 leaveService.filterLeavesByStatus("invalid", List.of(employeeLeave)));
     }
 
-
     @Test
     void shouldNotApplyStatusFilterWhenStatusIsNull() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        when(userRepository.findById(employee.getId())).thenReturn(Optional.of(employee));
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null);
@@ -233,8 +225,8 @@ class LeaveServiceTest {
     void shouldNotApplyStatusFilterWhenStatusIsBlank() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        when(userRepository.findById(employee.getId())).thenReturn(Optional.of(employee));
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "");
@@ -244,12 +236,12 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldReturnEmployeeUpcomingLeaveWithStatusIsUpcomingAndScopeIsSelf() {
+    void shouldReturnEmployeeUpcomingLeaveWhenStatusIsUpcomingAndScopeIsSelf() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         employeeLeave.setDate(LocalDate.now().plusDays(1));
-        when(userRepository.findById(employee.getId())).thenReturn(Optional.of(employee));
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by("createdAt").descending()))
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming");
@@ -261,31 +253,76 @@ class LeaveServiceTest {
     @Test
     void shouldThrowNotFoundWhenUserDoesNotExist() {
         User employee = createEmployee();
-        when(userRepository.findById(employee.getId())).thenReturn(Optional.empty());
+        when(userService.getUserByUserId(employee.getId()))
+                .thenThrow(new HttpException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
         assertThrows(HttpException.class, () ->
                 leaveService.getAllLeaves(employee.getId(), "self", null));
     }
 
-
     @Test
-    void shouldAssertWhenLeaveRepositoryMockedSuccessfully() {
-        assertInstanceOf(LeaveRepository.class, leaveRepository);
+    void shouldReturnTrueForToday() {
+        assertTrue(leaveService.isValidLeaveDate(LocalDate.now()));
     }
 
     @Test
-    void shouldAssertWhenLeaveServiceMockedSuccessfully() {
-        assertInstanceOf(LeaveService.class, leaveService);
+    void shouldReturnTrueForFutureDateInCurrentYear() {
+        assertTrue(leaveService.isValidLeaveDate(LocalDate.now().plusDays(10)));
     }
 
     @Test
-    void shouldCreateLeaveInstanceWithValidRequest() {
+    void shouldReturnTrueForPastDateInCurrentMonth() {
+        if (LocalDate.now().getDayOfMonth() > 1) {
+            LocalDate pastDateThisMonth = LocalDate.now().withDayOfMonth(1);
+            assertTrue(leaveService.isValidLeaveDate(pastDateThisMonth));
+        }
+    }
+
+    @Test
+    void shouldReturnFalseForPastDateInPreviousMonth() {
+        LocalDate lastMonth = LocalDate.now().minusMonths(1);
+        assertFalse(leaveService.isValidLeaveDate(lastMonth));
+    }
+
+    @Test
+    void shouldReturnFalseForDateInNextYear() {
+        assertFalse(leaveService.isValidLeaveDate(LocalDate.now().plusYears(1)));
+    }
+
+    @Test
+    void shouldReturnFalseForDateInPreviousYear() {
+        assertFalse(leaveService.isValidLeaveDate(LocalDate.now().minusYears(1)));
+    }
+
+    @Test
+    void shouldReturnTrueForSaturday() {
+        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 4)));
+    }
+
+    @Test
+    void shouldReturnTrueForSunday() {
+        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 5)));
+    }
+
+    @Test
+    void shouldReturnFalseForMonday() {
+        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 6)));
+    }
+
+    @Test
+    void shouldReturnFalseForTuesday() {
+        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 7)));
+    }
+
+    @Test
+    void shouldSaveLeaveWithCorrectFieldsWhenRequestIsValid() {
         CreateLeaveRequest request = createValidLeaveRequest();
         LeaveCategory leaveCategory = createValidLeaveCategory();
         User user = createValidUser();
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
 
         leaveService.applyLeave(request, userId);
 
@@ -302,13 +339,11 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldReturnLeaveResponsesWhenLeaveRequestIsValid() {
+    void shouldReturnCreateLeaveResponseWhenRequestIsValid() {
         CreateLeaveRequest request = createValidLeaveRequest();
-        LeaveCategory leaveCategory = createValidLeaveCategory();
-        User user = createValidUser();
-
-        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
-        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
@@ -316,7 +351,7 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldReturnXNumberOfLeaveResponsesWhenXNumberOfDatesProvided() {
+    void shouldReturnOneResponsePerNewDateProvided() {
         CreateLeaveRequest request = createValidLeaveRequest();
         List<LocalDate> dates = List.of(
                 LocalDate.now(),
@@ -327,6 +362,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
@@ -334,13 +370,13 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldSkipExistingDatesAndSaveOnlyNewOnesWhenOverlappingDatesExistInLeaveRequestAndApplyLeaveIsCalled() {
+    void shouldSkipExistingDatesAndSaveOnlyNewOnesWhenOverlappingDatesExist() {
         User user = createValidUser();
         LeaveCategory category = createValidLeaveCategory();
 
-        LocalDate dayOne = LocalDate.of(2026, 4, 1);
-        LocalDate dayTwo = LocalDate.of(2026, 4, 2); // This one already exists
-        LocalDate dayThree = LocalDate.of(2026, 4, 3);
+        LocalDate dayOne = LocalDate.of(2026, 3, 2);
+        LocalDate dayTwo = LocalDate.of(2026, 3, 3); // already exists
+        LocalDate dayThree = LocalDate.of(2026, 3, 4);
 
         Leave existingLeaveOnDayTwo = new Leave();
         existingLeaveOnDayTwo.setDate(dayTwo);
@@ -356,17 +392,14 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
                 .thenReturn(List.of(existingLeaveOnDayTwo));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
+
         assertEquals(2, responses.size(), "Should only return responses for the 2 new days");
 
-        List<LocalDate> responseDates = responses.stream()
-                .map(CreateLeaveResponse::getDate)
-                .toList();
-
+        List<LocalDate> responseDates = responses.stream().map(CreateLeaveResponse::getDate).toList();
         assertTrue(responseDates.contains(dayOne));
         assertTrue(responseDates.contains(dayThree));
         assertFalse(responseDates.contains(dayTwo));
@@ -374,23 +407,81 @@ class LeaveServiceTest {
         ArgumentCaptor<Leave> leaveCaptor = ArgumentCaptor.forClass(Leave.class);
         verify(leaveRepository, times(2)).save(leaveCaptor.capture());
 
-        List<LocalDate> actualSavedDates = leaveCaptor.getAllValues().stream()
-                .map(Leave::getDate)
-                .toList();
-
-        assertTrue(actualSavedDates.containsAll(Arrays.asList(dayOne, dayThree)));
-        assertFalse(actualSavedDates.contains(dayTwo));
+        List<LocalDate> savedDates = leaveCaptor.getAllValues().stream().map(Leave::getDate).toList();
+        assertTrue(savedDates.containsAll(Arrays.asList(dayOne, dayThree)));
+        assertFalse(savedDates.contains(dayTwo));
     }
 
     @Test
-    void shouldAssertTrueWhenIdentifyWeekendCorrectly() {
-        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 4)));
-        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 5)));
+    void shouldThrowBadRequestWhenAllDatesAreFromPreviousMonth() {
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(LocalDate.now().minusMonths(1)),
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Test description"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
+
+        assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
     }
 
     @Test
-    void shouldAssertFalseWhenIdentifyWeekendCorrectly() {
-        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 6)));
-        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 7)));
+    void shouldThrowBadRequestWhenAllDatesAreFromNextYear() {
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(LocalDate.now().plusYears(1)),
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Test description"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
+
+        assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenAllValidDatesAreWeekends() {
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(LocalDate.of(2026, 4, 4), LocalDate.of(2026, 4, 5)), // Sat & Sun
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Test description"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
+
+        assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
+    }
+
+    @Test
+    void shouldThrowConflictWhenAllDatesAlreadyApplied() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        LocalDate today = LocalDate.now();
+
+        Leave existingLeave = new Leave();
+        existingLeave.setDate(today);
+        existingLeave.setUser(user);
+
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(today),
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Test description"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
+
+        assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
     }
 }
