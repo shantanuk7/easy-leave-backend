@@ -14,4 +14,3 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     @EntityGraph(attributePaths = {"user","leaveCategory"})
     List<Leave> findAllByUserId(UUID userId, Sort sort);
 }
-
