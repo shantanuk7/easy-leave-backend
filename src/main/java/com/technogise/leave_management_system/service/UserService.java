@@ -5,8 +5,6 @@ import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
-
 import java.util.UUID;
 
 @Service
