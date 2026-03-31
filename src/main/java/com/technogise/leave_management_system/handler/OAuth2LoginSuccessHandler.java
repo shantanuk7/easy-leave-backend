@@ -25,6 +25,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.cookie.expiration}")
     private int cookieExpiration;
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
     OAuth2LoginSuccessHandler(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
@@ -51,6 +54,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         response.addCookie(cookie);
 
-        response.sendRedirect("http://localhost:5173/leave");
+        response.sendRedirect(frontendUrl);
     }
 }
