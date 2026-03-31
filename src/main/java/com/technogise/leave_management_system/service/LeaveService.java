@@ -92,11 +92,6 @@ public class LeaveService {
         )).toList();
     }
 
-    /**
-     * A date is valid to apply leave if:
-     * - It falls within the current year, AND
-     * - If it's a past date, it must still be within the current month
-     */
     public boolean isValidLeaveDate(LocalDate date) {
         LocalDate today = LocalDate.now();
 
