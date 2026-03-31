@@ -21,7 +21,7 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
 
-    private static final String TOKEN = "token";
+    private static final String TOKEN_NAME = "token";
 
     public JwtFilter(JwtService jwtService) {
         this.jwtService = jwtService;
@@ -37,7 +37,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
-                if (TOKEN.equals(cookie.getName())) {
+                if (TOKEN_NAME.equals(cookie.getName())) {
                     token = cookie.getValue();
                 }
             }
