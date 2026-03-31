@@ -28,6 +28,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
+    @Value("${app.cookie.secure}")
+    private boolean cookieSecure;
+
     OAuth2LoginSuccessHandler(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
@@ -48,7 +51,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         Cookie cookie = new Cookie("token", token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false);
+        cookie.setSecure(cookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(cookieExpiration);
 
