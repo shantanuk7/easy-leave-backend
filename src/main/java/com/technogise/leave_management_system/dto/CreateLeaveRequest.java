@@ -1,7 +1,6 @@
 package com.technogise.leave_management_system.dto;
 
 import com.technogise.leave_management_system.enums.DurationType;
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -29,7 +28,6 @@ public class CreateLeaveRequest {
     @NotEmpty(message = "At least one date must be provided")
     private List<
             @NotNull(message = "Date in list must not be null")
-            @FutureOrPresent(message = "Dates must be today or in the future")
                     LocalDate> dates;
 
     @NotNull(message = "Duration must not be null")
