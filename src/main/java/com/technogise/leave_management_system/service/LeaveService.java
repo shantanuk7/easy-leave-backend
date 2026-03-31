@@ -15,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -115,15 +114,13 @@ public class LeaveService {
         User user = userService.getUserByUserId(userId);
         LeaveCategory category = leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
         List<LocalDate> validDates = request.getDates().stream()
-                .filter(this::isValidLeaveDate)
-                .toList();
+                .filter(this::isValidLeaveDate).toList();
         if (validDates.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "Dates must be within the current month for past dates, or within the current year for future dates.");
         }
         List<LocalDate> workingDaysOnly = validDates.stream()
-                .filter(date -> !isWeekendDay(date))
-                .toList();
+                .filter(date -> !isWeekendDay(date)).toList();
 
         if (workingDaysOnly.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply for leave on weekends.");
@@ -140,25 +137,27 @@ public class LeaveService {
             throw new HttpException(HttpStatus.CONFLICT,
                     "All selected working days have already been applied for.");
         }
-        List<CreateLeaveResponse> responses = new ArrayList<>();
-        for (LocalDate date : newDatesToApply) {
-            Leave leave = new Leave();
-            leave.setDate(date);
-            leave.setUser(user);
-            leave.setLeaveCategory(category);
-            leave.setDescription(request.getDescription());
-            leave.setStartTime(request.getStartTime());
-            leave.setDuration(request.getDuration());
-            leaveRepository.save(leave);
-            responses.add(new CreateLeaveResponse(
-                    leave.getId(),
-                    leave.getDate(),
-                    category.getName(),
-                    leave.getDuration(),
-                    leave.getStartTime(),
-                    leave.getDescription()
-            ));
-        }
-        return responses;
+        List<Leave> leavesToSave = newDatesToApply.stream()
+                .map(date -> {
+                    Leave leave = new Leave();
+                    leave.setDate(date);
+                    leave.setUser(user);
+                    leave.setLeaveCategory(category);
+                    leave.setDescription(request.getDescription());
+                    leave.setStartTime(request.getStartTime());
+                    leave.setDuration(request.getDuration());
+                    return leave;
+                }).toList();
+
+        List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
+        return savedLeaves.stream()
+                .map(leave -> new CreateLeaveResponse(
+                        leave.getId(),
+                        leave.getDate(),
+                        category.getName(),
+                        leave.getDuration(),
+                        leave.getStartTime(),
+                        leave.getDescription()
+                )).toList();
     }
 }

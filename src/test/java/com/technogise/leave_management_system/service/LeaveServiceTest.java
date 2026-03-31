@@ -323,14 +323,18 @@ class LeaveServiceTest {
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
 
-        ArgumentCaptor<Leave> leaveCaptor = ArgumentCaptor.forClass(Leave.class);
-        verify(leaveRepository).save(leaveCaptor.capture());
+        ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.forClass(List.class);
+        verify(leaveRepository).saveAll(listCaptor.capture());
 
-        Leave savedLeave = leaveCaptor.getValue();
-        assertEquals(request.getDates().getFirst(), savedLeave.getDate());
+        List<Leave> savedLeaves = listCaptor.getValue();
+        assertEquals(1, savedLeaves.size());
+
+        Leave savedLeave = savedLeaves.get(0);
+        assertEquals(request.getDates().get(0), savedLeave.getDate());
         assertEquals(leaveCategory, savedLeave.getLeaveCategory());
         assertEquals(user, savedLeave.getUser());
         assertEquals(request.getDescription(), savedLeave.getDescription());
@@ -341,13 +345,16 @@ class LeaveServiceTest {
     @Test
     void shouldReturnCreateLeaveResponseWhenRequestIsValid() {
         CreateLeaveRequest request = createValidLeaveRequest();
+
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
-        assertInstanceOf(CreateLeaveResponse.class, responses.getFirst());
+        assertFalse(responses.isEmpty());
+        assertInstanceOf(CreateLeaveResponse.class, responses.get(0));
     }
 
     @Test
@@ -363,10 +370,12 @@ class LeaveServiceTest {
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
         assertEquals(dates.size(), responses.size());
+        verify(leaveRepository, times(1)).saveAll(anyList());
     }
 
     @Test
@@ -375,39 +384,39 @@ class LeaveServiceTest {
         LeaveCategory category = createValidLeaveCategory();
 
         LocalDate dayOne = LocalDate.of(2026, 3, 2);
-        LocalDate dayTwo = LocalDate.of(2026, 3, 3); // already exists
+        LocalDate dayTwo = LocalDate.of(2026, 3, 3);
         LocalDate dayThree = LocalDate.of(2026, 3, 4);
 
         Leave existingLeaveOnDayTwo = new Leave();
         existingLeaveOnDayTwo.setDate(dayTwo);
-        existingLeaveOnDayTwo.setUser(user);
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
                 Arrays.asList(dayOne, dayTwo, dayThree),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
-                "Dummy Leave Description"
+                "Description"
         );
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
                 .thenReturn(List.of(existingLeaveOnDayTwo));
+        when(leaveRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
-        assertEquals(2, responses.size(), "Should only return responses for the 2 new days");
-
+        assertEquals(2, responses.size());
         List<LocalDate> responseDates = responses.stream().map(CreateLeaveResponse::getDate).toList();
-        assertTrue(responseDates.contains(dayOne));
-        assertTrue(responseDates.contains(dayThree));
+        assertTrue(responseDates.containsAll(Arrays.asList(dayOne, dayThree)));
         assertFalse(responseDates.contains(dayTwo));
 
-        ArgumentCaptor<Leave> leaveCaptor = ArgumentCaptor.forClass(Leave.class);
-        verify(leaveRepository, times(2)).save(leaveCaptor.capture());
+        ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.forClass(List.class);
+        verify(leaveRepository).saveAll(listCaptor.capture());
 
-        List<LocalDate> savedDates = leaveCaptor.getAllValues().stream().map(Leave::getDate).toList();
+        List<Leave> savedList = listCaptor.getValue();
+        assertEquals(2, savedList.size());
+        List<LocalDate> savedDates = savedList.stream().map(Leave::getDate).toList();
         assertTrue(savedDates.containsAll(Arrays.asList(dayOne, dayThree)));
         assertFalse(savedDates.contains(dayTwo));
     }
