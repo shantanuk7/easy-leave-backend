@@ -142,7 +142,7 @@ Content-Type: application/json
   "dates": ["2026-04-10", "2026-04-11", "2026-04-12"],
   "duration": "FULL_DAY",
   "startTime": "09:00:00",
-  "description": "Family vacation"
+  "description": "Dummy Description"
 }
 ```
  
