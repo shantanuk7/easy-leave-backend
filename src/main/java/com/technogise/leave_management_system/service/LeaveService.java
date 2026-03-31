@@ -7,14 +7,15 @@ import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
+import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -105,8 +106,8 @@ public class LeaveService {
     }
 
     public boolean isWeekendDay(LocalDate date) {
-        DayOfWeek day = date.getDayOfWeek();
-        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+        return Arrays.stream(WeekendDay.values())
+                .anyMatch(weekend -> weekend.getDayOfWeek() == date.getDayOfWeek());
     }
 
     @Transactional
