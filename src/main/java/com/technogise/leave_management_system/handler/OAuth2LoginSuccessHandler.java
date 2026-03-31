@@ -3,27 +3,31 @@ package com.technogise.leave_management_system.handler;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.exception.ApplicationException;
 import com.technogise.leave_management_system.repository.UserRepository;
-import com.technogise.leave_management_system.response.SuccessResponse;
+import com.technogise.leave_management_system.service.JwtService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
+    private final JwtService jwtService;
 
-    OAuth2LoginSuccessHandler(UserRepository userRepository) {
+    @Value("${app.cookie.expiration}")
+    private int cookieExpiration;
+
+    OAuth2LoginSuccessHandler(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
-        this.objectMapper = new ObjectMapper();
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -37,10 +41,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new  ApplicationException(HttpStatus.NOT_FOUND, "User not found"));
 
-        SuccessResponse<User> successResponse = SuccessResponse.success("Login successful", user);
+        String token = jwtService.generateToken(user);
 
-        response.setStatus(HttpServletResponse.SC_OK);
-        response.setContentType("application/json");
-        objectMapper.writeValue(response.getWriter(), successResponse);
+        Cookie cookie = new Cookie("token", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/");
+        cookie.setMaxAge(cookieExpiration);
+
+        response.addCookie(cookie);
+
+        response.sendRedirect("http://localhost:5173/leave");
     }
 }
