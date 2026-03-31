@@ -56,4 +56,16 @@ public class LeaveCategoryControllerTest {
                 .andExpect(jsonPath("$.data[0].id").value(leaveCategory.getId().toString()))
                 .andExpect(jsonPath("$.data[0].name").value(leaveCategory.getName()));
     }
+
+    @Test
+    void shouldReturnEmptyList_And200Status_whenNoLeaveCategoriesExist() throws Exception {
+        List<LeaveCategoryResponse> response = List.of();
+
+        when(leaveCategoryService.getAllLeaveCategories()).thenReturn(response);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leave_categories"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
 }
