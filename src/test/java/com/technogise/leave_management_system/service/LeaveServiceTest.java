@@ -383,9 +383,16 @@ class LeaveServiceTest {
         User user = createValidUser();
         LeaveCategory category = createValidLeaveCategory();
 
-        LocalDate dayOne = LocalDate.of(2026, 3, 2);
-        LocalDate dayTwo = LocalDate.of(2026, 3, 3);
-        LocalDate dayThree = LocalDate.of(2026, 3, 4);
+        LocalDate today = LocalDate.now();
+        List<LocalDate> weekdays = today.withDayOfMonth(1)
+                .datesUntil(today.withDayOfMonth(today.lengthOfMonth()).plusDays(1))
+                .filter(d -> !leaveService.isWeekendDay(d))
+                .limit(3)
+                .toList();
+
+        LocalDate dayOne   = weekdays.get(0);
+        LocalDate dayTwo   = weekdays.get(1);
+        LocalDate dayThree = weekdays.get(2);
 
         Leave existingLeaveOnDayTwo = new Leave();
         existingLeaveOnDayTwo.setDate(dayTwo);
