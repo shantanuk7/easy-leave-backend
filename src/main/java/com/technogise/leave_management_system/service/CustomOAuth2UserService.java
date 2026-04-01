@@ -36,6 +36,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private boolean isAllowedEmail(String email) {
-        return email != null && email.endsWith(allowedDomain);
+        String domain = allowedDomain.startsWith("@") ? allowedDomain : "@" + allowedDomain;
+        return email != null && email.endsWith(domain);
     }
 }
