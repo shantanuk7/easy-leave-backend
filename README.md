@@ -236,3 +236,52 @@ Content-Type: application/json
   "message": "Dates must be within the current month for past dates, or within the current year for future dates."
 }
 ```
+
+### Get Leave Categories — `GET /api/leave-categories`
+
+Allows a user to retrieve all available leave categories (for example, Annual Leave, Sick Leave) to use while applying for leave.
+
+---
+
+#### Request Headers
+
+No custom headers are required for this API.
+
+#### Query Parameters
+
+This API does not accept any query parameters.
+
+---
+
+#### Example Request
+
+```
+GET /api/leave-categories
+```
+
+---
+
+#### Response
+
+**200 OK** — Leave categories retrieved successfully.
+
+```json
+{
+  "success": true,
+  "message": "Leave Categories retrieved successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Annual Leave"
+    },
+    {
+      "id": "uuid",
+      "name": "Bereavement Leave"
+    }
+  ]
+}
+```
+
+Note: If no leave categories exist, the API returns `200 OK` with an empty array in `data`.
+
+---
