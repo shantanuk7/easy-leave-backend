@@ -99,7 +99,7 @@ public class LeaveService {
         }
 
         if (date.isBefore(today)) {
-            return date.getMonth() == today.getMonth();
+            return date.getMonth().equals(today.getMonth());
         }
 
         return true;
