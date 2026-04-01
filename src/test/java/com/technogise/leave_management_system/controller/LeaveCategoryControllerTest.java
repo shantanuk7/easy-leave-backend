@@ -50,7 +50,7 @@ public class LeaveCategoryControllerTest {
 
         when(leaveCategoryService.getAllLeaveCategories()).thenReturn(response);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/leave_categories"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leave-categories"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data[0].id").value(leaveCategory.getId().toString()))
@@ -63,7 +63,7 @@ public class LeaveCategoryControllerTest {
 
         when(leaveCategoryService.getAllLeaveCategories()).thenReturn(response);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/leave_categories"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leave-categories"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data").isEmpty());

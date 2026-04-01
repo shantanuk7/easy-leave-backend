@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/leave_categories")
+@RequestMapping("/api/leave-categories")
 @AllArgsConstructor
 public class LeaveCategoryController {
 
