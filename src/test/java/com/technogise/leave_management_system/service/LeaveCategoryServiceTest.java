@@ -50,7 +50,7 @@ class LeaveCategoryServiceTest {
     }
 
     @Test
-    void shouldReturnAllLeaveCategories(){
+    void shouldReturnAllLeaveCategories() {
         // Given
         UUID id = leaveCategoryId;
         String categoryName = "Annual Leave";
@@ -77,7 +77,7 @@ class LeaveCategoryServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyList_whenNoLeaveCategoriesExist(){
+    void shouldReturnEmptyListWhenNoLeaveCategoriesExist() {
         //Given
         when(leaveCategoryRepository.findAll()).thenReturn(List.of());
 

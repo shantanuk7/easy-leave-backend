@@ -40,7 +40,7 @@ public class LeaveCategoryControllerTest {
     }
 
     @Test
-    void shouldRespondWithAllLeaveCategories_And200Status() throws Exception {
+    void shouldRespondWithAllLeaveCategoriesAnd200Status() throws Exception {
         List<LeaveCategoryResponse> response = List.of(
                 new LeaveCategoryResponse(
                         leaveCategory.getId(),
@@ -58,7 +58,7 @@ public class LeaveCategoryControllerTest {
     }
 
     @Test
-    void shouldReturnEmptyList_And200Status_whenNoLeaveCategoriesExist() throws Exception {
+    void shouldReturnEmptyListAnd200StatusWhenNoLeaveCategoriesExist() throws Exception {
         List<LeaveCategoryResponse> response = List.of();
 
         when(leaveCategoryService.getAllLeaveCategories()).thenReturn(response);
