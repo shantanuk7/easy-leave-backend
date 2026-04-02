@@ -1,11 +1,14 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -34,4 +37,15 @@ public class UserService {
         newUser.setRole(UserRole.EMPLOYEE);
         return userRepository.save(newUser);
     }
+    private void validateAccess(User user) {
+        if (UserRole.EMPLOYEE.equals(user.getRole())) {
+            throw new HttpException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+    }
+
+    public List<UserResponse> getAllUsers(UUID requestingUserId) {
+        User requestingUser = getUserByUserId(requestingUserId);
+        validateAccess(requestingUser);
+    }
 }
+
