@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -10,7 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -89,5 +93,33 @@ class UserServiceTest {
         User user = userService.getUserByUserId(userId);
 
         assertInstanceOf(User.class, user);
+    }
+
+    @Test
+    void shouldThrowForbiddenExceptionWhenUserIsEmployee() {
+        User requestingUser = new User();
+        requestingUser.setId(userId);
+        requestingUser.setRole(UserRole.EMPLOYEE);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(requestingUser));
+        HttpException exception = assertThrows(HttpException.class,
+                () -> userService.getAllUsers(userId));
+        assertEquals("Access denied", exception.getMessage());
+    }
+
+    @Test
+    void shouldReturnUsersListWhenRequestingUserIsAdmin() {
+        User requestingUser = new User();
+        requestingUser.setId(userId);
+        requestingUser.setRole(UserRole.ADMIN);
+        User employee = new User();
+        employee.setId(UUID.randomUUID());
+        employee.setRole(UserRole.EMPLOYEE);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(requestingUser));
+        when(userRepository.findAll(Sort.by(Sort.Direction.ASC, "name")))
+                .thenReturn(List.of(requestingUser, employee));
+        List<UserResponse> responses = userService.getAllUsers(userId);
+        assertEquals(2, responses.size());
+        assertEquals(requestingUser.getRole(), responses.get(0).getRole());
+        assertEquals(employee.getRole(), responses.get(1).getRole());
     }
 }
