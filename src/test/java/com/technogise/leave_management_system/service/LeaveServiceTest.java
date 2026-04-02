@@ -22,9 +22,9 @@ import org.springframework.data.domain.Sort;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,6 +56,25 @@ class LeaveServiceTest {
         leaveCategoryId = UUID.randomUUID();
     }
 
+    private LocalDate nextWeekday() {
+        LocalDate date = LocalDate.now();
+        while (leaveService.isWeekendDay(date)) {
+            date = date.plusDays(1);
+        }
+        return date;
+    }
+
+    private List<LocalDate> nextWeekdays(int count) {
+        List<LocalDate> dates = new ArrayList<>();
+        LocalDate date = LocalDate.now();
+        while (dates.size() < count) {
+            if (!leaveService.isWeekendDay(date)) {
+                dates.add(date);
+            }
+            date = date.plusDays(1);
+        }
+        return dates;
+    }
 
     private User createEmployee() {
         User employee = new User();
@@ -99,7 +118,7 @@ class LeaveServiceTest {
     private CreateLeaveRequest createValidLeaveRequest() {
         CreateLeaveRequest request = new CreateLeaveRequest();
         request.setLeaveCategoryId(leaveCategoryId);
-        request.setDates(List.of(LocalDate.now()));
+        request.setDates(List.of(nextWeekday()));
         request.setDuration(DurationType.FULL_DAY);
         request.setStartTime(LocalTime.of(9, 0, 0));
         request.setDescription("Dummy Leave Request description");
@@ -118,6 +137,7 @@ class LeaveServiceTest {
         user.setId(userId);
         return user;
     }
+
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
@@ -360,11 +380,8 @@ class LeaveServiceTest {
     @Test
     void shouldReturnOneResponsePerNewDateProvided() {
         CreateLeaveRequest request = createValidLeaveRequest();
-        List<LocalDate> dates = List.of(
-                LocalDate.now(),
-                LocalDate.now().plusDays(1),
-                LocalDate.now().plusDays(2)
-        );
+        // nextWeekdays(3) guarantees three weekdays regardless of the current day
+        List<LocalDate> dates = nextWeekdays(3);
         request.setDates(dates);
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
@@ -462,9 +479,15 @@ class LeaveServiceTest {
 
     @Test
     void shouldThrowBadRequestWhenAllValidDatesAreWeekends() {
+        List<LocalDate> weekends = LocalDate.now()
+                .datesUntil(LocalDate.now().plusMonths(2))
+                .filter(leaveService::isWeekendDay)
+                .limit(2)
+                .toList();
+
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
-                List.of(LocalDate.of(2026, 4, 4), LocalDate.of(2026, 4, 5)), // Sat & Sun
+                weekends,
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
                 "Test description"
@@ -480,15 +503,15 @@ class LeaveServiceTest {
     void shouldThrowConflictWhenAllDatesAlreadyApplied() {
         User user = createValidUser();
         LeaveCategory category = createValidLeaveCategory();
-        LocalDate today = LocalDate.now();
+        LocalDate weekday = nextWeekday();
 
         Leave existingLeave = new Leave();
-        existingLeave.setDate(today);
+        existingLeave.setDate(weekday);
         existingLeave.setUser(user);
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
-                List.of(today),
+                List.of(weekday),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
                 "Test description"
