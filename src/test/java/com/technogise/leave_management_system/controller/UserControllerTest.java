@@ -49,4 +49,24 @@ class UserControllerTest {
         admin.setRole(UserRole.ADMIN);
         admin.setEmail("admin@gmail.com");
     }
+
+    @Test
+    void shouldReturn200WithListOfAllEmployeesWhenManagerOrAdminRequestsDetails() throws Exception {
+        List<UserResponse> responses = List.of(
+                new UserResponse(employee.getId(), employee.getEmail(), employee.getName(), employee.getRole()),
+                new UserResponse(admin.getId(), admin.getEmail(), admin.getName(), admin.getRole())
+        );
+
+        when(userService.getAllUsers(admin.getId())).thenReturn(responses);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/users")
+                        .header("user_id", admin.getId()))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Users retrieved successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].id").value(responses.get(0).getId().toString()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].name").value(responses.get(0).getName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].id").value(responses.get(1).getId().toString()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].name").value(responses.get(1).getName()));
+    }
 }
