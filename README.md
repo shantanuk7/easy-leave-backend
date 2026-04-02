@@ -236,6 +236,63 @@ Content-Type: application/json
   "message": "Dates must be within the current month for past dates, or within the current year for future dates."
 }
 ```
+### Get All Users — `GET /api/users`
+
+Allows a Manager or Admin to fetch a list of all users in the system, sorted alphabetically by name. Employees cannot access this endpoint.
+
+---
+
+#### Request Headers
+
+| Header    | Required | Description                         |
+|-----------|----------|-------------------------------------|
+| `user_id` | Yes      | UUID of the user making the request |
+ 
+---
+
+#### Example Request
+
+```
+GET /api/users
+Header: user_id: <admin-uuid>
+```
+ 
+---
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "success": true,
+  "message": "Users retrieved successfully",
+  "data": [
+    {
+      "id": "27ba9c6d-72eb-4231-a662-bfe752130fc8",
+      "email": "employee@gmail.com",
+      "name": "EMPLOYEE",
+      "role": "EMPLOYEE"
+    },
+    {
+      "id": "01598c0a-74e8-427f-9490-857da36b86f1",
+      "email": "manager@gmail.com",
+      "name": "MANAGER",
+      "role": "MANAGER"
+    }
+  ]
+}
+```
+ 
+---
+
+#### Error Responses
+
+| HTTP Status | Scenario                                      |
+|-------------|-----------------------------------------------|
+| `403`       | Requesting user is an Employee                |
+| `404`       | Provided `user_id` does not exist             |
+ 
 
 ### Get Leave Categories — `GET /api/leave-categories`
 
