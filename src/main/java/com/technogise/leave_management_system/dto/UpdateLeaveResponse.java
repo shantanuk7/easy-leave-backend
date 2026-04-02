@@ -14,16 +14,18 @@ import java.util.UUID;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class UpdateLeaveRequest {
+public class UpdateLeaveResponse {
+
+    private UUID id;
 
     private LocalDate date;
 
-    private LocalTime time;
+    private String leaveCategoryName;
+
+    private DurationType duration;
+
+    private LocalTime startTime;
 
     private String description;
-
-    private DurationType  duration;
-
-    private UUID leaveCategoryId;
 
 }
