@@ -46,6 +46,16 @@ public class UserService {
     public List<UserResponse> getAllUsers(UUID requestingUserId) {
         User requestingUser = getUserByUserId(requestingUserId);
         validateAccess(requestingUser);
+
+        List<User> allUsers = userRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+
+        return allUsers.stream()
+                .map(u -> new UserResponse(
+                        u.getId(),
+                        u.getEmail(),
+                        u.getName(),
+                        u.getRole()
+                )).toList();
     }
 }
 
