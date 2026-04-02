@@ -9,17 +9,64 @@
 
 ## Features
 
+### Authentication System
+
+This project uses a hybrid OAuth2 + JWT-based authentication system to securely authenticate users and protect backend APIs.
+
+#### The authentication flow consists of:
+- OAuth2 Login (Google)
+- User Persistence in Database
+- JWT Token Generation
+- JWT-based Authentication for API requests
+
+#### Authentication Flow
+**1. Login via Google**
+- User hits: `/oauth2/authorization/google`
+- Redirected to Google login
+- Google returns user details (name, email)
+
+**2. User Handling**
+- Backend checks:
+   - If user exists → fetch from DB
+   - If new user → create user with default role (EMPLOYEE)
+- Only allowed email domain users can login
+
+**3. JWT Generation**
+- After successful login:
+   - JWT token is generated with:
+        - id 
+        - email 
+        - role
+   - Token is stored in HTTP-only cookie
+
+**4. Redirect to Frontend**
+- User is redirected to: `REDIRECT_FRONTEND_URL`
+
+**5. API Authentication**
+- Every request:
+  - JWT is read from cookies
+  - Token is validated
+  - User is fetched from DB
+  - User is set in Spring SecurityContext
+
+#### Configuration
+**Environment Variables:** Follow `.env.example` for required variables.
+
+#### Protected Routes
+- All routes require authentication
+- Except
+```bash
+/api/auth/**
+/oauth2/**
+```
+
+---
+
 ### Get All Leaves — `GET /api/leaves`
 
 Allows an authenticated user to retrieve leave records. Based on the `scope` parameter, a user can either view their **own leaves** or (if they are a Manager) view **all employees' leaves**.
 
 ---
-
-#### Request Headers
-
-| Header    | Required | Description                         |
-|-----------|----------|-------------------------------------|
-| `user_id` | Yes      | UUID of the user making the request |
 
 #### Query Parameters
 
@@ -55,13 +102,11 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 **Employee fetching their own upcoming leaves**
 ```
 GET /api/leaves?scope=self&status=upcoming
-Header: user_id: <your-uuid>
 ```
 
 **Manager fetching all team leaves**
 ```
 GET /api/leaves?scope=organisation
-Header: user_id: <manager-uuid>
 ```
 
 ---
@@ -87,15 +132,6 @@ Header: user_id: <manager-uuid>
 ### Apply Leave — `POST /api/leaves`
 
 Allows an user to apply for one or more leaves in a single request. Each date in the request is processed individually. Weekends, already-applied dates, and dates outside the allowed range are automatically skipped or rejected.
- 
----
-
-#### Request Headers
-
-| Header       | Required | Description                         |
-|--------------|----------|-------------------------------------|
-| `user_id`    | Yes      | UUID of the user making the request |
-| `Content-Type` | Yes    | `application/json`                  |
  
 ---
 
@@ -132,7 +168,6 @@ Allows an user to apply for one or more leaves in a single request. Each date in
 **Employee applying for leave on multiple dates**
 ```
 POST /api/leaves
-Header: user_id: <your-uuid>
 Content-Type: application/json
 ```
 
