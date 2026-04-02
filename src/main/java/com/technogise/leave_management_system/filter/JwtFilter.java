@@ -1,5 +1,7 @@
 package com.technogise.leave_management_system.filter;
 
+import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.service.JwtService;
 import io.jsonwebtoken.Claims;
 import jakarta.annotation.Nonnull;
@@ -20,11 +22,13 @@ import java.util.List;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     private static final String TOKEN_NAME = "token";
 
-    public JwtFilter(JwtService jwtService) {
+    public JwtFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -52,14 +56,16 @@ public class JwtFilter extends OncePerRequestFilter {
         String email = claims.getSubject();
         String role = claims.get("role", String.class);
 
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         if (email != null
             && jwtService.isTokenValid(token, email)
             && !jwtService.isTokenExpired(token)
-            && SecurityContextHolder.getContext().getAuthentication() == null
         ) {
             UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(
-                    email,
+                    user,
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + role))
                 );
