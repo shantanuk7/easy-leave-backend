@@ -25,8 +25,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.cookie.expiration}")
     private int cookieExpiration;
 
-    @Value("${app.frontend.url}")
-    private String frontendUrl;
+    @Value("${app.redirect.frontend.url}")
+    private String redirectFrontendUrl;
 
     @Value("${app.cookie.secure}")
     private boolean cookieSecure;
@@ -57,6 +57,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         response.addCookie(cookie);
 
-        response.sendRedirect(frontendUrl);
+        response.sendRedirect(redirectFrontendUrl);
     }
 }
