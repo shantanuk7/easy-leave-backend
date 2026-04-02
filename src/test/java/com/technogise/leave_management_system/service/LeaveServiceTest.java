@@ -19,9 +19,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -316,22 +318,26 @@ class LeaveServiceTest {
 
     @Test
     void shouldReturnTrueForSaturday() {
-        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 4)));
+        LocalDate saturday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        assertTrue(leaveService.isWeekendDay(saturday));
     }
 
     @Test
     void shouldReturnTrueForSunday() {
-        assertTrue(leaveService.isWeekendDay(LocalDate.of(2026, 4, 5)));
+        LocalDate sunday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        assertTrue(leaveService.isWeekendDay(sunday));
     }
 
     @Test
     void shouldReturnFalseForMonday() {
-        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 6)));
+        LocalDate monday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        assertFalse(leaveService.isWeekendDay(monday));
     }
 
     @Test
     void shouldReturnFalseForTuesday() {
-        assertFalse(leaveService.isWeekendDay(LocalDate.of(2026, 4, 7)));
+        LocalDate tuesday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.TUESDAY));
+        assertFalse(leaveService.isWeekendDay(tuesday));
     }
 
     @Test
@@ -380,7 +386,6 @@ class LeaveServiceTest {
     @Test
     void shouldReturnOneResponsePerNewDateProvided() {
         CreateLeaveRequest request = createValidLeaveRequest();
-        // nextWeekdays(3) guarantees three weekdays regardless of the current day
         List<LocalDate> dates = nextWeekdays(3);
         request.setDates(dates);
 
