@@ -36,10 +36,6 @@ class AnnualLeaveBalanceControllerTest {
 
     private static final int CURRENT_YEAR = Year.now().getValue();
 
-    // -------------------------
-    // Helper methods
-    // -------------------------
-
     private User createManager() {
         User manager = new User();
         manager.setId(UUID.randomUUID());
@@ -58,11 +54,7 @@ class AnnualLeaveBalanceControllerTest {
 
     private AnnualLeaveBalanceResponse createLeaveBalanceResponse() {
         return new AnnualLeaveBalanceResponse(
-                UUID.randomUUID().toString(),
-                "Arjun",
-                24.0,
-                5.0,
-                19.0
+                UUID.randomUUID().toString(), "Arjun", 24.0, 5.0, 19.0
         );
     }
 
@@ -70,27 +62,22 @@ class AnnualLeaveBalanceControllerTest {
     void shouldReturnForbiddenWhenCallerIsNotManager() {
         User employee = createEmployee();
 
-        when(userService.getUserByUserId(employee.getId()))
-                .thenReturn(employee);
-
-        assertThrows(HttpException.class, () -> annualLeaveBalanceController.getAnnualLeaveBalance(employee.getId(), null));
+        assertThrows(HttpException.class, () -> annualLeaveBalanceController.getAnnualLeaveBalance(null, employee));
     }
 
     @Test
     void shouldReturnEmptyDataWithNoEmployeesFoundMessageWhenNoEmployeesExist() {
         User manager = createManager();
 
-        when(userService.getUserByUserId(manager.getId()))
-                .thenReturn(manager);
-        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR))
-                .thenReturn(List.of());
+        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR)).thenReturn(List.of());
 
         ResponseEntity<SuccessResponse<List<AnnualLeaveBalanceResponse>>> response =
-                annualLeaveBalanceController.getAnnualLeaveBalance(manager.getId(), null);
+                annualLeaveBalanceController.getAnnualLeaveBalance(null, manager);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
         assertTrue(response.getBody().getData().isEmpty());
-        assertEquals("No employees found", response.getBody().getMessage());
+        assertEquals("No employees leave balance found", response.getBody().getMessage());
     }
 
     @Test
@@ -98,15 +85,13 @@ class AnnualLeaveBalanceControllerTest {
         User manager = createManager();
         List<AnnualLeaveBalanceResponse> leaveBalances = List.of(createLeaveBalanceResponse());
 
-        when(userService.getUserByUserId(manager.getId()))
-                .thenReturn(manager);
-        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR))
-                .thenReturn(leaveBalances);
+        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR)).thenReturn(leaveBalances);
 
         ResponseEntity<SuccessResponse<List<AnnualLeaveBalanceResponse>>> response =
-                annualLeaveBalanceController.getAnnualLeaveBalance(manager.getId(), null);
+                annualLeaveBalanceController.getAnnualLeaveBalance(null, manager);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
         assertEquals(1, response.getBody().getData().size());
         assertEquals("Employee leave balance fetched successfully", response.getBody().getMessage());
         assertTrue(response.getBody().isSuccess());
@@ -117,15 +102,13 @@ class AnnualLeaveBalanceControllerTest {
         User manager = createManager();
         List<AnnualLeaveBalanceResponse> leaveBalances = List.of(createLeaveBalanceResponse());
 
-        when(userService.getUserByUserId(manager.getId()))
-                .thenReturn(manager);
-        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(2023))
-                .thenReturn(leaveBalances);
+        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(2023)).thenReturn(leaveBalances);
 
         ResponseEntity<SuccessResponse<List<AnnualLeaveBalanceResponse>>> response =
-                annualLeaveBalanceController.getAnnualLeaveBalance(manager.getId(), 2023);
+                annualLeaveBalanceController.getAnnualLeaveBalance( 2023, manager);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
         assertEquals(1, response.getBody().getData().size());
     }
 }
