@@ -664,5 +664,24 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
 
+    @Test
+    void shouldThrowBadRequestWhenNewDateIsNotWithinValidRange() {
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(LocalDate.now().plusYears(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
 
 }

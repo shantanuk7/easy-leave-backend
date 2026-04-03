@@ -201,7 +201,10 @@ public class LeaveService {
                     "Cannot edit a leave that is no longer within the updatable date range");
         }
 
-
+        if (!isValidLeaveDate(request.getDate())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "New date must be within the current month for past dates, or within the current year for future dates");
+        }
         return null;
     }
 }
