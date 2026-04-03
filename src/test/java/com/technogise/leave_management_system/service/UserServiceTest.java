@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -113,7 +112,7 @@ class UserServiceTest {
         employee.setId(UUID.randomUUID());
         employee.setRole(UserRole.EMPLOYEE);
         when(userRepository.findById(userId)).thenReturn(Optional.of(requestingUser));
-        when(userRepository.findAll(Sort.by(Sort.Direction.ASC, "name")))
+        when(userRepository.findByOrderByNameAsc())
                 .thenReturn(List.of(requestingUser, employee));
         List<UserResponse> responses = userService.getAllUsers(userId);
         assertEquals(2, responses.size());
