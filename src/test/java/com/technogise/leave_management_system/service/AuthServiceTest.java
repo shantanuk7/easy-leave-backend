@@ -3,7 +3,7 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.AuthUserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,8 +58,8 @@ class AuthServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When & Then
-        ApplicationException exception = assertThrows(
-                ApplicationException.class,
+        HttpException exception = assertThrows(
+                HttpException.class,
                 () -> authService.getAuthenticatedUser(userId)
         );
 
