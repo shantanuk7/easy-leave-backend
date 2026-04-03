@@ -276,12 +276,6 @@ GET /api/users
  
 ---
 
-#### Error Responses
-
-| HTTP Status | Scenario                                      |
-|-------------|-----------------------------------------------|
-| `403`       | Requesting user is an Employee                |
-| `404`       | Provided `user_id` does not exist             |
  
 
 ### Get Leave Categories — `GET /api/leave-categories`
