@@ -239,22 +239,12 @@ Content-Type: application/json
 ### Get All Users — `GET /api/users`
 
 Allows a Manager or Admin to fetch a list of all users in the system, sorted alphabetically by name. Employees cannot access this endpoint.
-
----
-
-#### Request Headers
-
-| Header    | Required | Description                         |
-|-----------|----------|-------------------------------------|
-| `user_id` | Yes      | UUID of the user making the request |
- 
 ---
 
 #### Example Request
 
 ```
 GET /api/users
-Header: user_id: <admin-uuid>
 ```
  
 ---
