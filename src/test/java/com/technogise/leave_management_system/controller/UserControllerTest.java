@@ -47,9 +47,6 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     private User employee;
     private User admin;
 
