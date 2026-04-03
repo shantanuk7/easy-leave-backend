@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.dto.AuthUserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.service.AuthService;
 import com.technogise.leave_management_system.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,12 +31,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(value = AuthController.class, excludeAutoConfiguration = {
-        OAuth2ClientAutoConfiguration.class,
-        OAuth2ClientWebSecurityAutoConfiguration.class
+    OAuth2ClientAutoConfiguration.class,
+    OAuth2ClientWebSecurityAutoConfiguration.class
 })
 class AuthControllerTest {
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @MockitoBean
     private JwtService jwtService;
