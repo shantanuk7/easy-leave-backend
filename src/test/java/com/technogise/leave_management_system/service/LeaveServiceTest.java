@@ -627,4 +627,23 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
     }
+
+    @Test
+    void shouldThrowForbiddenWhenUserDoesNotExist() {
+        User user = createValidUser();
+        UUID differentUserId = UUID.randomUUID();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), createValidUpdateRequest(), differentUserId));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
 }

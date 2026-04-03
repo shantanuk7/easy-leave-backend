@@ -181,12 +181,20 @@ public class LeaveService {
         );
     }
 
+    public boolean isValidLeaveOwner(Leave leave, UUID userId) {
+        return leave.getUser().getId().equals(userId);
+    }
 
     @Transactional
     public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,
                         "Leave not found with id: " + leaveId));
+
+        if (!isValidLeaveOwner(leave, userId)) {
+            throw new HttpException(HttpStatus.FORBIDDEN,
+                    "Not allowed to update this leave");
+        }
         return null;
     }
 }
