@@ -1,6 +1,10 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.*;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -219,6 +223,18 @@ public class LeaveService {
             throw new HttpException(HttpStatus.CONFLICT,
                     "You already have a leave applied on this date");
         }
-        return null;
+
+        leave.setDate(request.getDate());
+
+        Leave savedLeave = leaveRepository.save(leave);
+
+        return new UpdateLeaveResponse(
+                savedLeave.getId(),
+                savedLeave.getDate(),
+                savedLeave.getLeaveCategory().getName(),
+                savedLeave.getDuration(),
+                savedLeave.getStartTime(),
+                savedLeave.getDescription()
+        );
     }
 }

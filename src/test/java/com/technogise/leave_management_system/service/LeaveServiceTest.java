@@ -736,4 +736,30 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
     }
+
+    @Test
+    void shouldNotThrowConflictWhenNewDateIsSameAsExistingLeaveDate() {
+        User user = createValidUser();
+
+        LocalDate sameDate = LocalDate.now().plusDays(3);
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(sameDate);
+        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(sameDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+                .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() ->
+                leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+    }
 }
