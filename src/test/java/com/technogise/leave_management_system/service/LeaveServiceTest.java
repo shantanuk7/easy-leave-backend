@@ -646,4 +646,23 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
     }
+
+    @Test
+    void shouldThrowBadRequestWhenExistingLeaveDateIsNoLongerEditable() {
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().minusMonths(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), createValidUpdateRequest(), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+
 }

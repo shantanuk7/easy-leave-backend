@@ -195,6 +195,13 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN,
                     "Not allowed to update this leave");
         }
+
+        if (!isValidLeaveDate(leave.getDate())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot edit a leave that is no longer within the updatable date range");
+        }
+
+
         return null;
     }
 }
