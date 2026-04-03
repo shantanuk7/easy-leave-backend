@@ -11,16 +11,23 @@ import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
+import com.technogise.leave_management_system.service.JwtService;
 import com.technogise.leave_management_system.service.LeaveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
+import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import tools.jackson.databind.ObjectMapper;
 
@@ -37,8 +44,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(LeaveController.class)
-class LeaveControllerTest {
+@AutoConfigureMockMvc(addFilters = false)
+@WebMvcTest(value = LeaveController.class, excludeAutoConfiguration = {
+    OAuth2ClientAutoConfiguration.class,
+    OAuth2ClientWebSecurityAutoConfiguration.class
+})
+public class LeaveControllerTest {
 
     @MockitoBean
     private LeaveService leaveService;
@@ -48,6 +59,9 @@ class LeaveControllerTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @MockitoBean
+    private JwtService jwtService;
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,10 +82,12 @@ class LeaveControllerTest {
     void setup() {
         employee.setId(UUID.randomUUID());
         employee.setName("Employee");
+        employee.setEmail("raj@technogise.com");
         employee.setRole(UserRole.EMPLOYEE);
 
         manager.setId(UUID.randomUUID());
         manager.setName("Manager");
+        manager.setEmail("raj@technogise.com");
         manager.setRole(UserRole.MANAGER);
 
         leaveCategory.setId(UUID.randomUUID());
@@ -120,6 +136,16 @@ class LeaveControllerTest {
         return leaveResponse;
     }
 
+    private RequestPostProcessor mockUser(User user) {
+        return request -> {
+            UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(user, null, List.of());
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            request.setUserPrincipal(auth);
+            return request;
+        };
+    }
+
     @Test
     void shouldReturn200AndListOfLeavesWhenEmployeeRequestsSelfLeaves() throws Exception {
         List<LeaveResponse> response = List.of(
@@ -139,7 +165,7 @@ class LeaveControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
-                        .header("user_id", employee.getId())
+                        .with(mockUser(employee))
                         .param("scope", "self"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
@@ -167,7 +193,7 @@ class LeaveControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
-                        .header("user_id", manager.getId())
+                        .with(mockUser(manager))
                         .param("scope", "self"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
@@ -205,7 +231,7 @@ class LeaveControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
-                        .header("user_id", manager.getId())
+                        .with(mockUser(manager))
                         .param("scope", "organization"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
@@ -257,7 +283,7 @@ class LeaveControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
-                        .header("user_id", manager.getId())
+                        .with(mockUser(manager))
                         .param("scope", "organization")
                         .param("status", "completed"))
                 .andExpect(status().isOk())
@@ -279,7 +305,7 @@ class LeaveControllerTest {
                 .thenThrow(new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope query parameter"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
-                        .header("user_id", employee.getId())
+                        .with(mockUser(employee))
                         .param("scope", "organization"))
                 .andExpect(status().isBadRequest())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("400"))
@@ -291,11 +317,11 @@ class LeaveControllerTest {
         CreateLeaveRequest request = createValidLeaveRequest();
         CreateLeaveResponse response = createValidLeaveResponse();
 
-        when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(userId)))
+        when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(manager.getId())))
                 .thenReturn(List.of(response));
 
         mockMvc.perform(post("/api/leaves")
-                        .header("user_id", userId.toString())
+                        .with(mockUser(manager))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -313,7 +339,7 @@ class LeaveControllerTest {
                 .thenThrow(new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
-                        .header("user_id", employee.getId())
+                        .with(mockUser(employee))
                         .param("scope", "organization"))
                 .andExpect(status().isForbidden())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("403"))

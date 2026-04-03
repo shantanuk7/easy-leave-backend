@@ -33,6 +33,9 @@ public class User {
     @Column(name = "name", nullable = false, updatable = false)
     private String name;
 
+    @Column(name = "email", nullable = false, unique = true)
+    private String email;
+
     @Column(name = "role", nullable = false)
     @Enumerated(EnumType.STRING)
     private UserRole role;
