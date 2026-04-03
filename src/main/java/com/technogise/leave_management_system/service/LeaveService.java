@@ -1,8 +1,6 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.*;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -181,5 +179,14 @@ public class LeaveService {
                 leave.getUpdatedAt(),
                 leave.getDescription()
         );
+    }
+
+
+    @Transactional
+    public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
+        Leave leave = leaveRepository.findById(leaveId)
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,
+                        "Leave not found with id: " + leaveId));
+        return null;
     }
 }

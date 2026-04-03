@@ -3,6 +3,7 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -138,6 +139,14 @@ class LeaveServiceTest {
         return user;
     }
 
+    private UpdateLeaveRequest createValidUpdateRequest() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().plusDays(3));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setTime(LocalTime.of(9, 0));
+        request.setDescription("Updated description");
+        return request;
+    }
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
@@ -606,5 +615,16 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         assertEquals("Not Allowed to access this resource", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenLeaveIdDoesNotExist() {
+        UUID unknownLeaveId = UUID.randomUUID();
+        when(leaveRepository.findById(unknownLeaveId)).thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(unknownLeaveId, createValidUpdateRequest(), userId));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
     }
 }
