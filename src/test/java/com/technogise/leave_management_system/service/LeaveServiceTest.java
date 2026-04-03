@@ -1,9 +1,6 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
-import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.*;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -761,5 +758,49 @@ class LeaveServiceTest {
 
         assertDoesNotThrow(() ->
                 leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+    }
+
+    @Test
+    void shouldSaveUpdatedLeaveWithCorrectFieldsAndReturnResponse() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        LocalDate newDate = LocalDate.now().plusDays(5);
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setLeaveCategory(category);
+        leaveBeingUpdated.setDuration(DurationType.FULL_DAY);
+        leaveBeingUpdated.setStartTime(LocalTime.of(9, 0));
+        leaveBeingUpdated.setDescription("Original description");
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(newDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+                .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(
+                leaveBeingUpdated.getId(), request, userId);
+
+        assertNotNull(response);
+        assertEquals(newDate, response.getDate());
+        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(request.getDuration(), response.getDuration());
+        assertEquals(request.getTime(), response.getStartTime());
+        assertEquals(request.getDescription(), response.getDescription());
+
+        ArgumentCaptor<Leave> captor = ArgumentCaptor.forClass(Leave.class);
+        verify(leaveRepository).save(captor.capture());
+
+        Leave saved = captor.getValue();
+        assertEquals(newDate, saved.getDate());
+        assertEquals(leaveBeingUpdated.getId(), saved.getId());
     }
 }
