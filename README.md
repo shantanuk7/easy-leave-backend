@@ -236,19 +236,32 @@ Content-Type: application/json
   "message": "Dates must be within the current month for past dates, or within the current year for future dates."
 }
 ```
-### Get All Users — `GET /api/users`
+## Get All Users — `GET /api/users`
 
-Allows a Manager or Admin to fetch a list of all users in the system, sorted alphabetically by name. Employees cannot access this endpoint.
+Allows a **Manager** or **Admin** to fetch a paginated list of all users in the system.  
+The users are sorted alphabetically by name by default. Employees cannot access this endpoint.
+
 ---
 
-#### Example Request
+### Query Parameters
 
-```
-GET /api/users
-```
- 
+| Parameter | Type   | Default  | Description                                 |
+|-----------|--------|----------|---------------------------------------------|
+| page      | int    | 0        | Page number (0-indexed)                     |
+| size      | int    | 50       | Number of users per page                     |
+
 ---
-
+### Example Request
+#### GET /api/users?page=0&size=20
+#### Authorization: Bearer <JWT_TOKEN>
+---
+#### Actual Query
+```
+SELECT id, email, name, role
+FROM users
+ORDER BY name ASC
+LIMIT 20 OFFSET 0;
+```
 #### Response
 
 **200 OK**
