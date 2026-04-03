@@ -61,7 +61,7 @@ This project uses a hybrid OAuth2 + JWT-based authentication system to securely 
 ```
 ---
 
-### Get Authenticated User — `GET /api/users/me`
+### Get Authenticated User — `GET /api/auth/me`
 
 Allows to retrieve details of the currently authenticated user. 
 It enables the frontend to fetch user information (such as name, email, and role) after authentication.
