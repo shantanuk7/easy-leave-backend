@@ -5,6 +5,8 @@ import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,11 +24,9 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<SuccessResponse<List<UserResponse>>> getAllUsers(
-            @AuthenticationPrincipal User user
-    ) {
-        UUID userId = user.getId();
-        List<UserResponse> usersList = userService.getAllUsers(userId);
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    public ResponseEntity<SuccessResponse<List<UserResponse>>> getAllUsers() {
+        List<UserResponse> usersList = userService.getAllUsers();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Users retrieved successfully", usersList));
     }
