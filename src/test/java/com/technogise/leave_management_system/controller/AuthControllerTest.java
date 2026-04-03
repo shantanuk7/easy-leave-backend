@@ -3,7 +3,7 @@ package com.technogise.leave_management_system.controller;
 import com.technogise.leave_management_system.dto.AuthUserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.ApplicationException;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ class AuthControllerTest {
     @Test
     void shouldReturn404WhenUserNotFound() throws Exception {
         when(authService.getAuthenticatedUser(mockUser.getId()))
-                .thenThrow(new ApplicationException(HttpStatus.NOT_FOUND, "User not found"));
+                .thenThrow(new HttpException(HttpStatus.NOT_FOUND, "User not found"));
 
         mockMvc.perform(get("/api/auth/me")
                         .header("user_id", mockUser.getId().toString()))
