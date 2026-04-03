@@ -210,7 +210,15 @@ public class LeaveService {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "Cannot update leave to a weekend date");
         }
+        List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
+        boolean hasConflict = existingLeaves.stream()
+                .filter(l -> !l.getId().equals(leaveId))
+                .anyMatch(l -> l.getDate().equals(request.getDate()));
 
+        if (hasConflict) {
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "You already have a leave applied on this date");
+        }
         return null;
     }
 }

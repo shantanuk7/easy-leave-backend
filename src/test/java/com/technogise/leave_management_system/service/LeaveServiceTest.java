@@ -706,4 +706,34 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
+
+    @Test
+    void shouldThrowConflictWhenNewDateAlreadyHasAnotherLeave() {
+        User user = createValidUser();
+
+        LocalDate newDate = LocalDate.now().plusDays(5);
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+
+        Leave anotherLeaveOnSameDate = new Leave();
+        anotherLeaveOnSameDate.setId(UUID.randomUUID());
+        anotherLeaveOnSameDate.setUser(user);
+        anotherLeaveOnSameDate.setDate(newDate);
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(newDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+                .thenReturn(List.of(leaveBeingUpdated, anotherLeaveOnSameDate));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+    }
 }
