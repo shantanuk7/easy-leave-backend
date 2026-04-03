@@ -13,17 +13,20 @@ import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2Clien
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -75,22 +78,25 @@ class UserControllerTest {
     }
 
     @Test
-    void shouldReturn200WithListOfAllEmployeesWhenManagerOrAdminRequestsDetails() throws Exception {
+    void shouldReturn200WithListOfAllUsersWhenManagerOrAdminRequests() throws Exception {
         List<UserResponse> responses = List.of(
                 new UserResponse(employee.getId(), employee.getEmail(), employee.getName(), employee.getRole()),
                 new UserResponse(admin.getId(), admin.getEmail(), admin.getName(), admin.getRole())
         );
 
-        when(userService.getAllUsers(admin.getId())).thenReturn(responses);
-
+        Page<UserResponse> page = new PageImpl<>(responses);
+        when(userService.getAllUsers(any(Pageable.class)))
+                .thenReturn(page);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/users")
+                        .param("page", "0")
+                        .param("size", "50")
                         .with(mockUser(admin)))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Users retrieved successfully"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].id").value(responses.get(0).getId().toString()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].name").value(responses.get(0).getName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].id").value(responses.get(1).getId().toString()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].name").value(responses.get(1).getName()));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Users retrieved successfully"))
+                .andExpect(jsonPath("$.data[0].id").value(responses.get(0).getId().toString()))
+                .andExpect(jsonPath("$.data[0].name").value(responses.get(0).getName()))
+                .andExpect(jsonPath("$.data[1].id").value(responses.get(1).getId().toString()))
+                .andExpect(jsonPath("$.data[1].name").value(responses.get(1).getName()));
     }
 }
