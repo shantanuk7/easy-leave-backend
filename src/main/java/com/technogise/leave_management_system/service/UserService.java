@@ -48,7 +48,7 @@ public class UserService {
         User requestingUser = getUserByUserId(requestingUserId);
         validateAccess(requestingUser);
 
-        List<User> allUsers = userRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+        List<User> allUsers = userRepository.findByOrderByNameAsc();
 
         return allUsers.stream()
                 .map(u -> new UserResponse(
