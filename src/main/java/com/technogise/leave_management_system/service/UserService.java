@@ -37,18 +37,8 @@ public class UserService {
         newUser.setRole(UserRole.EMPLOYEE);
         return userRepository.save(newUser);
     }
-    private void validateAccess(User user) {
-        if (UserRole.EMPLOYEE.equals(user.getRole())) {
-            throw new HttpException(HttpStatus.FORBIDDEN, "Access denied");
-        }
-    }
-
-    public List<UserResponse> getAllUsers(UUID requestingUserId) {
-        User requestingUser = getUserByUserId(requestingUserId);
-        validateAccess(requestingUser);
-
+    public List<UserResponse> getAllUsers() {
         List<User> allUsers = userRepository.findByOrderByNameAsc();
-
         return allUsers.stream()
                 .map(u -> new UserResponse(
                         u.getId(),
