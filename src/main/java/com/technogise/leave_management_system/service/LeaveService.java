@@ -205,6 +205,12 @@ public class LeaveService {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "New date must be within the current month for past dates, or within the current year for future dates");
         }
+
+        if (isWeekendDay(request.getDate())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot update leave to a weekend date");
+        }
+
         return null;
     }
 }
