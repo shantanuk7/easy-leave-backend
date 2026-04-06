@@ -161,4 +161,25 @@ public class LeaveService {
                         leave.getDescription()
                 )).toList();
     }
+
+    public LeaveResponse getLeaveById(UUID leaveId, UUID userId) {
+        User user = userService.getUserByUserId(userId);
+        Leave leave = leaveRepository.findById(leaveId).orElseThrow(
+                () -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
+
+        if (!leave.getUser().getId().equals(userId) && !user.getRole().equals(UserRole.MANAGER)) {
+            throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
+        }
+
+        return new LeaveResponse(
+                leave.getId(),
+                leave.getDate(),
+                leave.getUser().getName(),
+                leave.getLeaveCategory().getName(),
+                leave.getDuration(),
+                leave.getStartTime(),
+                leave.getUpdatedAt(),
+                leave.getDescription()
+        );
+    }
 }
