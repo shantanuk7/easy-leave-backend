@@ -59,6 +59,42 @@ This project uses a hybrid OAuth2 + JWT-based authentication system to securely 
 /api/auth/**
 /oauth2/**
 ```
+---
+
+### Get Authenticated User — `GET /api/auth/me`
+
+Allows to retrieve details of the currently authenticated user. 
+It enables the frontend to fetch user information (such as name, email, and role) after authentication.
+
+#### Endpoint
+Get Current User:
+```bash
+GET /api/auth/me
+```
+
+#### Response
+- Success (200 OK)
+```json
+{
+    "success": true,
+    "message": "User retrieved successfully",
+    "data": {
+        "id": "uuid",
+        "name": "Raj",
+        "email": "raj@technogise.com",
+        "role": "EMPLOYEE"
+    }
+}
+```
+
+- Error (404 Not Found)
+```json
+{
+    "statusCode": "404",
+    "code": "NOT_FOUND",
+    "message": "User not found"
+}
+```
 
 ---
 
