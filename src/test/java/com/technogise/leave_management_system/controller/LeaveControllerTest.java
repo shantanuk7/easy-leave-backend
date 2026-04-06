@@ -1,8 +1,6 @@
 package com.technogise.leave_management_system.controller;
 
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.*;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -40,7 +38,9 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,7 +75,6 @@ public class LeaveControllerTest {
     Leave employeeLeave = new Leave();
     Leave managerLeave = new Leave();
 
-    private final UUID userId = UUID.randomUUID();
     private final UUID categoryId = UUID.randomUUID();
 
     @BeforeEach
@@ -144,6 +143,27 @@ public class LeaveControllerTest {
             request.setUserPrincipal(auth);
             return request;
         };
+    }
+
+    private UpdateLeaveRequest createValidUpdateLeaveRequest() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now());
+        request.setDuration(DurationType.FULL_DAY);
+        request.setLeaveCategoryId(categoryId);
+        request.setTime(LocalTime.of(10, 0));
+        request.setDescription("Updated description");
+        return request;
+    }
+
+    private UpdateLeaveResponse createValidUpdateLeaveResponse() {
+        UpdateLeaveResponse response = new UpdateLeaveResponse();
+        response.setId(UUID.randomUUID());
+        response.setDate(LocalDate.now().plusDays(3));
+        response.setLeaveCategoryName("Annual Leave");
+        response.setDuration(DurationType.FULL_DAY);
+        response.setStartTime(LocalTime.of(9, 0));
+        response.setDescription("Updated description");
+        return response;
     }
 
     @Test
@@ -396,5 +416,27 @@ public class LeaveControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.statusCode").value("403"))
                 .andExpect(jsonPath("$.message").value("Not Allowed to access this resource"));
+    }
+
+    @Test
+    void shouldReturn200WithUpdatedLeaveResponseWhenRequestIsValid() throws Exception {
+        UUID leaveId = UUID.randomUUID();
+        UpdateLeaveRequest request = createValidUpdateLeaveRequest();
+        UpdateLeaveResponse response = createValidUpdateLeaveResponse();
+
+        when(leaveService.updateLeave(eq(leaveId), any(UpdateLeaveRequest.class), eq(employee.getId())))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/api/leaves/{id}" ,leaveId)
+                .with(mockUser(employee))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leave updated successfully"))
+                .andExpect(jsonPath("$.data.date").value(response.getDate().toString()))
+                .andExpect(jsonPath("$.data.leaveCategoryName").value("Annual Leave"))
+                .andExpect(jsonPath("$.data.duration").value("FULL_DAY"))
+                .andExpect(jsonPath("$.data.description").value("Updated description"));
     }
 }

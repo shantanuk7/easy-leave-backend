@@ -3,6 +3,8 @@ package com.technogise.leave_management_system.controller;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.LeaveService;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
 import java.util.UUID;
@@ -63,5 +66,17 @@ public class LeaveController {
         LeaveResponse leaveResponse = leaveService.getLeaveById(leaveId, userId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Leave retrieved successfully", leaveResponse));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<SuccessResponse<UpdateLeaveResponse>> updateLeave(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateLeaveRequest updateLeaveRequest,
+            @AuthenticationPrincipal User user
+    ) {
+        UpdateLeaveResponse updateLeaveResponse = leaveService.updateLeave(
+                id, updateLeaveRequest, user.getId());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(SuccessResponse.success("Leave updated successfully", updateLeaveResponse));
     }
 }
