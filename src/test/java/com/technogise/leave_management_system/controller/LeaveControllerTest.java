@@ -150,7 +150,7 @@ public class LeaveControllerTest {
         request.setDate(LocalDate.now());
         request.setDuration(DurationType.FULL_DAY);
         request.setLeaveCategoryId(categoryId);
-        request.setTime(LocalTime.of(10, 0));
+        request.setStartTime(LocalTime.of(10, 0));
         request.setDescription("Updated description");
         return request;
     }

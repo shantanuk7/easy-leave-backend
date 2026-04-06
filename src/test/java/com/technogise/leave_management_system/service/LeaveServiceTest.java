@@ -140,7 +140,7 @@ class LeaveServiceTest {
         UpdateLeaveRequest request = new UpdateLeaveRequest();
         request.setDate(LocalDate.now().plusDays(3));
         request.setDuration(DurationType.FULL_DAY);
-        request.setTime(LocalTime.of(9, 0));
+        request.setStartTime(LocalTime.of(9, 0));
         request.setDescription("Updated description");
         request.setLeaveCategoryId(leaveCategoryId);
         return request;
@@ -798,7 +798,7 @@ class LeaveServiceTest {
         assertEquals(newDate, response.getDate());
         assertEquals(category.getName(), response.getLeaveCategoryName());
         assertEquals(request.getDuration(), response.getDuration());
-        assertEquals(request.getTime(), response.getStartTime());
+        assertEquals(request.getStartTime(), response.getStartTime());
         assertEquals(request.getDescription(), response.getDescription());
 
         ArgumentCaptor<Leave> captor = ArgumentCaptor.forClass(Leave.class);

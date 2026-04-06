@@ -206,7 +206,7 @@ public class LeaveService {
         leave.setLeaveCategory(newCategory);
         leave.setDate(request.getDate());
         leave.setDuration(request.getDuration());
-        leave.setStartTime(request.getTime());
+        leave.setStartTime(request.getStartTime());
         leave.setDescription(request.getDescription());
 
         Leave savedLeave = leaveRepository.save(leave);

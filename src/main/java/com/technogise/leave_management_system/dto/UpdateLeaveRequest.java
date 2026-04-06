@@ -23,7 +23,7 @@ public class UpdateLeaveRequest {
     private LocalDate date;
 
     @NotNull(message = "Start time must not be null")
-    private LocalTime time;
+    private LocalTime startTime;
 
     @NotBlank(message = "Description must not be blank")
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
