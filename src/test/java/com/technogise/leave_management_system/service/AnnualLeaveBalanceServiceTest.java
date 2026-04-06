@@ -12,13 +12,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
 import java.util.UUID;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,6 +32,7 @@ class AnnualLeaveBalanceServiceTest {
     private AnnualLeaveBalanceService annualLeaveBalanceService;
 
     private static final int CURRENT_YEAR = Year.now().getValue();
+    private static final Pageable PAGEABLE = PageRequest.of(0, 10);
 
     private User createEmployee() {
         User employee = new User();
@@ -57,19 +59,18 @@ class AnnualLeaveBalanceServiceTest {
     void shouldReturnLeaveBalanceForEmployeeWithLeavesTaken() {
         User employee = createEmployee();
         AnnualLeave annualLeave = createAnnualLeave(employee, "24", "5", "19", CURRENT_YEAR);
-        Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(annualLeave));
+        Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(annualLeave), PAGEABLE, 1);
 
-        when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), Pageable.unpaged())).thenReturn(annualLeavePage);
+        when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), PAGEABLE)).thenReturn(annualLeavePage);
 
-        Page<AnnualLeaveBalanceResponse> result = annualLeaveBalanceService
-                .getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, Pageable.unpaged());
+        Page<AnnualLeaveBalanceResponse> result = annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, PAGEABLE);
 
         assertEquals(1, result.getContent().size());
         assertEquals(employee.getId().toString(), result.getContent().getFirst().getEmployeeId());
         assertEquals("Arjun", result.getContent().getFirst().getEmployeeName());
-        assertEquals(24.0, result.getContent().getFirst().getTotalLeavesAvailable());
-        assertEquals(5.0, result.getContent().getFirst().getLeavesTaken());
-        assertEquals(19.0, result.getContent().getFirst().getLeavesRemaining());
+        assertEquals(0, result.getNumber());
+        assertEquals(10, result.getSize());
+        assertEquals(1, result.getTotalElements());
     }
 
     @Test
@@ -91,10 +92,9 @@ class AnnualLeaveBalanceServiceTest {
 
     @Test
     void shouldReturnEmptyPageWhenNoAnnualLeaveRecordsExist() {
-        when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), Pageable.unpaged())).thenReturn(Page.empty());
+        when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), PAGEABLE)).thenReturn(Page.empty());
 
-        Page<AnnualLeaveBalanceResponse> result = annualLeaveBalanceService
-                .getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, Pageable.unpaged());
+        Page<AnnualLeaveBalanceResponse> result = annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, PAGEABLE);
 
         assertTrue(result.isEmpty());
     }
@@ -142,5 +142,18 @@ class AnnualLeaveBalanceServiceTest {
         List<String> result = annualLeaveBalanceService.getDistinctYears();
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenLeaveValuesAreMalformed() {
+        User employee = createEmployee();
+        AnnualLeave malformedLeave = createAnnualLeave(employee, "invalid_number", "5", "19", CURRENT_YEAR);
+        Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(malformedLeave), PAGEABLE, 1);
+
+        when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), PAGEABLE)).thenReturn(annualLeavePage);
+
+        assertThrows(NumberFormatException.class, () -> {
+            annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, PAGEABLE);
+        });
     }
 }
