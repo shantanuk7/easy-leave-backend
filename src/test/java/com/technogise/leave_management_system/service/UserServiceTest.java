@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -10,7 +11,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -90,4 +96,35 @@ class UserServiceTest {
 
         assertInstanceOf(User.class, user);
     }
+
+    @Test
+    void shouldReturnPagedUserResponses() {
+        User employee = new User();
+        employee.setId(UUID.randomUUID());
+        employee.setName("PRIYANSH");
+        employee.setEmail("priyansh@technogise.com");
+        employee.setRole(UserRole.EMPLOYEE);
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setName("RAJ");
+        admin.setEmail("raj@technogise.com");
+        admin.setRole(UserRole.ADMIN);
+
+        List<User> users = List.of(employee, admin);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<User> userPage = new PageImpl<>(users, pageable, users.size());
+
+        when(userRepository.findAllByOrderByNameAsc(any(Pageable.class)))
+                .thenReturn(userPage);
+
+        Page<UserResponse> result = userService.getAllUsers(pageable);
+        assertEquals(2, result.getContent().size());
+        UserResponse first = result.getContent().getFirst();
+        assertEquals(employee.getId(), first.getId());
+        assertEquals(employee.getEmail(), first.getEmail());
+        UserResponse second = result.getContent().get(1);
+        assertEquals(admin.getId(), second.getId());
+        assertEquals(admin.getEmail(), second.getEmail());
+    }
 }
+

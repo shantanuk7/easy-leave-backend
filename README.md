@@ -236,6 +236,60 @@ Content-Type: application/json
   "message": "Dates must be within the current month for past dates, or within the current year for future dates."
 }
 ```
+## Get All Users — `GET /api/users`
+
+Allows a **Manager** or **Admin** to fetch a paginated list of all users in the system.  
+The users are sorted alphabetically by name by default. Employees cannot access this endpoint.
+
+---
+
+### Query Parameters
+
+| Parameter | Type   | Default  | Description                                 |
+|-----------|--------|----------|---------------------------------------------|
+| page      | int    | 0        | Page number (0-indexed)                     |
+| size      | int    | 50       | Number of users per page                     |
+
+---
+### Example Request
+#### GET /api/users?page=0&size=20
+#### Authorization: Bearer <JWT_TOKEN>
+---
+#### Actual Query
+```
+SELECT id, email, name, role
+FROM users
+ORDER BY name ASC
+LIMIT 20 OFFSET 0;
+```
+#### Response
+
+**200 OK**
+
+```json
+{
+  "success": true,
+  "message": "Users retrieved successfully",
+  "data": [
+    {
+      "id": "27ba9c6d-72eb-4231-a662-bfe752130fc8",
+      "email": "employee@gmail.com",
+      "name": "EMPLOYEE",
+      "role": "EMPLOYEE"
+    },
+    {
+      "id": "01598c0a-74e8-427f-9490-857da36b86f1",
+      "email": "manager@gmail.com",
+      "name": "MANAGER",
+      "role": "MANAGER"
+    }
+  ]
+}
+```
+ 
+---
+
+ 
 
 ### Get Leave Categories — `GET /api/leave-categories`
 
