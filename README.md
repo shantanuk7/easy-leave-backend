@@ -374,4 +374,83 @@ GET /api/leave-categories
 
 Note: If no leave categories exist, the API returns `200 OK` with an empty array in `data`.
 
+## Update Scheduled Leave Endpoint
+
+```bash
+PATCH /api/leaves/{id}
+```
+
+---
+
+## Request Body
+
+| Field           | Type      | Required | Description                          |
+| --------------- | --------- | -------- | ------------------------------------ |
+| leaveCategoryId | UUID      | Yes      | Must be a valid leave category ID    |
+| date            | LocalDate | Yes      | Format: `YYYY-MM-DD`                 |
+| duration        | String    | Yes      | `FULL_DAY` or `HALF_DAY`             |
+| startTime       | LocalTime | Yes      | Format: `HH:mm:ss`                   |
+| description     | String    | Yes      | Max 1000 characters, cannot be blank |
+
+---
+
+## Example Request
+
+```json
+{
+  "leaveCategoryId": "4a53c482-2998-436b-b663-2d6671667c0a",
+  "date": "2026-04-22",
+  "duration": "HALF_DAY",
+  "startTime": "10:00:00",
+  "description": "Updated reason for leave"
+}
+```
+
+---
+
+## Validation Rules
+
+| Rule                  | Description                                          | Error           |
+| --------------------- | ---------------------------------------------------- | --------------- |
+| Ownership             | Only the owner of the leave can update it            | 403 Forbidden   |
+| Existing Date Range   | Existing leave must be within allowed editable range | 400 Bad Request |
+| New Date Range        | New date must be within allowed range                | 400 Bad Request |
+| Weekend Restriction   | Cannot update leave to Saturday or Sunday            | 400 Bad Request |
+| Conflict Check        | No duplicate leave allowed on same date              | 409 Conflict    |
+| Leave Category Exists | Category must exist                                  | 404 Not Found   |
+
+---
+
+## Response
+
+**200 OK**
+
+```json
+{
+  "success": true,
+  "message": "Leave updated successfully",
+  "data": {
+    "id": "8496840a-c0b2-4e03-bc54-0a9d47e00a2c",
+    "date": "2026-04-22",
+    "leaveCategoryName": "ANNUAL",
+    "duration": "HALF_DAY",
+    "startTime": "10:00:00",
+    "description": "Updated reason for leave"
+  }
+}
+```
+
+---
+
+## Error Responses
+
+| HTTP Status | Scenario                            |
+| ----------- | ----------------------------------- |
+| 400         | Invalid date / weekend / validation |
+| 403         | User not owner                      |
+| 404         | Leave or category not found         |
+| 409         | Leave already exists on that date   |
+
+---
+
 ---
