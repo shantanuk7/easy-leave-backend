@@ -90,4 +90,28 @@ class AnnualLeaveBalanceControllerTest {
         assert response.getBody() != null;
         assertEquals(1, response.getBody().getData().getContent().size());
     }
+    @Test
+    void shouldReturnDistinctYearsWhenCalled() {
+        when(annualLeaveBalanceService.getDistinctYears()).thenReturn(List.of("2025", "2024", "2023"));
+
+        ResponseEntity<SuccessResponse<List<String>>> response = annualLeaveBalanceController.getDistinctYears();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
+        assertEquals(3, response.getBody().getData().size());
+        assertEquals("2025", response.getBody().getData().getFirst());
+        assertEquals("Years fetched successfully", response.getBody().getMessage());
+    }
+
+    @Test
+    void shouldReturnNoYearsFoundMessageWhenNoYearsExist() {
+        when(annualLeaveBalanceService.getDistinctYears()).thenReturn(List.of());
+
+        ResponseEntity<SuccessResponse<List<String>>> response = annualLeaveBalanceController.getDistinctYears();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
+        assertTrue(response.getBody().getData().isEmpty());
+        assertEquals("No years found", response.getBody().getMessage());
+    }
 }

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 import java.time.Year;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/annual-leaves")
@@ -26,7 +27,7 @@ public class AnnualLeaveBalanceController {
     @GetMapping
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<SuccessResponse<Page<AnnualLeaveBalanceResponse>>> getAnnualLeaveBalance(
-               @RequestParam(name = "year", required = false) Integer year, Pageable pageable)                                                                                        {
+               @RequestParam(name = "year", required = false) Integer year, Pageable pageable) {
 
         int requestedYear = (year != null) ? year : Year.now().getValue();
         Page<AnnualLeaveBalanceResponse> annualLeaveBalancesPage = annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(
@@ -35,5 +36,14 @@ public class AnnualLeaveBalanceController {
         String message = annualLeaveBalancesPage.isEmpty() ? "No employees leave balance found" : "Employee leave balance fetched successfully";
 
         return ResponseEntity.status(HttpStatus.OK).body(SuccessResponse.success(message, annualLeaveBalancesPage));
+    }
+    @GetMapping("/years")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<SuccessResponse<List<String>>> getDistinctYears() {
+        List<String> years = annualLeaveBalanceService.getDistinctYears();
+
+        String message = years.isEmpty() ? "No years found" : "Years fetched successfully";
+
+        return ResponseEntity.status(HttpStatus.OK).body(SuccessResponse.success(message, years));
     }
 }
