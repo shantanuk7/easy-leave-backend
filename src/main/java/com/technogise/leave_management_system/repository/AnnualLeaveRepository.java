@@ -16,7 +16,7 @@ import java.util.UUID;
 public interface AnnualLeaveRepository extends JpaRepository<AnnualLeave, UUID> {
 
     @EntityGraph(attributePaths = {"user"})
-    @Query("SELECT al FROM annual_leaves al WHERE al.year = :year")
+    @Query("SELECT al FROM annual_leaves al WHERE al.year = :year ORDER BY al.user.name ASC")
     Page<AnnualLeave> findAllByYear(@Param("year") String year, Pageable pageable);
 
     @Query("SELECT DISTINCT al.year FROM annual_leaves al ORDER BY al.year DESC")
