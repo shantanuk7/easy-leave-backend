@@ -192,45 +192,25 @@ public class LeaveService {
     @Transactional
     public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
-                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,
+                        "Leave not found with id: " + leaveId));
 
-        if (!isValidLeaveOwner(leave, userId)) {
-            throw new HttpException(HttpStatus.FORBIDDEN, "Not allowed to update this leave");
-        }
+        validateLeaveOwnership(leave, userId);
+        validateExistingLeaveDate(leave.getDate());
+        validateNewLeaveDate(request.getDate());
+        validateNewLeaveDateIsNotWeekend(request.getDate());
+        validateNoDateConflict(userId, leaveId, request.getDate());
 
-        if (request.getLeaveCategoryId() != null) {
-            LeaveCategory newCategory = leaveCategoryService
-                    .getLeaveCategoryById(request.getLeaveCategoryId());
-            leave.setLeaveCategory(newCategory);
-        }
-
-        if (!isValidLeaveDate(leave.getDate())) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot edit a leave that is no longer within the updatable date range");
-        }
-
-        if (!isValidLeaveDate(request.getDate())) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "New date must be within the current month for past dates, or within the current year for future dates");
-        }
-
-        if (isWeekendDay(request.getDate())) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot update leave to a weekend date");
-        }
-        List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
-        boolean hasConflict = existingLeaves.stream()
-                .filter(l -> !l.getId().equals(leaveId))
-                .anyMatch(l -> l.getDate().equals(request.getDate()));
-
-        if (hasConflict) {
-            throw new HttpException(HttpStatus.CONFLICT, "You already have a leave applied on this date");
-        }
-
-        leave.setDate(request.getDate());
+        LeaveCategory newCategory = leaveCategoryService
+                .getLeaveCategoryById(request.getLeaveCategoryId());
+        leave.setLeaveCategory(newCategory);
         leave.setDate(request.getDate());
         leave.setDuration(request.getDuration());
         leave.setStartTime(request.getTime());
         leave.setDescription(request.getDescription());
 
         Leave savedLeave = leaveRepository.save(leave);
+
         return new UpdateLeaveResponse(
                 savedLeave.getId(),
                 savedLeave.getDate(),
@@ -239,5 +219,45 @@ public class LeaveService {
                 savedLeave.getStartTime(),
                 savedLeave.getDescription()
         );
+    }
+
+    private void validateLeaveOwnership(Leave leave, UUID userId) {
+        if (!isValidLeaveOwner(leave, userId)) {
+            throw new HttpException(HttpStatus.FORBIDDEN,
+                    "Not allowed to update this leave");
+        }
+    }
+
+    private void validateExistingLeaveDate(LocalDate existingDate) {
+        if (!isValidLeaveDate(existingDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot edit a leave that is no longer within the updatable date range");
+        }
+    }
+
+    private void validateNewLeaveDate(LocalDate newDate) {
+        if (!isValidLeaveDate(newDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "New date must be within the current month for past dates, or within the current year for future dates");
+        }
+    }
+
+    private void validateNewLeaveDateIsNotWeekend(LocalDate newDate) {
+        if (isWeekendDay(newDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot update leave to a weekend date");
+        }
+    }
+
+    private void validateNoDateConflict(UUID userId, UUID leaveId, LocalDate newDate) {
+        List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
+        boolean hasConflict = existingLeaves.stream()
+                .filter(leave -> !leave.getId().equals(leaveId))
+                .anyMatch(leave -> leave.getDate().equals(newDate));
+
+        if (hasConflict) {
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "You already have a leave applied on this date");
+        }
     }
 }

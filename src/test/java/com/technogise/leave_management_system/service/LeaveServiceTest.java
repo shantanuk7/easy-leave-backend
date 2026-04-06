@@ -142,6 +142,7 @@ class LeaveServiceTest {
         request.setDuration(DurationType.FULL_DAY);
         request.setTime(LocalTime.of(9, 0));
         request.setDescription("Updated description");
+        request.setLeaveCategoryId(leaveCategoryId);
         return request;
     }
     @Test
@@ -708,7 +709,7 @@ class LeaveServiceTest {
     void shouldThrowConflictWhenNewDateAlreadyHasAnotherLeave() {
         User user = createValidUser();
 
-        LocalDate newDate = LocalDate.now().plusDays(5);
+        LocalDate newDate = nextWeekday();
 
         Leave leaveBeingUpdated = new Leave();
         leaveBeingUpdated.setId(UUID.randomUUID());
@@ -753,6 +754,8 @@ class LeaveServiceTest {
                 .thenReturn(Optional.of(leaveBeingUpdated));
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
                 .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(createValidLeaveCategory());
         when(leaveRepository.save(any(Leave.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -765,7 +768,7 @@ class LeaveServiceTest {
         User user = createValidUser();
         LeaveCategory category = createValidLeaveCategory();
 
-        LocalDate newDate = LocalDate.now().plusDays(5);
+        LocalDate newDate = nextWeekday();
 
         Leave leaveBeingUpdated = new Leave();
         leaveBeingUpdated.setId(UUID.randomUUID());
@@ -783,6 +786,8 @@ class LeaveServiceTest {
                 .thenReturn(Optional.of(leaveBeingUpdated));
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
                 .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveCategoryService.getLeaveCategoryById(any()))
+                .thenReturn(category);
         when(leaveRepository.save(any(Leave.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
