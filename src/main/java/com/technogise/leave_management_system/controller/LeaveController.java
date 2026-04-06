@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 import java.util.UUID;
@@ -51,5 +52,16 @@ public class LeaveController {
         List<CreateLeaveResponse> createLeaveResponses = leaveService.applyLeave(createLeaveRequest, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(SuccessResponse.success("Leaves applied successfully", createLeaveResponses));
+    }
+
+    @GetMapping("/{leaveId}")
+    public ResponseEntity<SuccessResponse<LeaveResponse>> getLeaveById(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID leaveId
+    ) {
+        UUID userId = user.getId();
+        LeaveResponse leaveResponse = leaveService.getLeaveById(leaveId, userId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(SuccessResponse.success("Leave retrieved successfully", leaveResponse));
     }
 }

@@ -345,4 +345,56 @@ public class LeaveControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("403"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Not Allowed to access this resource"));
     }
+
+    // GET /api/leaves/{leaveId} tests
+    @Test
+    void shouldReturn200WhenLeaveExists() throws Exception {
+        LeaveResponse response = new LeaveResponse(
+                employeeLeave.getId(),
+                employeeLeave.getDate(),
+                employee.getName(),
+                leaveCategory.getName(),
+                employeeLeave.getDuration(),
+                employeeLeave.getStartTime(),
+                employeeLeave.getUpdatedAt(),
+                employeeLeave.getDescription()
+        );
+
+        when(leaveService.getLeaveById(employeeLeave.getId(), employee.getId()))
+                .thenReturn(response);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves/{leaveId}", employeeLeave.getId())
+                        .with(mockUser(employee)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leave retrieved successfully"))
+                .andExpect(jsonPath("$.data.id").value(employeeLeave.getId().toString()))
+                .andExpect(jsonPath("$.data.employeeName").value(employee.getName()))
+                .andExpect(jsonPath("$.data.type").value(leaveCategory.getName()))
+                .andExpect(jsonPath("$.data.duration").value(employeeLeave.getDuration().toString()));
+    }
+
+    @Test
+    void shouldReturn404WhenLeaveNotFound() throws Exception {
+        when(leaveService.getLeaveById(employeeLeave.getId(), employee.getId()))
+                .thenThrow(new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves/{leaveId}", employeeLeave.getId())
+                        .with(mockUser(employee)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value("404"))
+                .andExpect(jsonPath("$.message").value("Leave not found"));
+    }
+
+    @Test
+    void shouldReturn403WhenUserNotAuthorized() throws Exception {
+        when(leaveService.getLeaveById(employeeLeave.getId(), employee.getId()))
+                .thenThrow(new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource"));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves/{leaveId}", employeeLeave.getId())
+                        .with(mockUser(employee)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.statusCode").value("403"))
+                .andExpect(jsonPath("$.message").value("Not Allowed to access this resource"));
+    }
 }
