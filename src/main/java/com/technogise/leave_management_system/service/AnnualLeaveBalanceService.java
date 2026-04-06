@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AnnualLeaveBalanceService {
     private final AnnualLeaveRepository annualLeaveRepository;
@@ -23,5 +25,9 @@ public class AnnualLeaveBalanceService {
                         Double.parseDouble(annualLeave.getTaken()),
                         Double.parseDouble(annualLeave.getBalance())
                 ));
+    }
+
+    public List<String> getDistinctYears() {
+        return annualLeaveRepository.findDistinctYears();
     }
 }

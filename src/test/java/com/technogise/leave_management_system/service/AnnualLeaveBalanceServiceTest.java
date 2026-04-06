@@ -123,4 +123,24 @@ class AnnualLeaveBalanceServiceTest {
         assertEquals(1, result.getContent().size());
         assertEquals(21.0, result.getContent().getFirst().getLeavesRemaining());
     }
+
+    @Test
+    void shouldReturnDistinctYearsInDescendingOrder() {
+        when(annualLeaveRepository.findDistinctYears()).thenReturn(List.of("2025", "2024", "2023"));
+
+        List<String> result = annualLeaveBalanceService.getDistinctYears();
+
+        assertEquals(3, result.size());
+        assertEquals("2025", result.getFirst());
+        assertEquals("2023", result.getLast());
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoYearsExist() {
+        when(annualLeaveRepository.findDistinctYears()).thenReturn(List.of());
+
+        List<String> result = annualLeaveBalanceService.getDistinctYears();
+
+        assertTrue(result.isEmpty());
+    }
 }
