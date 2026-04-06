@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.entity;
 
+import com.technogise.leave_management_system.exception.HttpException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
@@ -12,6 +13,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 
 import lombok.*;
+import org.springframework.http.HttpStatus;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -50,11 +53,25 @@ public class AnnualLeave {
 
     @PrePersist
     public void prePersist() {
+        validateTotal();
         if (this.balance == null) {
             this.balance = this.total;
         }
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+    }
+    private void validateTotal() {
+        if (this.total == null || this.total.isBlank()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Total Annual leave cannot be null or empty");
+        }
+        try {
+            double value = Double.parseDouble(this.total);
+            if (value < 0) {
+                throw new HttpException(HttpStatus.BAD_REQUEST, "Annual leave total cannot be negative");
+            }
+        } catch (NumberFormatException e) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Annual leave total must be a valid number");
+        }
     }
 
     @PreUpdate
