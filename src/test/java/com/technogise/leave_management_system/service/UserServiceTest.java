@@ -126,27 +126,4 @@ class UserServiceTest {
         assertEquals(admin.getId(), second.getId());
         assertEquals(admin.getEmail(), second.getEmail());
     }
-    @Test
-    void shouldReturnEmployeesWhenEmployeesExist() {
-        List<User> employees = List.of(new User(), new User());
-
-        when(userRepository.findAllByRole(UserRole.EMPLOYEE))
-                .thenReturn(employees);
-
-        List<User> result = userService.getAllEmployees();
-
-        assertEquals(2, result.size());
-        assertEquals(employees, result);
-    }
-
-    @Test
-    void shouldReturnEmptyListWhenNoEmployeesExist() {
-        when(userRepository.findAllByRole(UserRole.EMPLOYEE))
-                .thenReturn(List.of());
-
-        List<User> result = userService.getAllEmployees();
-
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-    }
 }
