@@ -13,11 +13,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import java.time.Year;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
@@ -52,7 +50,7 @@ class AnnualLeaveBalanceControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assert response.getBody() != null;
         assertTrue(response.getBody().getData().isEmpty());
-        assertEquals("No employees leave balance found", response.getBody().getMessage());
+        assertEquals("No employee leave balance found", response.getBody().getMessage());
     }
 
     @Test

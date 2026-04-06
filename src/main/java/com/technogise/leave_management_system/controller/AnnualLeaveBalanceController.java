@@ -33,7 +33,7 @@ public class AnnualLeaveBalanceController {
         Page<AnnualLeaveBalanceResponse> annualLeaveBalancesPage = annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(
                         requestedYear, pageable);
 
-        String message = annualLeaveBalancesPage.isEmpty() ? "No employees leave balance found" : "Employee leave balance fetched successfully";
+        String message = annualLeaveBalancesPage.isEmpty() ? "No employee leave balance found" : "Employee leave balance fetched successfully";
 
         return ResponseEntity.status(HttpStatus.OK).body(SuccessResponse.success(message, annualLeaveBalancesPage));
     }
