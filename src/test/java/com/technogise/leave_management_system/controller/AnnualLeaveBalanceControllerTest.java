@@ -1,17 +1,16 @@
 package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.dto.AnnualLeaveBalanceResponse;
-import com.technogise.leave_management_system.entity.User;
-import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.AnnualLeaveBalanceService;
-import com.technogise.leave_management_system.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -28,29 +27,10 @@ class AnnualLeaveBalanceControllerTest {
     @Mock
     private AnnualLeaveBalanceService annualLeaveBalanceService;
 
-    @Mock
-    private UserService userService;
-
     @InjectMocks
     private AnnualLeaveBalanceController annualLeaveBalanceController;
 
     private static final int CURRENT_YEAR = Year.now().getValue();
-
-    private User createManager() {
-        User manager = new User();
-        manager.setId(UUID.randomUUID());
-        manager.setName("Manager");
-        manager.setRole(UserRole.MANAGER);
-        return manager;
-    }
-
-    private User createEmployee() {
-        User employee = new User();
-        employee.setId(UUID.randomUUID());
-        employee.setName("Arjun");
-        employee.setRole(UserRole.EMPLOYEE);
-        return employee;
-    }
 
     private AnnualLeaveBalanceResponse createLeaveBalanceResponse() {
         return new AnnualLeaveBalanceResponse(
@@ -59,20 +39,15 @@ class AnnualLeaveBalanceControllerTest {
     }
 
     @Test
-    void shouldReturnForbiddenWhenCallerIsNotManager() {
-        User employee = createEmployee();
+    void shouldReturnEmptyDataWithNoEmployeesFoundMessageWhenNoDataExist() {
 
-        assertThrows(HttpException.class, () -> annualLeaveBalanceController.getAnnualLeaveBalance(null, employee));
-    }
+        Pageable pageable = Pageable.unpaged();
+        Page<AnnualLeaveBalanceResponse> emptyPage = Page.empty();
 
-    @Test
-    void shouldReturnEmptyDataWithNoEmployeesFoundMessageWhenNoEmployeesExist() {
-        User manager = createManager();
+        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, pageable)).thenReturn(emptyPage);
 
-        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR)).thenReturn(List.of());
-
-        ResponseEntity<SuccessResponse<List<AnnualLeaveBalanceResponse>>> response =
-                annualLeaveBalanceController.getAnnualLeaveBalance(null, manager);
+        ResponseEntity<SuccessResponse<Page<AnnualLeaveBalanceResponse>>> response =
+                annualLeaveBalanceController.getAnnualLeaveBalance(null, pageable);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assert response.getBody() != null;
@@ -81,34 +56,38 @@ class AnnualLeaveBalanceControllerTest {
     }
 
     @Test
-    void shouldReturnLeaveBalancesWhenCalledByManager() {
-        User manager = createManager();
-        List<AnnualLeaveBalanceResponse> leaveBalances = List.of(createLeaveBalanceResponse());
+    void shouldReturnLeaveBalancesWhenDataExists() {
 
-        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR)).thenReturn(leaveBalances);
+        Pageable pageable = Pageable.unpaged();
 
-        ResponseEntity<SuccessResponse<List<AnnualLeaveBalanceResponse>>> response =
-                annualLeaveBalanceController.getAnnualLeaveBalance(null, manager);
+        Page<AnnualLeaveBalanceResponse> page = new PageImpl<>(List.of(createLeaveBalanceResponse()));
+
+        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, pageable)).thenReturn(page);
+
+        ResponseEntity<SuccessResponse<Page<AnnualLeaveBalanceResponse>>> response =
+                annualLeaveBalanceController.getAnnualLeaveBalance(null, pageable);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assert response.getBody() != null;
-        assertEquals(1, response.getBody().getData().size());
+        assertEquals(1, response.getBody().getData().getContent().size());
         assertEquals("Employee leave balance fetched successfully", response.getBody().getMessage());
         assertTrue(response.getBody().isSuccess());
     }
 
     @Test
-    void shouldUseYearWhenYearParamIsPassed() {
-        User manager = createManager();
-        List<AnnualLeaveBalanceResponse> leaveBalances = List.of(createLeaveBalanceResponse());
+    void shouldUsePassedYearWhenYearParamIsProvided() {
 
-        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(2023)).thenReturn(leaveBalances);
+        Pageable pageable = Pageable.unpaged();
 
-        ResponseEntity<SuccessResponse<List<AnnualLeaveBalanceResponse>>> response =
-                annualLeaveBalanceController.getAnnualLeaveBalance( 2023, manager);
+        Page<AnnualLeaveBalanceResponse> page = new PageImpl<>(List.of(createLeaveBalanceResponse()));
+
+        when(annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(2023, pageable)).thenReturn(page);
+
+        ResponseEntity<SuccessResponse<Page<AnnualLeaveBalanceResponse>>> response =
+                annualLeaveBalanceController.getAnnualLeaveBalance(2023, pageable);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assert response.getBody() != null;
-        assertEquals(1, response.getBody().getData().size());
+        assertEquals(1, response.getBody().getData().getContent().size());
     }
 }
