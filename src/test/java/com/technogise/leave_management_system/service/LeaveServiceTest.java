@@ -803,4 +803,39 @@ class LeaveServiceTest {
         assertEquals(newDate, saved.getDate());
         assertEquals(leaveBeingUpdated.getId(), saved.getId());
     }
+
+    @Test
+    void shouldUpdateCategoryWhenNewCategoryIdIsProvided() {
+        User user = createValidUser();
+        LeaveCategory oldCategory = createValidLeaveCategory();
+
+        UUID newCategoryId = UUID.randomUUID();
+        LeaveCategory newCategory = new LeaveCategory();
+        newCategory.setId(newCategoryId);
+        newCategory.setName("Casual Leave");
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setLeaveCategory(oldCategory);
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setLeaveCategoryId(newCategoryId);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+                .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveCategoryService.getLeaveCategoryById(newCategoryId))
+                .thenReturn(newCategory);
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(
+                leaveBeingUpdated.getId(), request, userId);
+
+        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
+    }
 }
