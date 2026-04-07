@@ -20,6 +20,9 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
+import java.util.stream.Stream;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -189,23 +192,11 @@ public class LeaveService {
         return leave.getUser().getId().equals(userId);
     }
 
-    public void validateUpdateRequestHasAtLeastOneField(UpdateLeaveRequest request) {
-        if (request.getDate() == null
-                && request.getStartTime() == null
-                && request.getDescription() == null
-                && request.getDuration() == null
-                && request.getLeaveCategoryId() == null) {
-            throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "At least one field must be provided to update");
-        }
-    }
-
     @Transactional
     public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
         validateUpdateRequestHasAtLeastOneField(request);
         Leave leave = leaveRepository.findById(leaveId)
-                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,
-                        "Leave not found with id: " + leaveId));
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
         validateLeaveOwnership(leave, userId);
         validateExistingLeaveDate(leave.getDate());
@@ -218,32 +209,38 @@ public class LeaveService {
         }
 
         if (request.getLeaveCategoryId() != null) {
-            LeaveCategory newCategory = leaveCategoryService
-                    .getLeaveCategoryById(request.getLeaveCategoryId());
-            leave.setLeaveCategory(newCategory);
+            leave.setLeaveCategory(leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
         }
-
-        if (request.getDuration() != null) {
-            leave.setDuration(request.getDuration());
-        }
-
-        if (request.getStartTime() != null) {
-            leave.setStartTime(request.getStartTime());
-        }
-
-        if (request.getDescription() != null) {
-            leave.setDescription(request.getDescription());
-        }
+        Optional.ofNullable(request.getDuration()).ifPresent(leave::setDuration);
+        Optional.ofNullable(request.getStartTime()).ifPresent(leave::setStartTime);
+        Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
+        return mapToUpdateLeaveResponse(savedLeave);
+    }
 
+    public void validateUpdateRequestHasAtLeastOneField(UpdateLeaveRequest request) {
+        boolean hasField = Stream.of(
+                request.getDate(),
+                request.getStartTime(),
+                request.getDescription(),
+                request.getDuration(),
+                request.getLeaveCategoryId()
+        ).anyMatch(Objects::nonNull);
+
+        if (!hasField) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "At least one field must be provided to update");
+        }
+    }
+
+    private UpdateLeaveResponse mapToUpdateLeaveResponse(Leave leave) {
         return new UpdateLeaveResponse(
-                savedLeave.getId(),
-                savedLeave.getDate(),
-                savedLeave.getLeaveCategory().getName(),
-                savedLeave.getDuration(),
-                savedLeave.getStartTime(),
-                savedLeave.getDescription()
+                leave.getId(),
+                leave.getDate(),
+                leave.getLeaveCategory().getName(),
+                leave.getDuration(),
+                leave.getStartTime(),
+                leave.getDescription()
         );
     }
 

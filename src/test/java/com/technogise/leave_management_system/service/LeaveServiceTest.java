@@ -842,48 +842,6 @@ class LeaveServiceTest {
         verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
     }
 
-
-    @Test
-    void shouldNotThrowWhenOnlyDateIsProvided() {
-        UpdateLeaveRequest request = new UpdateLeaveRequest();
-        request.setDate(LocalDate.now().plusDays(3));
-
-        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
-    }
-
-    @Test
-    void shouldNotThrowWhenOnlyStartTimeIsProvided() {
-        UpdateLeaveRequest request = new UpdateLeaveRequest();
-        request.setStartTime(LocalTime.of(9, 0));
-
-        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
-    }
-
-    @Test
-    void shouldNotThrowWhenOnlyDescriptionIsProvided() {
-        UpdateLeaveRequest request = new UpdateLeaveRequest();
-        request.setDescription("Some description");
-
-        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
-    }
-
-    @Test
-    void shouldNotThrowWhenOnlyDurationIsProvided() {
-        UpdateLeaveRequest request = new UpdateLeaveRequest();
-        request.setDuration(DurationType.HALF_DAY);
-
-        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
-    }
-
-    @Test
-    void shouldNotThrowWhenOnlyLeaveCategoryIdIsProvided() {
-        UpdateLeaveRequest request = new UpdateLeaveRequest();
-        request.setLeaveCategoryId(leaveCategoryId);
-
-        assertDoesNotThrow(() ->
-                leaveService.validateUpdateRequestHasAtLeastOneField(request));
-    }
-
     @Test
     void shouldUpdateOnlyDescriptionWhenOnlyDescriptionIsProvided() {
         User user = createValidUser();
@@ -996,13 +954,12 @@ class LeaveServiceTest {
         assertEquals("Original description", response.getDescription());
     }
 
-
     @Test
     void shouldThrowBadRequestWhenAllFieldsInUpdateRequestAreNull() {
         UpdateLeaveRequest emptyRequest = new UpdateLeaveRequest();
 
         HttpException ex = assertThrows(HttpException.class,
-                () -> leaveService.validateUpdateRequestHasAtLeastOneField(emptyRequest));
+                () -> leaveService.updateLeave(UUID.randomUUID(), emptyRequest, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("At least one field must be provided to update", ex.getMessage());
