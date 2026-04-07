@@ -31,6 +31,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.cookie.secure}")
     private boolean cookieSecure;
 
+    @Value("${app.cookie.same.site}")
+    private String cookieSameSite;
+
     OAuth2LoginSuccessHandler(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
@@ -54,6 +57,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         cookie.setSecure(cookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(cookieExpiration);
+        cookie.setAttribute("SameSite", cookieSameSite);
 
         response.addCookie(cookie);
 
