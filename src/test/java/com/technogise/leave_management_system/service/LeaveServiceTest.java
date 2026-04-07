@@ -18,16 +18,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -527,5 +525,86 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
 
         assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
+    }
+
+    // GET /leaves/{leaveId} - leave details
+    @Test
+    void shouldReturnLeaveDetailsWhenLeaveExistsAndBelongsToUser() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        Leave leave = createEmployeeLeave(user, category);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        LeaveResponse response = leaveService.getLeaveById(leave.getId(), userId);
+
+        assertEquals(leave.getId(), response.id);
+        assertEquals(leave.getDate(), response.date);
+        assertEquals(user.getName(), response.employeeName);
+        assertEquals(category.getName(), response.type);
+        assertEquals(leave.getDuration(), response.duration);
+        assertEquals(leave.getStartTime(), response.startTime);
+        assertEquals(leave.getUpdatedAt(), response.applyOn);
+        assertEquals(leave.getDescription(), response.reason);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenLeaveDoesNotExist() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        Leave leave = createEmployeeLeave(user, category);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.empty());
+
+        HttpException exception = assertThrows(
+                HttpException.class,
+                () -> leaveService.getLeaveById(leave.getId(), UUID.randomUUID())
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertTrue(exception.getMessage().contains("Leave not found"));
+    }
+
+    @Test
+    void shouldReturnLeaveWhenUserIsManager() {
+        User employee = createEmployee();
+        User manager = createManager();
+
+        LeaveCategory category = createLeaveCategory();
+        Leave leave = createEmployeeLeave(employee, category);
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        LeaveResponse response = leaveService.getLeaveById(leave.getId(), manager.getId());
+
+        assertEquals(leave.getId(), response.id);
+        assertEquals(leave.getDate(), response.date);
+        assertEquals(employee.getName(), response.employeeName);
+        assertEquals(category.getName(), response.type);
+        assertEquals(leave.getDuration(), response.duration);
+        assertEquals(leave.getStartTime(), response.startTime);
+        assertEquals(leave.getUpdatedAt(), response.applyOn);
+        assertEquals(leave.getDescription(), response.reason);
+    }
+
+    @Test
+    void shouldThrowForbiddenWhenUserIsNotOwnerAndNotManager() {
+        User user = createEmployee();
+        User anotherUser = createEmployee();
+
+        LeaveCategory category = createLeaveCategory();
+        Leave leave = createEmployeeLeave(user, category);
+
+        when(userService.getUserByUserId(anotherUser.getId())).thenReturn(anotherUser);
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException exception = assertThrows(
+                HttpException.class,
+                () -> leaveService.getLeaveById(leave.getId(), anotherUser.getId())
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals("Not Allowed to access this resource", exception.getMessage());
     }
 }

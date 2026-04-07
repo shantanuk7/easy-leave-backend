@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -23,11 +21,11 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    public ResponseEntity<SuccessResponse<List<UserResponse>>> getAllUsers(
+    public ResponseEntity<SuccessResponse<Page<UserResponse>>> getAllUsers(
             Pageable pageable
     ) {
         Page<UserResponse> usersPage = userService.getAllUsers(pageable);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(SuccessResponse.success("Users retrieved successfully", usersPage.getContent()));
+                .body(SuccessResponse.success("Users retrieved successfully", usersPage));
     }
 }
