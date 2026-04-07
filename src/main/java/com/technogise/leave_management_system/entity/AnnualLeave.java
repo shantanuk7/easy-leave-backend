@@ -55,7 +55,7 @@ public class AnnualLeave {
             this.balance = this.total;
         }
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
     }
 
     @PreUpdate
