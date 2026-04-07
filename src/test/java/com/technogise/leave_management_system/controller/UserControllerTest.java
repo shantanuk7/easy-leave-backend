@@ -94,9 +94,9 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Users retrieved successfully"))
-                .andExpect(jsonPath("$.data[0].id").value(responses.get(0).getId().toString()))
-                .andExpect(jsonPath("$.data[0].name").value(responses.get(0).getName()))
-                .andExpect(jsonPath("$.data[1].id").value(responses.get(1).getId().toString()))
-                .andExpect(jsonPath("$.data[1].name").value(responses.get(1).getName()));
+                .andExpect(jsonPath("$.data.content[0].id").value(responses.get(0).getId().toString()))
+                .andExpect(jsonPath("$.data.content[0].name").value(responses.get(0).getName()))
+                .andExpect(jsonPath("$.data.content[1].id").value(responses.get(1).getId().toString()))
+                .andExpect(jsonPath("$.data.content[1].name").value(responses.get(1).getName()));
     }
 }
