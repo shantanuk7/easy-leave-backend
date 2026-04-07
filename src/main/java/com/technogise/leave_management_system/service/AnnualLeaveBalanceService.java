@@ -20,10 +20,7 @@ public class AnnualLeaveBalanceService {
 
         return annualLeaveRepository.findAllByYear(String.valueOf(year), pageable)
                 .map(annualLeave -> new AnnualLeaveBalanceResponse(annualLeave.getUser().getId().toString(),
-                        annualLeave.getUser().getName(),
-                        Double.parseDouble(annualLeave.getTotal()),
-                        Double.parseDouble(annualLeave.getTaken()),
-                        Double.parseDouble(annualLeave.getBalance())
+                        annualLeave.getUser().getName(), annualLeave.getTotal(), annualLeave.getTaken(), annualLeave.getBalance()
                 ));
     }
 
