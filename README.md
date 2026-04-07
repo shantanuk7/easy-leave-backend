@@ -377,7 +377,7 @@ Note: If no leave categories exist, the API returns `200 OK` with an empty array
 ## Update Scheduled Leave Endpoint
 
 ```bash
-PUT /api/leaves/{id}
+PATCH /api/leaves/{id}
 ```
 
 ---
