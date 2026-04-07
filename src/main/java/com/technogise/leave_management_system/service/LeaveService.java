@@ -189,25 +189,51 @@ public class LeaveService {
         return leave.getUser().getId().equals(userId);
     }
 
+    public void validateUpdateRequestHasAtLeastOneField(UpdateLeaveRequest request) {
+        if (request.getDate() == null
+                && request.getStartTime() == null
+                && request.getDescription() == null
+                && request.getDuration() == null
+                && request.getLeaveCategoryId() == null) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "At least one field must be provided to update");
+        }
+    }
+
     @Transactional
     public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
+        validateUpdateRequestHasAtLeastOneField(request);
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,
                         "Leave not found with id: " + leaveId));
 
         validateLeaveOwnership(leave, userId);
         validateExistingLeaveDate(leave.getDate());
-        validateNewLeaveDate(request.getDate());
-        validateNewLeaveDateIsNotWeekend(request.getDate());
-        validateNoDateConflict(userId, leaveId, request.getDate());
 
-        LeaveCategory newCategory = leaveCategoryService
-                .getLeaveCategoryById(request.getLeaveCategoryId());
-        leave.setLeaveCategory(newCategory);
-        leave.setDate(request.getDate());
-        leave.setDuration(request.getDuration());
-        leave.setStartTime(request.getStartTime());
-        leave.setDescription(request.getDescription());
+        if (request.getDate() != null) {
+            validateNewLeaveDate(request.getDate());
+            validateNewLeaveDateIsNotWeekend(request.getDate());
+            validateNoDateConflict(userId, leaveId, request.getDate());
+            leave.setDate(request.getDate());
+        }
+
+        if (request.getLeaveCategoryId() != null) {
+            LeaveCategory newCategory = leaveCategoryService
+                    .getLeaveCategoryById(request.getLeaveCategoryId());
+            leave.setLeaveCategory(newCategory);
+        }
+
+        if (request.getDuration() != null) {
+            leave.setDuration(request.getDuration());
+        }
+
+        if (request.getStartTime() != null) {
+            leave.setStartTime(request.getStartTime());
+        }
+
+        if (request.getDescription() != null) {
+            leave.setDescription(request.getDescription());
+        }
 
         Leave savedLeave = leaveRepository.save(leave);
 

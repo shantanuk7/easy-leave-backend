@@ -841,4 +841,170 @@ class LeaveServiceTest {
         assertEquals("Casual Leave", response.getLeaveCategoryName());
         verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
     }
+
+
+    @Test
+    void shouldNotThrowWhenOnlyDateIsProvided() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().plusDays(3));
+
+        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
+    }
+
+    @Test
+    void shouldNotThrowWhenOnlyStartTimeIsProvided() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setStartTime(LocalTime.of(9, 0));
+
+        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
+    }
+
+    @Test
+    void shouldNotThrowWhenOnlyDescriptionIsProvided() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDescription("Some description");
+
+        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
+    }
+
+    @Test
+    void shouldNotThrowWhenOnlyDurationIsProvided() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDuration(DurationType.HALF_DAY);
+
+        assertDoesNotThrow(() -> leaveService.validateUpdateRequestHasAtLeastOneField(request));
+    }
+
+    @Test
+    void shouldNotThrowWhenOnlyLeaveCategoryIdIsProvided() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+
+        assertDoesNotThrow(() ->
+                leaveService.validateUpdateRequestHasAtLeastOneField(request));
+    }
+
+    @Test
+    void shouldUpdateOnlyDescriptionWhenOnlyDescriptionIsProvided() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDescription("Updated description");
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals("Updated description", response.getDescription());
+        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(DurationType.FULL_DAY, response.getDuration());
+        verify(leaveRepository, never()).existsByUserIdAndDateAndIdNot(any(), any(), any());
+    }
+
+    @Test
+    void shouldUpdateOnlyDurationWhenOnlyDurationIsProvided() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDuration(DurationType.HALF_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals(DurationType.HALF_DAY, response.getDuration());
+        assertEquals("Original description", response.getDescription());
+    }
+
+    @Test
+    void shouldUpdateOnlyStartTimeWhenOnlyStartTimeIsProvided() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setStartTime(LocalTime.of(11, 0));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals(LocalTime.of(11, 0), response.getStartTime());
+        assertEquals(DurationType.FULL_DAY, response.getDuration());
+    }
+
+    @Test
+    void shouldUpdateOnlyLeaveCategoryWhenOnlyLeaveCategoryIdIsProvided() {
+        User user = createValidUser();
+        LeaveCategory oldCategory = createValidLeaveCategory();
+
+        UUID newCategoryId = UUID.randomUUID();
+        LeaveCategory newCategory = new LeaveCategory();
+        newCategory.setId(newCategoryId);
+        newCategory.setName("Casual Leave");
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(oldCategory);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setLeaveCategoryId(newCategoryId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(newCategoryId)).thenReturn(newCategory);
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        assertEquals("Original description", response.getDescription());
+    }
+
+
+    @Test
+    void shouldThrowBadRequestWhenAllFieldsInUpdateRequestAreNull() {
+        UpdateLeaveRequest emptyRequest = new UpdateLeaveRequest();
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.validateUpdateRequestHasAtLeastOneField(emptyRequest));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("At least one field must be provided to update", ex.getMessage());
+    }
 }
