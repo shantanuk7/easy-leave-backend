@@ -42,7 +42,7 @@ class AnnualLeaveBalanceServiceTest {
         return employee;
     }
 
-    private AnnualLeave createAnnualLeave(User employee, String total, String taken, String balance, int year) {
+    private AnnualLeave createAnnualLeave(User employee, Double total, Double taken, Double balance, int year) {
         AnnualLeave annualLeave = new AnnualLeave();
         annualLeave.setId(UUID.randomUUID());
         annualLeave.setUser(employee);
@@ -58,7 +58,7 @@ class AnnualLeaveBalanceServiceTest {
     @Test
     void shouldReturnLeaveBalanceForEmployeeWithLeavesTaken() {
         User employee = createEmployee();
-        AnnualLeave annualLeave = createAnnualLeave(employee, "24", "5", "19", CURRENT_YEAR);
+        AnnualLeave annualLeave = createAnnualLeave(employee, 24.0, 5.0, 19.0, CURRENT_YEAR);
         Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(annualLeave), PAGEABLE, 1);
 
         when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), PAGEABLE)).thenReturn(annualLeavePage);
@@ -76,7 +76,7 @@ class AnnualLeaveBalanceServiceTest {
     @Test
     void shouldReturnFullBalanceWhenEmployeeHasNotTakenAnyLeave() {
         User employee = createEmployee();
-        AnnualLeave annualLeave = createAnnualLeave(employee, "24", "0", "24", CURRENT_YEAR);
+        AnnualLeave annualLeave = createAnnualLeave(employee, 24.0, 0.0, 24.0, CURRENT_YEAR);
         Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(annualLeave));
 
         when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), Pageable.unpaged())).thenReturn(annualLeavePage);
@@ -112,7 +112,7 @@ class AnnualLeaveBalanceServiceTest {
     @Test
     void shouldReturnCorrectBalanceWhenYearParamIsPassed() {
         User employee = createEmployee();
-        AnnualLeave annualLeave = createAnnualLeave(employee, "24", "3", "21", CURRENT_YEAR);
+        AnnualLeave annualLeave = createAnnualLeave(employee, 24.0, 3.0, 21.0, CURRENT_YEAR);
         Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(annualLeave));
 
         when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), Pageable.unpaged())).thenReturn(annualLeavePage);
@@ -142,18 +142,5 @@ class AnnualLeaveBalanceServiceTest {
         List<String> result = annualLeaveBalanceService.getDistinctYears();
 
         assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void shouldThrowExceptionWhenLeaveValuesAreMalformed() {
-        User employee = createEmployee();
-        AnnualLeave malformedLeave = createAnnualLeave(employee, "invalid_number", "5", "19", CURRENT_YEAR);
-        Page<AnnualLeave> annualLeavePage = new PageImpl<>(List.of(malformedLeave), PAGEABLE, 1);
-
-        when(annualLeaveRepository.findAllByYear(String.valueOf(CURRENT_YEAR), PAGEABLE)).thenReturn(annualLeavePage);
-
-        assertThrows(NumberFormatException.class, () -> {
-            annualLeaveBalanceService.getAnnualLeaveBalancesForAllEmployees(CURRENT_YEAR, PAGEABLE);
-        });
     }
 }
