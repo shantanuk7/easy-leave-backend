@@ -712,7 +712,6 @@ class LeaveServiceTest {
     @Test
     void shouldThrowConflictWhenNewDateAlreadyHasAnotherLeave() {
         User user = createValidUser();
-
         LocalDate newDate = nextWeekday();
 
         Leave leaveBeingUpdated = new Leave();
@@ -720,18 +719,13 @@ class LeaveServiceTest {
         leaveBeingUpdated.setUser(user);
         leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
 
-        Leave anotherLeaveOnSameDate = new Leave();
-        anotherLeaveOnSameDate.setId(UUID.randomUUID());
-        anotherLeaveOnSameDate.setUser(user);
-        anotherLeaveOnSameDate.setDate(newDate);
-
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(newDate);
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
-                .thenReturn(List.of(leaveBeingUpdated, anotherLeaveOnSameDate));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+                .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
@@ -739,10 +733,10 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
     }
 
+
     @Test
     void shouldNotThrowConflictWhenNewDateIsSameAsExistingLeaveDate() {
         User user = createValidUser();
-
         LocalDate sameDate = LocalDate.now().plusDays(3);
 
         Leave leaveBeingUpdated = new Leave();
@@ -756,8 +750,8 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
-                .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, sameDate, leaveBeingUpdated.getId()))
+                .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(createValidLeaveCategory());
         when(leaveRepository.save(any(Leave.class)))
@@ -788,8 +782,8 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
-                .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+                .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(any()))
                 .thenReturn(category);
         when(leaveRepository.save(any(Leave.class)))
@@ -834,12 +828,12 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
-                .thenReturn(List.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, request.getDate(), leaveBeingUpdated.getId()))
+                .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(newCategoryId))
                 .thenReturn(newCategory);
         when(leaveRepository.save(any(Leave.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         UpdateLeaveResponse response = leaveService.updateLeave(
                 leaveBeingUpdated.getId(), request, userId);
