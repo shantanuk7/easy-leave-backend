@@ -38,7 +38,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -427,10 +427,10 @@ public class LeaveControllerTest {
         when(leaveService.updateLeave(eq(leaveId), any(UpdateLeaveRequest.class), eq(employee.getId())))
                 .thenReturn(response);
 
-        mockMvc.perform(patch("/api/leaves/{id}" ,leaveId)
-                .with(mockUser(employee))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(put("/api/leaves/{id}", leaveId)
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Leave updated successfully"))
