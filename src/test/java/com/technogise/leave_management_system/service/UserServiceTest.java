@@ -127,4 +127,3 @@ class UserServiceTest {
         assertEquals(admin.getEmail(), second.getEmail());
     }
 }
-
