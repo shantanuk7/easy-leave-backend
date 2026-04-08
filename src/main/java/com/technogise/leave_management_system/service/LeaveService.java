@@ -325,11 +325,18 @@ public class LeaveService {
         }
     }
 
+    private void validateLeaveAlreadyCancelled(Leave leave) {
+        if (leave.getDeletedAt() != null) {
+            throw new HttpException(HttpStatus.CONFLICT, "Leave is already cancelled");
+        }
+    }
+
     public void cancelLeave(UUID leaveId, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
 
         validateLeaveOwnership(leave, userId, "Not allowed to cancel this leave");
+        validateLeaveAlreadyCancelled(leave);
 
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);

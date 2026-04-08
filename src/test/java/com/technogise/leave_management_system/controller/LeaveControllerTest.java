@@ -515,4 +515,18 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.statusCode").value("403"))
                 .andExpect(jsonPath("$.message").value("Not allowed to cancel this leave"));
     }
+
+    @Test
+    void shouldThrow409ConflictErrorWhenEmployeeTriesToCancelLeaveThatIsAlreadyCancelled() throws Exception {
+        UUID leaveId = UUID.randomUUID();
+
+        doThrow(new HttpException(HttpStatus.CONFLICT, "Leave is already cancelled"))
+                .when(leaveService).cancelLeave(leaveId, employee.getId());
+
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
+                        .with(mockUser(employee)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.statusCode").value("409"))
+                .andExpect(jsonPath("$.message").value("Leave is already cancelled"));
+    }
 }

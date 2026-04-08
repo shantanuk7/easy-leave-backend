@@ -1125,4 +1125,20 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
     }
+
+    @Test
+    void shouldThrowConflictErrorWhenTryingToCancelAlreadyCancelledLeave() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+
+        Leave existingLeave = createEmployeeLeave(user, leaveCategory);
+        existingLeave.setDeletedAt(existingLeave.getCreatedAt().plusDays(1));
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.cancelLeave(existingLeave.getId(), user.getId()));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+    }
 }
