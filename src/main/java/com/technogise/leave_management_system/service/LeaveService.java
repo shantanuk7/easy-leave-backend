@@ -234,7 +234,7 @@ public class LeaveService {
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
-        validateLeaveOwnership(leave, userId);
+        validateLeaveOwnership(leave, userId, "Not allowed to update this leave");
         validateExistingLeaveDate(leave.getDate());
 
         DurationType oldDuration = leave.getDuration();
@@ -289,10 +289,10 @@ public class LeaveService {
         );
     }
 
-    private void validateLeaveOwnership(Leave leave, UUID userId) {
+    private void validateLeaveOwnership(Leave leave, UUID userId, String errorMessage) {
         if (!isValidLeaveOwner(leave, userId)) {
             throw new HttpException(HttpStatus.FORBIDDEN,
-                    "Not allowed to update this leave");
+                    errorMessage);
         }
     }
 
@@ -325,9 +325,11 @@ public class LeaveService {
         }
     }
 
-    public void cancelLeave(UUID leaveId) {
+    public void cancelLeave(UUID leaveId, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
+
+        validateLeaveOwnership(leave, userId, "Not allowed to cancel this leave");
 
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);

@@ -1106,7 +1106,23 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
 
-        leaveService.cancelLeave(existingLeave.getId());
+        leaveService.cancelLeave(existingLeave.getId(), user.getId());
         assertNotNull(existingLeave.getDeletedAt());
+    }
+
+    @Test
+    void shouldThrowForbiddenErrorWhenUserTriesToCancelLeaveThatDoesNotBelongToThem() {
+        User user = createValidUser();
+        User differentUser = createEmployee();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+
+        Leave existingLeave = createEmployeeLeave(differentUser, leaveCategory);
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.cancelLeave(existingLeave.getId(), user.getId()));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
     }
 }

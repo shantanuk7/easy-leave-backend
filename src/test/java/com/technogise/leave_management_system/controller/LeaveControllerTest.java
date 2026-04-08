@@ -38,6 +38,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -499,5 +500,19 @@ public class LeaveControllerTest {
         mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
                         .with(mockUser(employee)))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldThrow403WhenEmployeeTriesToCancelLeaveThatBelongsToDifferentUser() throws Exception {
+        UUID leaveId = UUID.randomUUID();
+
+        doThrow(new HttpException(HttpStatus.FORBIDDEN, "Not allowed to cancel this leave"))
+                .when(leaveService).cancelLeave(leaveId, employee.getId());
+
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
+                        .with(mockUser(employee)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.statusCode").value("403"))
+                .andExpect(jsonPath("$.message").value("Not allowed to cancel this leave"));
     }
 }

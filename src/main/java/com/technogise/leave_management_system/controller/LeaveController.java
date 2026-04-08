@@ -107,7 +107,7 @@ public class LeaveController {
             @AuthenticationPrincipal User user,
             @PathVariable UUID id
     ) {
-        leaveService.cancelLeave(id);
+        leaveService.cancelLeave(id, user.getId());
         return ResponseEntity.noContent().build();
     };
 }
