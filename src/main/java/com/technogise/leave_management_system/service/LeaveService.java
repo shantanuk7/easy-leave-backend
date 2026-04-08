@@ -194,7 +194,7 @@ public class LeaveService {
 
     @Transactional
     public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
-        validateUpdateRequestHasAtLeastOneField(request);
+        validateUpdateRequestNotEmpty(request);
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
@@ -219,7 +219,7 @@ public class LeaveService {
         return mapToUpdateLeaveResponse(savedLeave);
     }
 
-    public void validateUpdateRequestHasAtLeastOneField(UpdateLeaveRequest request) {
+    public void validateUpdateRequestNotEmpty(UpdateLeaveRequest request) {
         boolean hasField = Stream.of(
                 request.getDate(),
                 request.getStartTime(),

@@ -737,7 +737,7 @@ class LeaveServiceTest {
     @Test
     void shouldNotThrowConflictWhenNewDateIsSameAsExistingLeaveDate() {
         User user = createValidUser();
-        LocalDate sameDate = LocalDate.now().plusDays(3);
+        LocalDate sameDate = nextWeekday();
 
         Leave leaveBeingUpdated = new Leave();
         leaveBeingUpdated.setId(UUID.randomUUID());
@@ -820,10 +820,11 @@ class LeaveServiceTest {
         Leave leaveBeingUpdated = new Leave();
         leaveBeingUpdated.setId(UUID.randomUUID());
         leaveBeingUpdated.setUser(user);
-        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setDate(nextWeekday());
         leaveBeingUpdated.setLeaveCategory(oldCategory);
 
         UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(nextWeekday());
         request.setLeaveCategoryId(newCategoryId);
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
