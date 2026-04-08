@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATION;
 import static com.technogise.leave_management_system.enums.ScopeType.SELF;
@@ -322,5 +323,13 @@ public class LeaveService {
             throw new HttpException(HttpStatus.CONFLICT,
                     "You already have a leave applied on this date");
         }
+    }
+
+    public void cancelLeave(UUID leaveId) {
+        Leave leave = leaveRepository.findById(leaveId)
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
+
+        leave.setDeletedAt(LocalDateTime.now());
+        leaveRepository.save(leave);
     }
 }

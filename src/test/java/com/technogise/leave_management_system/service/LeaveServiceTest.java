@@ -1097,4 +1097,16 @@ class LeaveServiceTest {
 
         verify(annualLeaveService, never()).syncOnLeaveCreated(any(), any(), anyInt(), anyInt());
     }
+
+    @Test
+    void shouldCancelLeaveSuccessfullyWhenLeaveExists() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        Leave existingLeave = createEmployeeLeave(user, leaveCategory);
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+
+        leaveService.cancelLeave(existingLeave.getId());
+        assertNotNull(existingLeave.getDeletedAt());
+    }
 }

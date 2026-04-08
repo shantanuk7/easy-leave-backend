@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import java.util.List;
 import java.util.UUID;
@@ -100,4 +101,13 @@ public class LeaveController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Leave updated successfully", updateLeaveResponse));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancelLeave(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id
+    ) {
+        leaveService.cancelLeave(id);
+        return ResponseEntity.noContent().build();
+    };
 }

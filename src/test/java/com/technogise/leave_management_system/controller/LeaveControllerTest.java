@@ -491,4 +491,13 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.data.duration").value("FULL_DAY"))
                 .andExpect(jsonPath("$.data.description").value("Updated description"));
     }
+
+    @Test
+    void shouldReturn204WhenLeaveIsCancelledSuccessfully() throws Exception {
+        UUID leaveId = UUID.randomUUID();
+
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
+                        .with(mockUser(employee)))
+                .andExpect(status().isNoContent());
+    }
 }
