@@ -1,8 +1,10 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -138,6 +140,15 @@ class LeaveServiceTest {
         return user;
     }
 
+    private UpdateLeaveRequest createValidUpdateRequest() {
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().plusDays(3));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(9, 0));
+        request.setDescription("Updated description");
+        request.setLeaveCategoryId(leaveCategoryId);
+        return request;
+    }
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
@@ -606,5 +617,352 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         assertEquals("Not Allowed to access this resource", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenLeaveIdDoesNotExist() {
+        UUID unknownLeaveId = UUID.randomUUID();
+        when(leaveRepository.findById(unknownLeaveId)).thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(unknownLeaveId, createValidUpdateRequest(), userId));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowForbiddenWhenUserDoesNotExist() {
+        User user = createValidUser();
+        UUID differentUserId = UUID.randomUUID();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), createValidUpdateRequest(), differentUserId));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenExistingLeaveDateIsNoLongerEditable() {
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().minusMonths(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), createValidUpdateRequest(), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenNewDateIsNotWithinValidRange() {
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(LocalDate.now().plusYears(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenNewDateIsAWeekend() {
+        User user = createValidUser();
+
+        LocalDate nextSaturday = LocalDate.now()
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(nextSaturday);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowConflictWhenNewDateAlreadyHasAnotherLeave() {
+        User user = createValidUser();
+        LocalDate newDate = nextWeekday();
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(newDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+                .thenReturn(true);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+    }
+
+
+    @Test
+    void shouldNotThrowConflictWhenNewDateIsSameAsExistingLeaveDate() {
+        User user = createValidUser();
+        LocalDate sameDate = nextWeekday();
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(sameDate);
+        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(sameDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, sameDate, leaveBeingUpdated.getId()))
+                .thenReturn(false);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(createValidLeaveCategory());
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() ->
+                leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+    }
+
+    @Test
+    void shouldSaveUpdatedLeaveWithCorrectFieldsAndReturnResponse() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        LocalDate newDate = nextWeekday();
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setLeaveCategory(category);
+        leaveBeingUpdated.setDuration(DurationType.FULL_DAY);
+        leaveBeingUpdated.setStartTime(LocalTime.of(9, 0));
+        leaveBeingUpdated.setDescription("Original description");
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(newDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+                .thenReturn(false);
+        when(leaveCategoryService.getLeaveCategoryById(any()))
+                .thenReturn(category);
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(
+                leaveBeingUpdated.getId(), request, userId);
+
+        assertNotNull(response);
+        assertEquals(newDate, response.getDate());
+        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(request.getDuration(), response.getDuration());
+        assertEquals(request.getStartTime(), response.getStartTime());
+        assertEquals(request.getDescription(), response.getDescription());
+
+        ArgumentCaptor<Leave> captor = ArgumentCaptor.forClass(Leave.class);
+        verify(leaveRepository).save(captor.capture());
+
+        Leave saved = captor.getValue();
+        assertEquals(newDate, saved.getDate());
+        assertEquals(leaveBeingUpdated.getId(), saved.getId());
+    }
+
+    @Test
+    void shouldUpdateCategoryWhenNewCategoryIdIsProvided() {
+        User user = createValidUser();
+        LeaveCategory oldCategory = createValidLeaveCategory();
+
+        UUID newCategoryId = UUID.randomUUID();
+        LeaveCategory newCategory = new LeaveCategory();
+        newCategory.setId(newCategoryId);
+        newCategory.setName("Casual Leave");
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(nextWeekday());
+        leaveBeingUpdated.setLeaveCategory(oldCategory);
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(nextWeekday());
+        request.setLeaveCategoryId(newCategoryId);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, request.getDate(), leaveBeingUpdated.getId()))
+                .thenReturn(false);
+        when(leaveCategoryService.getLeaveCategoryById(newCategoryId))
+                .thenReturn(newCategory);
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(
+                leaveBeingUpdated.getId(), request, userId);
+
+        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
+    }
+
+    @Test
+    void shouldUpdateOnlyDescriptionWhenOnlyDescriptionIsProvided() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDescription("Updated description");
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals("Updated description", response.getDescription());
+        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(DurationType.FULL_DAY, response.getDuration());
+        verify(leaveRepository, never()).existsByUserIdAndDateAndIdNot(any(), any(), any());
+    }
+
+    @Test
+    void shouldUpdateOnlyDurationWhenOnlyDurationIsProvided() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDuration(DurationType.HALF_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals(DurationType.HALF_DAY, response.getDuration());
+        assertEquals("Original description", response.getDescription());
+    }
+
+    @Test
+    void shouldUpdateOnlyStartTimeWhenOnlyStartTimeIsProvided() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setStartTime(LocalTime.of(11, 0));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals(LocalTime.of(11, 0), response.getStartTime());
+        assertEquals(DurationType.FULL_DAY, response.getDuration());
+    }
+
+    @Test
+    void shouldUpdateOnlyLeaveCategoryWhenOnlyLeaveCategoryIdIsProvided() {
+        User user = createValidUser();
+        LeaveCategory oldCategory = createValidLeaveCategory();
+
+        UUID newCategoryId = UUID.randomUUID();
+        LeaveCategory newCategory = new LeaveCategory();
+        newCategory.setId(newCategoryId);
+        newCategory.setName("Casual Leave");
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(oldCategory);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(9, 0));
+        leave.setDescription("Original description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setLeaveCategoryId(newCategoryId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(newCategoryId)).thenReturn(newCategory);
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        assertEquals("Original description", response.getDescription());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenAllFieldsInUpdateRequestAreNull() {
+        UpdateLeaveRequest emptyRequest = new UpdateLeaveRequest();
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(UUID.randomUUID(), emptyRequest, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("At least one field must be provided to update", ex.getMessage());
     }
 }

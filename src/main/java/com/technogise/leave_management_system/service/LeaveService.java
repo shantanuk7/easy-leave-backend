@@ -3,6 +3,8 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -18,6 +20,9 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
+import java.util.stream.Stream;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -181,5 +186,97 @@ public class LeaveService {
                 leave.getUpdatedAt(),
                 leave.getDescription()
         );
+    }
+
+    public boolean isValidLeaveOwner(Leave leave, UUID userId) {
+        return leave.getUser().getId().equals(userId);
+    }
+
+    @Transactional
+    public UpdateLeaveResponse updateLeave(UUID leaveId, UpdateLeaveRequest request, UUID userId) {
+        validateUpdateRequestNotEmpty(request);
+        Leave leave = leaveRepository.findById(leaveId)
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
+
+        validateLeaveOwnership(leave, userId);
+        validateExistingLeaveDate(leave.getDate());
+
+        if (request.getDate() != null) {
+            validateNewLeaveDate(request.getDate());
+            validateNewLeaveDateIsNotWeekend(request.getDate());
+            validateNoDateConflict(userId, leaveId, request.getDate());
+            leave.setDate(request.getDate());
+        }
+
+        if (request.getLeaveCategoryId() != null) {
+            leave.setLeaveCategory(leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
+        }
+        Optional.ofNullable(request.getDuration()).ifPresent(leave::setDuration);
+        Optional.ofNullable(request.getStartTime()).ifPresent(leave::setStartTime);
+        Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
+
+        Leave savedLeave = leaveRepository.save(leave);
+        return mapToUpdateLeaveResponse(savedLeave);
+    }
+
+    public void validateUpdateRequestNotEmpty(UpdateLeaveRequest request) {
+        boolean hasField = Stream.of(
+                request.getDate(),
+                request.getStartTime(),
+                request.getDescription(),
+                request.getDuration(),
+                request.getLeaveCategoryId()
+        ).anyMatch(Objects::nonNull);
+
+        if (!hasField) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "At least one field must be provided to update");
+        }
+    }
+
+    private UpdateLeaveResponse mapToUpdateLeaveResponse(Leave leave) {
+        return new UpdateLeaveResponse(
+                leave.getId(),
+                leave.getDate(),
+                leave.getLeaveCategory().getName(),
+                leave.getDuration(),
+                leave.getStartTime(),
+                leave.getDescription()
+        );
+    }
+
+    private void validateLeaveOwnership(Leave leave, UUID userId) {
+        if (!isValidLeaveOwner(leave, userId)) {
+            throw new HttpException(HttpStatus.FORBIDDEN,
+                    "Not allowed to update this leave");
+        }
+    }
+
+    private void validateExistingLeaveDate(LocalDate existingDate) {
+        if (!isValidLeaveDate(existingDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot edit a leave that is no longer within the updatable date range");
+        }
+    }
+
+    private void validateNewLeaveDate(LocalDate newDate) {
+        if (!isValidLeaveDate(newDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "New date must be within the current month for past dates, or within the current year for future dates");
+        }
+    }
+
+    private void validateNewLeaveDateIsNotWeekend(LocalDate newDate) {
+        if (isWeekendDay(newDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot update leave to a weekend date");
+        }
+    }
+
+    private void validateNoDateConflict(UUID userId, UUID leaveId, LocalDate newDate) {
+        boolean hasConflict = leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveId);
+        if (hasConflict) {
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "You already have a leave applied on this date");
+        }
     }
 }
