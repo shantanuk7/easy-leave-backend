@@ -374,7 +374,7 @@ GET /api/leave-categories
 
 Note: If no leave categories exist, the API returns `200 OK` with an empty array in `data`.
 
-## Update Scheduled Leave Endpoint
+### Update Scheduled Leave Endpoint
 
 ```bash
 PATCH /api/leaves/{id}
@@ -382,7 +382,7 @@ PATCH /api/leaves/{id}
 
 ---
 
-## Request Body
+#### Request Body
 
 | Field           | Type      | Required | Description                          |
 | --------------- | --------- | -------- | ------------------------------------ |
@@ -394,7 +394,7 @@ PATCH /api/leaves/{id}
 
 ---
 
-## Example Request
+#### Example Request
 
 ```json
 {
@@ -408,7 +408,7 @@ PATCH /api/leaves/{id}
 
 ---
 
-## Validation Rules
+#### Validation Rules
 
 | Rule                  | Description                                          | Error           |
 | --------------------- | ---------------------------------------------------- | --------------- |
@@ -421,7 +421,7 @@ PATCH /api/leaves/{id}
 
 ---
 
-## Response
+#### Response
 
 **200 OK**
 
@@ -442,7 +442,7 @@ PATCH /api/leaves/{id}
 
 ---
 
-## Error Responses
+#### Error Responses
 
 | HTTP Status | Scenario                            |
 | ----------- | ----------------------------------- |
@@ -452,5 +452,22 @@ PATCH /api/leaves/{id}
 | 409         | Leave already exists on that date   |
 
 ---
+### Employee Leave Metrics - `GET /api/dashboard/manager`
+Provides manager-specific dashboard metrics including total employees, employees on leave today, and employees on leave tomorrow.
 
+**Endpoint:** `GET /api/dashboard/manager`  
+**Authorization:** Requires `MANAGER` role
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Manager Dashboard data retrieved successfully",
+  "data": {
+    "totalEmployees": 50,
+    "totalEmployeesOnLeaveToday": 5,
+    "totalEmployeesOnLeaveTomorrow": 3
+  }
+}
+```
 ---
