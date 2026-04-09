@@ -10,20 +10,21 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @Component
 public class JwtFilter extends OncePerRequestFilter {
+
     private final JwtService jwtService;
     private final UserRepository userRepository;
-
     private static final String TOKEN_NAME = "token";
 
     public JwtFilter(JwtService jwtService, UserRepository userRepository) {
@@ -33,10 +34,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-        @Nonnull HttpServletRequest request,
-        @Nonnull HttpServletResponse response,
-        @Nonnull FilterChain filterChain
+            @Nonnull HttpServletRequest request,
+            @Nonnull HttpServletResponse response,
+            @Nonnull FilterChain filterChain
     ) throws ServletException, IOException {
+
+        String requestPath = request.getRequestURI();
         String token = null;
 
         if (request.getCookies() != null) {
@@ -48,6 +51,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         if (token == null) {
+            log.debug("No JWT token found in request to path={}", requestPath);
             filterChain.doFilter(request, response);
             return;
         }
@@ -57,19 +61,26 @@ public class JwtFilter extends OncePerRequestFilter {
         String role = claims.get("role", String.class);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> {
+                    log.warn("User not found for email={}", email);
+                    return new RuntimeException("User not found");
+                });
 
         if (email != null
-            && jwtService.isTokenValid(token, email)
-            && !jwtService.isTokenExpired(token)
+                && jwtService.isTokenValid(token, email)
+                && !jwtService.isTokenExpired(token)
         ) {
+            log.debug("JWT valid for email={}, role={}, path={}", email, role, requestPath);
+
             UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(
-                    user,
-                    null,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
+                    new UsernamePasswordAuthenticationToken(
+                            user,
+                            null,
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
             SecurityContextHolder.getContext().setAuthentication(auth);
+        } else {
+            log.warn("JWT invalid or expired for email={}, path={}", email, requestPath);
         }
 
         filterChain.doFilter(request, response);
