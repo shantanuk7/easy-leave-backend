@@ -157,7 +157,7 @@ class LeaveServiceTest {
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<Leave> result = leaveService.filterLeavesByScope("self", employee);
@@ -179,7 +179,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         User manager = createManager();
-        when(leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<Leave> result = leaveService.filterLeavesByScope("organization", manager);
@@ -260,7 +260,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null,null ,null);
@@ -274,7 +274,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "", null ,null);
@@ -289,7 +289,7 @@ class LeaveServiceTest {
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         employeeLeave.setDate(LocalDate.now().plusDays(1));
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming", null,null);

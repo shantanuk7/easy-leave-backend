@@ -55,10 +55,10 @@ public class LeaveService {
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
         if (scope.equalsIgnoreCase(SELF.toString())) {
-            return leaveRepository.findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
+            return leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
         } else if (scope.equalsIgnoreCase(ORGANIZATION.toString())) {
             if (user.getRole().equals(UserRole.MANAGER)) {
-                return leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "date"));
+                return leaveRepository.findAllByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, "date"));
             }
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
