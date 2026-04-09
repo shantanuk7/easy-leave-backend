@@ -20,7 +20,7 @@
 
 ---
 ## How to Test
-
+<!-- Step-by-step instructions -->
 
 ---
 ## Checklist
@@ -31,4 +31,4 @@
 
 ---
 ## Out of Scope (if any)
-<!-- -->
+<!-- What is NOT included in this PR -->
