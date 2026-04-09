@@ -1141,4 +1141,15 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
     }
+
+    @Test
+    void shouldReturn400WhenCancellingLeaveWithPastDate() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        Leave existingLeave = createEmployeeLeave(user, leaveCategory);
+        existingLeave.setDate(existingLeave.getDate().minusDays(1));
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+        assertThrows(HttpException.class, () -> leaveService.cancelLeave(existingLeave.getId(), userId));
+    }
 }

@@ -529,4 +529,18 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.statusCode").value("409"))
                 .andExpect(jsonPath("$.message").value("Leave is already cancelled"));
     }
+
+    @Test
+    void shouldReturn400WhenEmployeeTriesToCancelPastLeave() throws Exception {
+        UUID leaveId = employeeLeave.getId();
+
+        doThrow(new HttpException(HttpStatus.BAD_REQUEST, "Cannot cancel a past leave"))
+                .when(leaveService).cancelLeave(leaveId, employee.getId());
+
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
+                        .with(mockUser(employee)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value("400"))
+                .andExpect(jsonPath("$.message").value("Cannot cancel a past leave"));
+    }
 }

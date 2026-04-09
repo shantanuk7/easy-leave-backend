@@ -331,12 +331,19 @@ public class LeaveService {
         }
     }
 
+    private void validatePastLeaveDate(LocalDate date) {
+        if (date.isBefore(LocalDate.now())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot cancel a past leave");
+        }
+    }
+
     public void cancelLeave(UUID leaveId, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
 
         validateLeaveOwnership(leave, userId, "Not allowed to cancel this leave");
         validateLeaveAlreadyCancelled(leave);
+        validatePastLeaveDate(leave.getDate());
 
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);
