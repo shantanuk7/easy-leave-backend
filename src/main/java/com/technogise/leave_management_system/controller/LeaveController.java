@@ -9,6 +9,7 @@ import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.LeaveService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/leaves")
 public class LeaveController {
@@ -40,8 +42,10 @@ public class LeaveController {
             @RequestParam(name = "scope", defaultValue = "self") String scope,
             @AuthenticationPrincipal User user
     ) {
+        log.info("GET /api/leaves called by userId={}, scope={}, status={}", user.getId(), scope, status);
         UUID userId = user.getId();
         List<LeaveResponse> leaveList = leaveService.getAllLeaves(userId, scope, status);
+        log.debug("Returning {} leaves for userId={}", leaveList.size(), user.getId());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Leaves retrieved successfully", leaveList));
     }
@@ -51,8 +55,11 @@ public class LeaveController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody CreateLeaveRequest createLeaveRequest
     ) {
+        log.info("POST /api/leaves called by userId={}, dates={}, duration={}",
+                user.getId(), createLeaveRequest.getDates(), createLeaveRequest.getDuration());
         UUID userId = user.getId();
         List<CreateLeaveResponse> createLeaveResponses = leaveService.applyLeave(createLeaveRequest, userId);
+        log.debug("Leave application successful for userId={}, {} leave(s) created", user.getId(), createLeaveResponses.size());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(SuccessResponse.success("Leaves applied successfully", createLeaveResponses));
     }
@@ -62,8 +69,10 @@ public class LeaveController {
             @AuthenticationPrincipal User user,
             @PathVariable UUID leaveId
     ) {
+        log.info("GET /api/leaves/{} called by userId={}", leaveId, user.getId());
         UUID userId = user.getId();
         LeaveResponse leaveResponse = leaveService.getLeaveById(leaveId, userId);
+        log.info("Returning {} leave for userId={}", leaveResponse, userId.toString());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Leave retrieved successfully", leaveResponse));
     }
@@ -74,8 +83,13 @@ public class LeaveController {
             @Valid @RequestBody UpdateLeaveRequest updateLeaveRequest,
             @AuthenticationPrincipal User user
     ) {
+        log.info("PATCH /api/leaves/{} called by userId={}", id, user.getId());
+
         UpdateLeaveResponse updateLeaveResponse = leaveService.updateLeave(
                 id, updateLeaveRequest, user.getId());
+
+        log.debug("Leave updated successfully leaveId={}, userId={}", id, user.getId());
+
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Leave updated successfully", updateLeaveResponse));
     }

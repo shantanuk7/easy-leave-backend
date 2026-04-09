@@ -35,7 +35,6 @@ public class MdcFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Find the first matching prefix or default to "APP"
         String layer = PATH_TO_LAYER_MAP.entrySet().stream()
                 .filter(entry -> path.startsWith(entry.getKey()))
                 .map(Map.Entry::getValue)

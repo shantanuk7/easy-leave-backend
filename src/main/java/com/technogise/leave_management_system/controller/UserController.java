@@ -2,6 +2,7 @@ package com.technogise.leave_management_system.controller;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -24,7 +26,12 @@ public class UserController {
     public ResponseEntity<SuccessResponse<Page<UserResponse>>> getAllUsers(
             Pageable pageable
     ) {
+        log.info("GET /api/users called, page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+
         Page<UserResponse> usersPage = userService.getAllUsers(pageable);
+
+        log.debug("Returning {} users", usersPage.getTotalElements());
+
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Users retrieved successfully", usersPage));
     }
