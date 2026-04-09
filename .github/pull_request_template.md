@@ -8,6 +8,7 @@
 * [ ] Refactor
 * [ ] Performance improvement
 * [ ] Chore
+* [ ] docs
 
 ---
 ## Ticket Number
