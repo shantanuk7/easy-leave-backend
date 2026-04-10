@@ -36,4 +36,6 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     );
 
     Optional<Leave> findByUserIdAndDate(UUID userId, LocalDate date);
+
+    boolean existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(UUID userId, LocalDate date, UUID id);
 }

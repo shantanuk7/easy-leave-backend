@@ -820,7 +820,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
@@ -847,7 +847,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, sameDate, leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, sameDate, leaveBeingUpdated.getId()))
                 .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(createValidLeaveCategory());
@@ -879,7 +879,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
                 .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(any()))
                 .thenReturn(category);
@@ -927,7 +927,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, request.getDate(), leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, request.getDate(), leaveBeingUpdated.getId()))
                 .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(newCategoryId))
                 .thenReturn(newCategory);
@@ -966,7 +966,7 @@ class LeaveServiceTest {
         assertEquals("Updated description", response.getDescription());
         assertEquals(category.getName(), response.getLeaveCategoryName());
         assertEquals(DurationType.FULL_DAY, response.getDuration());
-        verify(leaveRepository, never()).existsByUserIdAndDateAndIdNot(any(), any(), any());
+        verify(leaveRepository, never()).existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any());
     }
 
     @Test
@@ -1191,5 +1191,32 @@ class LeaveServiceTest {
         Leave saved = captor.getValue().getFirst();
         assertNull(saved.getDeletedAt());
         assertEquals(cancelledLeave.getId(), saved.getId());
+    }
+
+    @Test
+    void shouldNotThrowConflictWhenUpdatingToADateThatHasACancelledLeave() {
+        User user = createValidUser();
+        LocalDate newDate = nextWeekday();
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(newDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
+                .thenReturn(false);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(createValidLeaveCategory());
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() ->
+                leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
     }
 }

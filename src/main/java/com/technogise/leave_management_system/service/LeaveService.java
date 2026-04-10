@@ -356,7 +356,7 @@ public class LeaveService {
     }
 
     private void validateNoDateConflict(UUID userId, UUID leaveId, LocalDate newDate) {
-        boolean hasConflict = leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveId);
+        boolean hasConflict = leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveId);
         if (hasConflict) {
             throw new HttpException(HttpStatus.CONFLICT,
                     "You already have a leave applied on this date");
