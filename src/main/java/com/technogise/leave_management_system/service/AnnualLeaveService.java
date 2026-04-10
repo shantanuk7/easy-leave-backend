@@ -1,0 +1,78 @@
+package com.technogise.leave_management_system.service;
+
+import com.technogise.leave_management_system.entity.AnnualLeave;
+import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import java.time.Year;
+import java.util.UUID;
+
+@Service
+public class AnnualLeaveService {
+
+    private final AnnualLeaveRepository annualLeaveRepository;
+    private final LeaveCategoryService leaveCategoryService;
+
+    public AnnualLeaveService(AnnualLeaveRepository annualLeaveRepository,  LeaveCategoryService leaveCategoryService) {
+        this.annualLeaveRepository = annualLeaveRepository;
+        this.leaveCategoryService = leaveCategoryService;
+    }
+
+    public void createAnnualLeaveForNewEmployee(User user) {
+        int currentYear = Year.now().getValue();
+        String currentYearStr = String.valueOf(currentYear);
+
+        if (annualLeaveRepository.findByUserIdAndYear(user.getId(), currentYearStr).isPresent()) {
+            return;
+        }
+
+        int joiningMonth = user.getCreatedAt().getMonthValue();
+        int monthsRemaining = 13 - joiningMonth;
+        double totalAllocated = leaveCategoryService.getAllocatedDaysByCategoryName("Annual Leave");
+        double proratedTotal = (totalAllocated / 12.0) * monthsRemaining;
+
+        AnnualLeave annualLeave = new AnnualLeave();
+        annualLeave.setUser(user);
+        annualLeave.setTotal(proratedTotal);
+        annualLeave.setTaken(0.0);
+        annualLeave.setYear(currentYearStr);
+        annualLeave.setBalance(proratedTotal);
+        annualLeaveRepository.save(annualLeave);
+    }
+
+    public void syncOnLeaveCreated(User user, DurationType duration, int numberOfDates, int year) {
+        AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
+
+        double leaveDaysChange = (duration == DurationType.FULL_DAY ? 1.0 : 0.5) * numberOfDates;
+
+        annualLeave.setTaken(annualLeave.getTaken() + leaveDaysChange);
+        annualLeave.setBalance(annualLeave.getBalance() - leaveDaysChange);
+
+        annualLeaveRepository.save(annualLeave);
+    }
+
+    public void syncOnLeaveUpdated(User user, DurationType oldDuration, DurationType newDuration, int year) {
+        if (oldDuration == newDuration) {
+            return;
+        }
+
+        AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
+
+        double leaveDaysChange = (newDuration == DurationType.FULL_DAY) ? 0.5 : -0.5;
+
+        annualLeave.setTaken(annualLeave.getTaken() + leaveDaysChange);
+        annualLeave.setBalance(annualLeave.getBalance() - leaveDaysChange);
+
+        annualLeaveRepository.save(annualLeave);
+    }
+
+    private AnnualLeave getAnnualLeave(UUID userId, int year) {
+        return annualLeaveRepository.findByUserIdAndYear(userId, String.valueOf(year))
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Annual leave record not found for user: " + userId
+                                + " and year: " + year));
+    }
+}
