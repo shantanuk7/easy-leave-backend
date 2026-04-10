@@ -31,4 +31,10 @@ public class LeaveCategoryService {
                 .toList();
     }
 
+    public int getAllocatedDaysByCategoryName(String name) {
+        LeaveCategory category = leaveCategoryRepository.findByName(name).orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND,
+                        "Leave category not found with name: " + name));
+        return category.getAllocatedDays();
+    }
+
 }
