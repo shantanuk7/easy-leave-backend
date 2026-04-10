@@ -157,31 +157,18 @@ public class LeaveService {
 
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
+
         User user = userService.getUserByUserId(userId);
-        LeaveCategory category = leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
-        List<LocalDate> validDates = request.getDates().stream()
-                .filter(this::isValidLeaveDate).toList();
-        if (validDates.isEmpty()) {
-            throw new HttpException(HttpStatus.BAD_REQUEST,
-                    String.format("Invalid date range. Past dates must be within %s, and future dates must be within %d.",LocalDate.now().getMonth().name().toLowerCase(), LocalDate.now().getYear()));
-        }
-        List<LocalDate> workingDaysOnly = validDates.stream()
-                .filter(date -> !isWeekendDay(date)).toList();
-        if (workingDaysOnly.isEmpty()) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply for leave on weekends.");
-        }
-        List<Leave> existingLeaves = leaveRepository.findAllByUserId(userId, Sort.unsorted());
-        Set<LocalDate> alreadyTakenDates = existingLeaves.stream()
-                .map(Leave::getDate)
-                .collect(Collectors.toSet());
-        List<LocalDate> newDatesToApply = workingDaysOnly.stream()
-                .filter(date -> !alreadyTakenDates.contains(date))
-                .toList();
-        if (newDatesToApply.isEmpty()) {
-            throw new HttpException(HttpStatus.CONFLICT,
-                    "All selected working days have already been applied for.");
-        }
-        List<Leave> leavesToSave = newDatesToApply.stream()
+        LeaveCategory category =
+                leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
+
+        List<LocalDate> workingDates =
+                filterValidWorkingDates(request.getDates());
+
+        List<LocalDate> newDates =
+                removeAlreadyAppliedDates(userId, workingDates);
+
+        List<Leave> leavesToSave = newDates.stream()
                 .map(date -> {
                     Leave leave = new Leave();
                     leave.setDate(date);
@@ -194,7 +181,7 @@ public class LeaveService {
                 }).toList();
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
         if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
-            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDatesToApply.size(), LocalDate.now().getYear());
+            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
@@ -222,6 +209,55 @@ public class LeaveService {
                 leave.getUpdatedAt(),
                 leave.getDescription()
         );
+    }
+
+    private List<LocalDate> filterValidWorkingDates(List<LocalDate> requestedDates) {
+
+        List<LocalDate> validDates = requestedDates.stream()
+                .filter(this::isValidLeaveDate)
+                .toList();
+
+        if (validDates.isEmpty()) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Dates must be within current month for past dates, or current year for future dates"
+            );
+        }
+
+        List<LocalDate> workingDays = validDates.stream()
+                .filter(date -> !isWeekendDay(date))
+                .toList();
+
+        if (workingDays.isEmpty()) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot apply leave on weekends"
+            );
+        }
+
+        return workingDays;
+    }
+
+    private List<LocalDate> removeAlreadyAppliedDates(UUID userId, List<LocalDate> dates) {
+
+        Set<LocalDate> existingDates = leaveRepository
+                .findAllByUserId(userId, Sort.unsorted())
+                .stream()
+                .map(Leave::getDate)
+                .collect(Collectors.toSet());
+
+        List<LocalDate> newDates = dates.stream()
+                .filter(date -> !existingDates.contains(date))
+                .toList();
+
+        if (newDates.isEmpty()) {
+            throw new HttpException(
+                    HttpStatus.CONFLICT,
+                    "All selected working days already applied"
+            );
+        }
+
+        return newDates;
     }
 
     public boolean isValidLeaveOwner(Leave leave, UUID userId) {
