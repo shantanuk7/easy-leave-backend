@@ -8,6 +8,7 @@ import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -38,13 +39,15 @@ public class LeaveService {
     private final LeaveRepository leaveRepository;
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
+    private final AnnualLeaveService annualLeaveService;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
-                        LeaveCategoryService leaveCategoryService) {
+                        LeaveCategoryService leaveCategoryService, AnnualLeaveService annualLeaveService) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
+        this.annualLeaveService = annualLeaveService;
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -154,8 +157,8 @@ public class LeaveService {
                     leave.setDuration(request.getDuration());
                     return leave;
                 }).toList();
-
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
+        annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDatesToApply.size(), LocalDate.now().getYear());
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),
@@ -176,11 +179,7 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
 
-        return new LeaveResponse(
-                leave.getId(),
-                leave.getDate(),
-                leave.getUser().getName(),
-                leave.getLeaveCategory().getName(),
+        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), leave.getLeaveCategory().getName(),
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
@@ -201,6 +200,8 @@ public class LeaveService {
         validateLeaveOwnership(leave, userId);
         validateExistingLeaveDate(leave.getDate());
 
+        DurationType oldDuration = leave.getDuration();     //full day or half day
+
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
             validateNewLeaveDateIsNotWeekend(request.getDate());
@@ -216,6 +217,11 @@ public class LeaveService {
         Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
+
+        if (request.getDuration() != null) {
+            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldDuration, request.getDuration(), leave.getDate().getYear());
+        }
+
         return mapToUpdateLeaveResponse(savedLeave);
     }
 
