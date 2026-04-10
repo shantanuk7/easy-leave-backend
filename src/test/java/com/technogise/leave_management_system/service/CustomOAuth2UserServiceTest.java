@@ -23,13 +23,15 @@ import static org.springframework.security.oauth2.core.OAuth2AccessToken.TokenTy
 public class CustomOAuth2UserServiceTest {
     @Mock
     private UserService userService;
+    @Mock
+    private AnnualLeaveService annualLeaveService;
 
     private CustomOAuth2UserService customOAuth2UserService;
     private static final String ALLOWED_DOMAIN = "@technogise.com";
 
     @BeforeEach
     void setUp() {
-        customOAuth2UserService = new CustomOAuth2UserService(ALLOWED_DOMAIN, userService);
+        customOAuth2UserService = new CustomOAuth2UserService(ALLOWED_DOMAIN, userService,  annualLeaveService);
     }
 
     private OAuth2UserRequest buildRequest(WireMockRuntimeInfo wm) {
@@ -72,7 +74,7 @@ public class CustomOAuth2UserServiceTest {
 
     @Test
     void shouldThrowExceptionWhenEmailDomainContainsAllowedDomainAsSubstring(WireMockRuntimeInfo wm) {
-        customOAuth2UserService = new CustomOAuth2UserService("technogise.com", userService);
+        customOAuth2UserService = new CustomOAuth2UserService("technogise.com", userService,  annualLeaveService);
 
         stubFor(get("/userinfo").willReturn(okJson("""
             { "sub": "01", "email": "rakshit@hackertechnogise.com", "name": "Rakshit" }
