@@ -8,6 +8,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -16,13 +17,15 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 
+@Slf4j
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
+
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final CsrfTokenRepository csrfTokenRepository;
 
     @Value("${app.cookie.expiration}")
     private int cookieExpiration;
@@ -36,8 +39,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.cookie.same.site}")
     private String cookieSameSite;
 
-    private final CsrfTokenRepository csrfTokenRepository;
-
     OAuth2LoginSuccessHandler(
             UserRepository userRepository,
             JwtService jwtService,
@@ -47,6 +48,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         this.jwtService = jwtService;
         this.csrfTokenRepository = csrfTokenRepository;
     }
+
     @Override
     public void onAuthenticationSuccess(@NonNull HttpServletRequest request,
                                         @NonNull HttpServletResponse response,
@@ -55,10 +57,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
 
+        log.info("OAuth2 login:  for email={}", email);
+
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> {
+                    log.error("OAuth2 login failed — user not found for email={}", email);
+                    return new HttpException(HttpStatus.NOT_FOUND, "User not found");
+                });
 
         String token = jwtService.generateToken(user);
+        log.debug("JWT generated for userId={}, email={}", user.getId(), email);
 
         Cookie cookie = new Cookie("token", token);
         cookie.setHttpOnly(true);
@@ -70,6 +78,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.addCookie(cookie);
         CsrfToken csrfToken = csrfTokenRepository.generateToken(request);
         csrfTokenRepository.saveToken(csrfToken, request, response);
+
+        log.info("OAuth2 login successful for userId={}, email={}, redirecting to {}",
+                user.getId(), email, redirectFrontendUrl);
         response.sendRedirect(redirectFrontendUrl);
     }
 }
