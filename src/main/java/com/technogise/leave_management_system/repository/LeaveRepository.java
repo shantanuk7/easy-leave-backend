@@ -7,8 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -28,11 +28,12 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     @EntityGraph(attributePaths = {"user", "leaveCategory"})
     List<Leave> findAllByUserIdAndDateBetween(UUID userId, LocalDate startDate, LocalDate endDate, Sort sort);
 
-
     long countByUserIdAndLeaveCategoryIdAndDateBetween(
             UUID userId,
             UUID leaveCategoryId,
             LocalDate startDate,
             LocalDate endDate
     );
+
+    Optional<Leave> findByUserIdAndDate(UUID userId, LocalDate date);
 }

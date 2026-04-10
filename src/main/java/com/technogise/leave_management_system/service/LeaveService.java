@@ -170,13 +170,15 @@ public class LeaveService {
 
         List<Leave> leavesToSave = newDates.stream()
                 .map(date -> {
-                    Leave leave = new Leave();
+                    Leave leave = leaveRepository.findByUserIdAndDate(userId, date)
+                            .orElse(new Leave());
                     leave.setDate(date);
                     leave.setUser(user);
                     leave.setLeaveCategory(category);
                     leave.setDescription(request.getDescription());
                     leave.setStartTime(request.getStartTime());
                     leave.setDuration(request.getDuration());
+                    leave.setDeletedAt(null);
                     return leave;
                 }).toList();
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
@@ -241,7 +243,7 @@ public class LeaveService {
     private List<LocalDate> removeAlreadyAppliedDates(UUID userId, List<LocalDate> dates) {
 
         Set<LocalDate> existingDates = leaveRepository
-                .findAllByUserId(userId, Sort.unsorted())
+                .findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
                 .stream()
                 .map(Leave::getDate)
                 .collect(Collectors.toSet());

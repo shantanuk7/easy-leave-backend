@@ -445,7 +445,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(user);
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -471,7 +471,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
@@ -488,7 +488,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
@@ -526,7 +526,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
                 .thenReturn(List.of(existingLeaveOnDayTwo));
         when(leaveRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
 
@@ -621,7 +621,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
 
         assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
     }
@@ -1151,5 +1151,45 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
         assertThrows(HttpException.class, () -> leaveService.cancelLeave(existingLeave.getId(), userId));
+    }
+
+    @Test
+    void shouldReactivateCancelledLeaveWhenSameDateLeaveIsAppliedAgain() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        LocalDate weekday = nextWeekday();
+
+        Leave cancelledLeave = new Leave();
+        cancelledLeave.setId(UUID.randomUUID());
+        cancelledLeave.setDate(weekday);
+        cancelledLeave.setUser(user);
+        cancelledLeave.setDeletedAt(LocalDateTime.now().minusDays(1));
+
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(weekday),
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Reapplying cancelled leave"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+                .thenReturn(List.of());
+        when(leaveRepository.findByUserIdAndDate(userId, weekday))
+                .thenReturn(Optional.of(cancelledLeave));
+        when(leaveRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
+
+        List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
+
+        assertEquals(1, responses.size());
+
+        ArgumentCaptor<List<Leave>> captor = ArgumentCaptor.forClass(List.class);
+        verify(leaveRepository).saveAll(captor.capture());
+
+        Leave saved = captor.getValue().getFirst();
+        assertNull(saved.getDeletedAt());
+        assertEquals(cancelledLeave.getId(), saved.getId());
     }
 }
