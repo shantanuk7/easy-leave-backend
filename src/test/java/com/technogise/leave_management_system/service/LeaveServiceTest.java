@@ -46,6 +46,9 @@ class LeaveServiceTest {
     @Mock
     private LeaveCategoryService leaveCategoryService;
 
+    @Mock
+    private AnnualLeaveService annualLeaveService;
+
     @InjectMocks
     private LeaveService leaveService;
 
