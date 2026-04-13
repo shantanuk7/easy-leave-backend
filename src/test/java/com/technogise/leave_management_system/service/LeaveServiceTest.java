@@ -321,6 +321,33 @@ class LeaveServiceTest {
     }
 
     @Test
+    void shouldDefaultToCurrentYearWhenYearIsNotProvided() {
+        User manager = createManager();
+        User employee = createEmployee();
+        LeaveCategory category = createLeaveCategory();
+        Leave leave = createEmployeeLeave(employee, category);
+
+        int currentYear = LocalDate.now().getYear();
+        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
+        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserIdAndDateBetween(
+                employee.getId(), startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date")))
+                .thenReturn(List.of(leave));
+
+        List<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(), "ORGANIZATION", null, employee.getId(), null);
+
+        assertEquals(1, result.size());
+        verify(leaveRepository).findAllByUserIdAndDateBetween(
+                employee.getId(), startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date"));
+    }
+
+    @Test
     void shouldThrowNotFoundWhenUserDoesNotExist() {
         User employee = createEmployee();
         when(userService.getUserByUserId(employee.getId()))
