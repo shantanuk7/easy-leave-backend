@@ -80,6 +80,11 @@ public class LeaveService {
         User user = userService.getUserByUserId(userId);
         List<Leave> leaveList = filterLeavesByScope(scope, user);
 
+        if (empId != null && !scope.equalsIgnoreCase(ORGANIZATION.toString())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "empId can only be used with scope=ORGANIZATION");
+        }
+
         if (status != null && !status.isBlank()) {
             leaveList = filterLeavesByStatus(status, leaveList);
         }

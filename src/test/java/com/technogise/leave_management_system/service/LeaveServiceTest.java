@@ -230,6 +230,19 @@ class LeaveServiceTest {
     }
 
     @Test
+    void shouldThrowBadRequestWhenEmpIdIsProvidedWithScopeSelf() {
+        User manager = createManager();
+        UUID empId = UUID.randomUUID();
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(manager.getId(), "SELF", null, empId, null));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("empId can only be used with scope=ORGANIZATION", ex.getMessage());
+    }
+
+    @Test
     void shouldThrowBadRequestWhenStatusParamIsInvalid() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
