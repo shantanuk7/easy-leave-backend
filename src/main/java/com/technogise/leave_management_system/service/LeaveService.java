@@ -76,6 +76,19 @@ public class LeaveService {
         throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid status query parameter");
     }
 
+    private LeaveResponse mapToLeaveResponse(Leave leave) {
+        return new LeaveResponse(
+                leave.getId(),
+                leave.getDate(),
+                leave.getUser().getName(),
+                leave.getLeaveCategory().getName(),
+                leave.getDuration(),
+                leave.getStartTime(),
+                leave.getUpdatedAt(),
+                leave.getDescription()
+        );
+    }
+
     public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status, UUID empId, Integer year) {
         User user = userService.getUserByUserId(userId);
         List<Leave> leaveList = filterLeavesByScope(scope, user);
@@ -89,16 +102,7 @@ public class LeaveService {
             leaveList = filterLeavesByStatus(status, leaveList);
         }
 
-        return leaveList.stream().map(leave -> new LeaveResponse(
-                leave.getId(),
-                leave.getDate(),
-                leave.getUser().getName(),
-                leave.getLeaveCategory().getName(),
-                leave.getDuration(),
-                leave.getStartTime(),
-                leave.getUpdatedAt(),
-                leave.getDescription()
-        )).toList();
+        return leaveList.stream().map(this::mapToLeaveResponse).toList();
     }
 
     public boolean isValidLeaveDate(LocalDate date) {
