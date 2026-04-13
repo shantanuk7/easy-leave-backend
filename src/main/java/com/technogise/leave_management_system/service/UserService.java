@@ -82,17 +82,20 @@ public class UserService {
         user.setRole(request.getRole());
     }
 
-    public List<EmployeeLeavesRecordResponse> getEmployeeLeavesRecordByYear(UUID userId, int year) {
+    public List<EmployeeLeavesRecordResponse> getEmployeeLeavesRecordByYear(UUID userId, Integer year) {
         getUserByUserId(userId);
+
+        int requestedYear = (year != null) ? year : LocalDate.now().getYear();
 
         List<LeaveCategory> leaveCategories = leaveCategoryRepository.findAll();
         List<EmployeeLeavesRecordResponse> leavesRecord = new ArrayList<>();
 
-        LocalDate startDate = LocalDate.of(year, 1, 1);
-        LocalDate endDate = LocalDate.of(year, 12, 31);
+        LocalDate startDate = LocalDate.of(requestedYear, 1, 1);
+        LocalDate endDate = LocalDate.of(requestedYear, 12, 31);
 
         for (LeaveCategory category : leaveCategories) {
-            long leavesTaken = leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(userId, category.getId(), startDate, endDate);
+            long leavesTaken = leaveRepository.
+                    countByUserIdAndLeaveCategoryIdAndDateBetween(userId, category.getId(), startDate, endDate);
 
             if (leavesTaken > 0) {
                 leavesRecord.add(EmployeeLeavesRecordResponse

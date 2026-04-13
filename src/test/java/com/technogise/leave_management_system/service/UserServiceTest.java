@@ -270,4 +270,34 @@ class UserServiceTest {
 
         assertTrue(result.isEmpty());
     }
+
+    @Test
+    void shouldUseGivenYearWhenYearIsNotNull() {
+        int year = 2026;
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(new User()));
+
+        when(leaveCategoryRepository.findAll())
+                .thenReturn(List.of());
+
+        List<EmployeeLeavesRecordResponse> result =
+                userService.getEmployeeLeavesRecordByYear(userId, year);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void shouldUseCurrentYearWhenYearIsNull() {
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(new User()));
+
+        when(leaveCategoryRepository.findAll())
+                .thenReturn(List.of());
+
+        List<EmployeeLeavesRecordResponse> result =
+                userService.getEmployeeLeavesRecordByYear(userId, null);
+
+        assertNotNull(result);
+    }
 }
