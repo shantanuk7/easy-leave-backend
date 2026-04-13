@@ -76,7 +76,7 @@ public class LeaveService {
         throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid status query parameter");
     }
 
-    public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status) {
+    public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status, UUID empId, Integer year) {
         User user = userService.getUserByUserId(userId);
         List<Leave> leaveList = filterLeavesByScope(scope, user);
 

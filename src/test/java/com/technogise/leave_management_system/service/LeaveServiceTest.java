@@ -246,7 +246,7 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null);
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null,null ,null);
 
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
@@ -260,7 +260,7 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "");
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "", null ,null);
 
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
@@ -275,7 +275,7 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming");
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming", null,null);
 
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
@@ -288,7 +288,7 @@ class LeaveServiceTest {
                 .thenThrow(new HttpException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
         assertThrows(HttpException.class, () ->
-                leaveService.getAllLeaves(employee.getId(), "self", null));
+                leaveService.getAllLeaves(employee.getId(), "self", null, null ,null));
     }
 
     @Test

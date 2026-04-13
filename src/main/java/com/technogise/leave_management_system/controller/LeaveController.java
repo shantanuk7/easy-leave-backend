@@ -44,7 +44,7 @@ public class LeaveController {
     ) {
         log.info("GET /api/leaves called by userId={}, scope={}, status={}", user.getId(), scope, status);
         UUID userId = user.getId();
-        List<LeaveResponse> leaveList = leaveService.getAllLeaves(userId, scope, status);
+        List<LeaveResponse> leaveList = leaveService.getAllLeaves(userId, scope, status, null , null);
         log.debug("Returning {} leaves for userId={}", leaveList.size(), user.getId());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Leaves retrieved successfully", leaveList));
