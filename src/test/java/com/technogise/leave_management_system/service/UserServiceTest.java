@@ -1,10 +1,14 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
+import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
+import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.LeaveCategoryRepository;
+import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,12 +21,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 
@@ -31,6 +38,12 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private LeaveRepository leaveRepository;
+
+    @Mock
+    private LeaveCategoryRepository leaveCategoryRepository;
 
     @InjectMocks
     private UserService userService;
@@ -178,5 +191,83 @@ class UserServiceTest {
         HttpException exception = assertThrows(HttpException.class,
                 () -> userService.updateRole(adminId, request));
         assertEquals("User already has role: MANAGER", exception.getMessage());
+    }
+
+    @Test
+    void shouldReturnEmployeeLeaveRecordsWhenLeavesExist() {
+        int year = 2026;
+
+        List<LeaveCategory> categories = new ArrayList<>();
+        categories.add(new LeaveCategory(
+                UUID.randomUUID(),
+                "Annual",
+                24,
+                LocalDateTime.now(),
+                LocalDateTime.now())
+        );
+        categories.add(new LeaveCategory(
+                UUID.randomUUID(),
+                "Paternity",
+                90,
+                LocalDateTime.now(),
+                LocalDateTime.now())
+        );
+
+        when(userRepository.findById(userId)).
+                thenReturn(Optional.of(new User()));
+
+        when(leaveCategoryRepository.findAll())
+                .thenReturn(categories);
+
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+                eq(userId), eq(categories.getFirst().getId()), any(), any()))
+                .thenReturn(4L);
+
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+                eq(userId), eq(categories.get(1).getId()), any(), any()))
+                .thenReturn(10L);
+
+        List<EmployeeLeavesRecordResponse> result =
+                userService.getEmployeeLeavesRecordByYear(userId, year);
+
+        assertEquals(2, result.size());
+
+        EmployeeLeavesRecordResponse annual = result.getFirst();
+        assertEquals("Annual", annual.getLeaveType());
+        assertEquals(4, annual.getLeavesTaken());
+        assertEquals(20, annual.getLeavesRemaining());
+
+        EmployeeLeavesRecordResponse paternity = result.get(1);
+        assertEquals("Paternity", paternity.getLeaveType());
+        assertEquals(10, paternity.getLeavesTaken());
+        assertEquals(80, paternity.getLeavesRemaining());
+    }
+
+    @Test
+    void shouldSkipCategoriesWhenNoLeavesTaken() {
+        int year = 2026;
+
+        LeaveCategory category = new LeaveCategory(
+                UUID.randomUUID(),
+                "Annual",
+                24,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findById(userId)).
+                thenReturn(Optional.of(new User()));
+
+        when(leaveCategoryRepository.findAll())
+                .thenReturn(List.of(category));
+
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+                any(), any(), any(), any()))
+                .thenReturn(0L);
+
+        List<EmployeeLeavesRecordResponse> result =
+                userService.getEmployeeLeavesRecordByYear(userId, year);
+
+        assertTrue(result.isEmpty());
     }
 }
