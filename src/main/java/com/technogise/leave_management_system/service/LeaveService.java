@@ -89,18 +89,24 @@ public class LeaveService {
         );
     }
 
+    private List<Leave> getLeavesByScopeAndStatus(User user, String scope, String status) {
+        List<Leave> leaveList = filterLeavesByScope(scope, user);
+
+        if (status != null && !status.isBlank()) {
+            return filterLeavesByStatus(status, leaveList);
+        }
+
+        return leaveList;
+    }
+
     public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status, UUID empId, Integer year) {
         User user = userService.getUserByUserId(userId);
-        List<Leave> leaveList = filterLeavesByScope(scope, user);
 
         if (empId != null && !scope.equalsIgnoreCase(ORGANIZATION.toString())) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "empId can only be used with scope=ORGANIZATION");
         }
-
-        if (status != null && !status.isBlank()) {
-            leaveList = filterLeavesByStatus(status, leaveList);
-        }
+        List<Leave> leaveList = getLeavesByScopeAndStatus(user, scope, status);
 
         return leaveList.stream().map(this::mapToLeaveResponse).toList();
     }
