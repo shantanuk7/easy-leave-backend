@@ -23,4 +23,7 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     List<Leave> findAllByUserIdAndDateBetween(UUID userId, LocalDate startDate, LocalDate endDate, Sort sort);
 
     long countByDate(LocalDate date);
+
+    @EntityGraph(attributePaths = {"user", "leaveCategory"})
+    List<Leave> findAllByUserIdAndDateBetween(UUID userId, LocalDate startDate, LocalDate endDate, Sort sort);
 }
