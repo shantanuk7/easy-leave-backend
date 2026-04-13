@@ -55,19 +55,30 @@ public class AnnualLeaveService {
         annualLeaveRepository.save(annualLeave);
     }
 
-    public void syncOnLeaveUpdated(User user, DurationType oldDuration, DurationType newDuration, int year) {
-        if (oldDuration == newDuration) {
-            return;
+    public void syncOnLeaveUpdated(User user, String oldCategoryName, String newCategoryName, DurationType oldDuration,
+                                   DurationType newDuration, int year) {
+
+        boolean wasAnnual = oldCategoryName.equals("Annual Leave");
+        boolean isAnnual = newCategoryName.equals("Annual Leave");
+
+        if (wasAnnual && isAnnual) {
+            if (oldDuration == newDuration) {
+                return;
+            }
+
+            AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
+            double leaveDaysChange = (newDuration == DurationType.FULL_DAY) ? 0.5 : -0.5;
+            annualLeave.setTaken(annualLeave.getTaken() + leaveDaysChange);
+            annualLeave.setBalance(annualLeave.getBalance() - leaveDaysChange);
+            annualLeaveRepository.save(annualLeave);
+
         }
 
-        AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
+        else if (!wasAnnual && isAnnual) {
 
-        double leaveDaysChange = (newDuration == DurationType.FULL_DAY) ? 0.5 : -0.5;
+            syncOnLeaveCreated(user, newDuration, 1, year);
 
-        annualLeave.setTaken(annualLeave.getTaken() + leaveDaysChange);
-        annualLeave.setBalance(annualLeave.getBalance() - leaveDaysChange);
-
-        annualLeaveRepository.save(annualLeave);
+        }
     }
 
     private AnnualLeave getAnnualLeave(UUID userId, int year) {

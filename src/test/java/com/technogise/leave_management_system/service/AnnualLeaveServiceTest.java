@@ -157,7 +157,8 @@ class AnnualLeaveServiceTest {
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
                 .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 3.0, 21.0)));
 
-        annualLeaveService.syncOnLeaveUpdated(user, DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR);
+        annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Annual Leave",
+                DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 2.5 && al.getBalance() == 21.5));
     }
@@ -168,7 +169,8 @@ class AnnualLeaveServiceTest {
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
                 .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 0.5, 23.5)));
 
-        annualLeaveService.syncOnLeaveUpdated(user, DurationType.HALF_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
+        annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Annual Leave",
+                DurationType.HALF_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 1.0 && al.getBalance() == 23.0));
     }
@@ -178,19 +180,52 @@ class AnnualLeaveServiceTest {
         User user = createUser(1);
 
         annualLeaveService.syncOnLeaveUpdated(
-                user, DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
+                user,"Annual Leave","Annual Leave", DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository, never()).findByUserIdAndYear(any(), any());
         verify(annualLeaveRepository, never()).save(any());
     }
 
     @Test
-    void shouldThrowNotFoundWhenAnnualLeaveRecordMissingOnLeaveUpdated() {
+    void shouldNotSyncWhenBothCategoriesAreNonAnnual() {
+        User user = createUser(1);
+
+        annualLeaveService.syncOnLeaveUpdated(user, "Sick Leave", "Sick Leave",
+                DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR);
+
+        verify(annualLeaveRepository, never()).findByUserIdAndYear(any(), any());
+        verify(annualLeaveRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldIncreaseTakenWhenCategoryChangedFromNonAnnualToAnnual() {
         User user = createUser(1);
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
-                .thenReturn(Optional.empty());
+                .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 0.0, 24.0)));
 
-        assertThrows(HttpException.class, () -> annualLeaveService.syncOnLeaveUpdated(
-                user, DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR));
+        annualLeaveService.syncOnLeaveUpdated(user, "Sick Leave", "Annual Leave",
+                DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
+
+        verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 1.0 && al.getBalance() == 23.0));
     }
+
+    @Test
+    void shouldThrowNotFoundWhenAnnualLeaveRecordMissingOnLeaveUpdated() {
+        User user = createUser(1);
+        when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR)).thenReturn(Optional.empty());
+
+        assertThrows(HttpException.class, () -> annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Annual Leave",
+                        DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR));
+    }
+
+    @Test
+    void shouldNotSyncWhenCategoryChangesFromAnnualLeaveToAnyOtherLeaveCategory() {
+        User user = createUser(1);
+
+        annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Sick Leave", DurationType.FULL_DAY,
+                DurationType.FULL_DAY, CURRENT_YEAR);
+        verify(annualLeaveRepository, never()).findByUserIdAndYear(any(), any());
+        verify(annualLeaveRepository, never()).save(any());
+    }
+
 }
