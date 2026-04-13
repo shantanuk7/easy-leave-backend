@@ -354,6 +354,40 @@ public class LeaveControllerTest {
     }
 
     @Test
+    void shouldReturn200WithEmployeeLeavesWhenManagerProvidesEmpIdAndYear() throws Exception {
+        UUID empId = employee.getId();
+        int year = 2024;
+
+        List<LeaveResponse> response = List.of(
+                new LeaveResponse(
+                        employeeLeave.getId(),
+                        employeeLeave.getDate(),
+                        employee.getName(),
+                        leaveCategory.getName(),
+                        employeeLeave.getDuration(),
+                        employeeLeave.getStartTime(),
+                        employeeLeave.getUpdatedAt(),
+                        employeeLeave.getDescription()
+                )
+        );
+
+        when(leaveService.getAllLeaves(manager.getId(), "ORGANIZATION", null, empId, year))
+                .thenReturn(response);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .with(mockUser(manager))
+                        .param("scope", "ORGANIZATION")
+                        .param("empId", empId.toString())
+                        .param("year", String.valueOf(year)))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].employeeName").value(employee.getName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].type").value(leaveCategory.getName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration").value(employeeLeave.getDuration().toString()));
+    }
+
+    @Test
     void shouldReturn403WhenEmployeeTryToGetLeaveListWithOrganizationScope() throws Exception {
         when(leaveService.getAllLeaves(employee.getId(), "organization", null, null , null))
                 .thenThrow(new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource"));
