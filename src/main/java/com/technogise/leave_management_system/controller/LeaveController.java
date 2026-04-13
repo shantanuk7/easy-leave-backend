@@ -109,5 +109,5 @@ public class LeaveController {
     ) {
         leaveService.cancelLeave(id, user.getId());
         return ResponseEntity.noContent().build();
-    };
+    }
 }
