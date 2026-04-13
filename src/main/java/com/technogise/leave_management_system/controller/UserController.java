@@ -1,4 +1,5 @@
 package com.technogise.leave_management_system.controller;
+import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.UserService;
@@ -11,6 +12,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -34,5 +40,16 @@ public class UserController {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Users retrieved successfully", usersPage));
+    }
+
+    @GetMapping("/{userId}/leave-balance")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<SuccessResponse<List<EmployeeLeavesRecordResponse>>> getEmployeeLeavesRecord(
+            @PathVariable UUID userId,
+            @RequestParam(name = "year", required = false) Integer year
+    ) {
+        List<EmployeeLeavesRecordResponse> leavesRecord = userService.getEmployeeLeavesRecordByYear(userId, year);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(SuccessResponse.success("Employee leaves record retrieved successfully", leavesRecord));
     }
 }
