@@ -98,6 +98,22 @@ public class LeaveService {
 
         return leaveList;
     }
+    private List<Leave> getLeavesByEmployeeAndYear(User user, UUID empId, Integer year) {
+        if (!user.getRole().equals(UserRole.MANAGER)) {
+            throw new HttpException(HttpStatus.FORBIDDEN,
+                    "Not allowed to access this resource");
+        }
+
+        userService.getUserByUserId(empId);
+
+        int targetYear = (year != null) ? year : LocalDate.now().getYear();
+        LocalDate startDate = LocalDate.of(targetYear, 1, 1);
+        LocalDate endDate = LocalDate.of(targetYear, 12, 31);
+
+        return leaveRepository.findAllByUserIdAndDateBetween(
+                empId, startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date"));
+    }
 
     public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status, UUID empId, Integer year) {
         User user = userService.getUserByUserId(userId);
@@ -106,7 +122,10 @@ public class LeaveService {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "empId can only be used with scope=ORGANIZATION");
         }
-        List<Leave> leaveList = getLeavesByScopeAndStatus(user, scope, status);
+
+        List<Leave> leaveList = (empId != null)
+                ? getLeavesByEmployeeAndYear(user, empId, year)
+                : getLeavesByScopeAndStatus(user, scope, status);
 
         return leaveList.stream().map(this::mapToLeaveResponse).toList();
     }
