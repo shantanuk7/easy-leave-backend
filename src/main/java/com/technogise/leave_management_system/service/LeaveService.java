@@ -165,7 +165,6 @@ public class LeaveService {
         }
         List<LocalDate> workingDaysOnly = validDates.stream()
                 .filter(date -> !isWeekendDay(date)).toList();
-
         if (workingDaysOnly.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply for leave on weekends.");
         }
@@ -173,7 +172,6 @@ public class LeaveService {
         Set<LocalDate> alreadyTakenDates = existingLeaves.stream()
                 .map(Leave::getDate)
                 .collect(Collectors.toSet());
-
         List<LocalDate> newDatesToApply = workingDaysOnly.stream()
                 .filter(date -> !alreadyTakenDates.contains(date))
                 .toList();
@@ -193,7 +191,9 @@ public class LeaveService {
                     return leave;
                 }).toList();
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
-        annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDatesToApply.size(), LocalDate.now().getYear());
+        if (category.getName().equals("Annual Leave")) {
+            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDatesToApply.size(), LocalDate.now().getYear());
+        }
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),
@@ -235,7 +235,8 @@ public class LeaveService {
         validateLeaveOwnership(leave, userId);
         validateExistingLeaveDate(leave.getDate());
 
-        DurationType oldDuration = leave.getDuration();     //full day or half day
+        DurationType oldDuration = leave.getDuration();
+        String oldCategoryName = leave.getLeaveCategory().getName();
 
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
@@ -254,7 +255,8 @@ public class LeaveService {
         Leave savedLeave = leaveRepository.save(leave);
 
         if (request.getDuration() != null) {
-            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldDuration, request.getDuration(), leave.getDate().getYear());
+            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldCategoryName, savedLeave.getLeaveCategory().getName(),
+                    oldDuration, savedLeave.getDuration(), savedLeave.getDate().getYear());
         }
 
         return mapToUpdateLeaveResponse(savedLeave);

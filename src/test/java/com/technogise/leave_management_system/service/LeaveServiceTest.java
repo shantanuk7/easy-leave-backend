@@ -726,6 +726,8 @@ class LeaveServiceTest {
         leave.setId(UUID.randomUUID());
         leave.setUser(user);
         leave.setDate(LocalDate.now().plusDays(3));
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setLeaveCategory(createValidLeaveCategory());
 
         when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
 
@@ -761,6 +763,8 @@ class LeaveServiceTest {
         leave.setId(UUID.randomUUID());
         leave.setUser(user);
         leave.setDate(LocalDate.now().plusDays(3));
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setLeaveCategory(createValidLeaveCategory());
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(LocalDate.now().plusYears(1));
@@ -784,6 +788,8 @@ class LeaveServiceTest {
         leave.setId(UUID.randomUUID());
         leave.setUser(user);
         leave.setDate(LocalDate.now().plusDays(3));
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setLeaveCategory(createValidLeaveCategory());
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(nextSaturday);
@@ -805,6 +811,8 @@ class LeaveServiceTest {
         leaveBeingUpdated.setId(UUID.randomUUID());
         leaveBeingUpdated.setUser(user);
         leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setDuration(DurationType.FULL_DAY);
+        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(newDate);
@@ -831,6 +839,7 @@ class LeaveServiceTest {
         leaveBeingUpdated.setUser(user);
         leaveBeingUpdated.setDate(sameDate);
         leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+        leaveBeingUpdated.setDuration(DurationType.FULL_DAY);
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(sameDate);
@@ -909,6 +918,7 @@ class LeaveServiceTest {
         leaveBeingUpdated.setUser(user);
         leaveBeingUpdated.setDate(nextWeekday());
         leaveBeingUpdated.setLeaveCategory(oldCategory);
+        leaveBeingUpdated.setDuration(DurationType.FULL_DAY);
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(nextWeekday());
@@ -1051,5 +1061,39 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("At least one field must be provided to update", ex.getMessage());
+    }
+
+    @Test
+    void shouldCallSyncWhenAppliedLeaveIsAnnualLeave() {
+        CreateLeaveRequest request = createValidLeaveRequest();
+        LeaveCategory annualLeaveCategory = new LeaveCategory();
+        annualLeaveCategory.setId(leaveCategoryId);
+        annualLeaveCategory.setName("Annual Leave");
+
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        leaveService.applyLeave(request, userId);
+
+        verify(annualLeaveService).syncOnLeaveCreated(any(User.class), eq(DurationType.FULL_DAY), eq(1), eq(LocalDate.now().getYear()));
+    }
+
+    @Test
+    void shouldNotCallSyncWhenAppliedLeaveIsNotAnnualLeave() {
+        CreateLeaveRequest request = createValidLeaveRequest();
+        LeaveCategory sickLeaveCategory = new LeaveCategory();
+        sickLeaveCategory.setId(leaveCategoryId);
+        sickLeaveCategory.setName("Sick Leave");
+
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeaveCategory);
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        leaveService.applyLeave(request, userId);
+
+        verify(annualLeaveService, never()).syncOnLeaveCreated(any(), any(), anyInt(), anyInt());
     }
 }
