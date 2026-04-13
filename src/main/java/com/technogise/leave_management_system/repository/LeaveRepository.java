@@ -18,4 +18,11 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     boolean existsByUserIdAndDateAndIdNot(UUID userId, LocalDate date, UUID excludeLeaveId);
 
     long countByDate(LocalDate date);
+
+    long countByUserIdAndLeaveCategoryIdAndDateBetween(
+            UUID userId,
+            UUID leaveCategoryId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 }
