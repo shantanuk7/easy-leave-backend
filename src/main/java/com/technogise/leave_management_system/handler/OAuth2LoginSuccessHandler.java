@@ -14,8 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.stereotype.Component;
 import java.io.IOException;
 
@@ -25,7 +23,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final CsrfTokenRepository csrfTokenRepository;
 
     @Value("${app.cookie.expiration}")
     private int cookieExpiration;
@@ -41,12 +38,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     OAuth2LoginSuccessHandler(
             UserRepository userRepository,
-            JwtService jwtService,
-            CsrfTokenRepository csrfTokenRepository
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
-        this.csrfTokenRepository = csrfTokenRepository;
     }
 
     @Override
@@ -76,8 +71,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         cookie.setAttribute("SameSite", cookieSameSite);
 
         response.addCookie(cookie);
-        CsrfToken csrfToken = csrfTokenRepository.generateToken(request);
-        csrfTokenRepository.saveToken(csrfToken, request, response);
 
         log.info("OAuth2 login successful for userId={}, email={}, redirecting to {}",
                 user.getId(), email, redirectFrontendUrl);

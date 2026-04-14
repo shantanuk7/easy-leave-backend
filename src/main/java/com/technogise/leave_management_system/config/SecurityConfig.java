@@ -10,8 +10,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -20,26 +18,21 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
-    private final CsrfTokenRepository csrfTokenRepository;
 
     public SecurityConfig(
             JwtFilter jwtFilter,
             CustomOAuth2UserService customOAuth2UserService,
-            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
-            CsrfTokenRepository csrfTokenRepository
+            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler
     ) {
         this.jwtFilter = jwtFilter;
         this.customOAuth2UserService = customOAuth2UserService;
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
-        this.csrfTokenRepository = csrfTokenRepository;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(csrfTokenRepository)
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated())
