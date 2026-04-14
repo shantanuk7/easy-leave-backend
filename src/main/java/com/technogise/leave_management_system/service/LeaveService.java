@@ -375,7 +375,7 @@ public class LeaveService {
         }
     }
 
-    public void cancelLeave(UUID leaveId, UUID userId) {
+    public void deleteLeave(UUID leaveId, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
 

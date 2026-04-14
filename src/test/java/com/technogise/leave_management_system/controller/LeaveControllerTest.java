@@ -503,11 +503,11 @@ public class LeaveControllerTest {
     }
 
     @Test
-    void shouldThrow403WhenEmployeeTriesToCancelLeaveThatBelongsToDifferentUser() throws Exception {
+    void shouldThrow403WhenEmployeeTriesToDeleteLeaveThatBelongsToDifferentUser() throws Exception {
         UUID leaveId = UUID.randomUUID();
 
         doThrow(new HttpException(HttpStatus.FORBIDDEN, "Not allowed to cancel this leave"))
-                .when(leaveService).cancelLeave(leaveId, employee.getId());
+                .when(leaveService).deleteLeave(leaveId, employee.getId());
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
                         .with(mockUser(employee)))
@@ -517,11 +517,11 @@ public class LeaveControllerTest {
     }
 
     @Test
-    void shouldThrow409ConflictErrorWhenEmployeeTriesToCancelLeaveThatIsAlreadyCancelled() throws Exception {
+    void shouldThrow409ConflictErrorWhenEmployeeTriesToDeleteLeaveThatIsAlreadyCancelled() throws Exception {
         UUID leaveId = UUID.randomUUID();
 
         doThrow(new HttpException(HttpStatus.CONFLICT, "Leave is already cancelled"))
-                .when(leaveService).cancelLeave(leaveId, employee.getId());
+                .when(leaveService).deleteLeave(leaveId, employee.getId());
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
                         .with(mockUser(employee)))
@@ -535,7 +535,7 @@ public class LeaveControllerTest {
         UUID leaveId = employeeLeave.getId();
 
         doThrow(new HttpException(HttpStatus.BAD_REQUEST, "Cannot cancel a past leave"))
-                .when(leaveService).cancelLeave(leaveId, employee.getId());
+                .when(leaveService).deleteLeave(leaveId, employee.getId());
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/api/leaves/{id}", leaveId)
                         .with(mockUser(employee)))

@@ -103,11 +103,11 @@ public class LeaveController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelLeave(
+    public ResponseEntity<Void> deleteLeave(
             @AuthenticationPrincipal User user,
             @PathVariable UUID id
     ) {
-        leaveService.cancelLeave(id, user.getId());
+        leaveService.deleteLeave(id, user.getId());
         return ResponseEntity.noContent().build();
     }
 }

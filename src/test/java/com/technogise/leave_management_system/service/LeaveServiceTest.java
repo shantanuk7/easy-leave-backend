@@ -1099,19 +1099,19 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldCancelLeaveSuccessfullyWhenLeaveExists() {
+    void shouldDeleteLeaveSuccessfullyWhenLeaveExists() {
         User user = createValidUser();
         LeaveCategory leaveCategory = createValidLeaveCategory();
         Leave existingLeave = createEmployeeLeave(user, leaveCategory);
 
         when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
 
-        leaveService.cancelLeave(existingLeave.getId(), user.getId());
+        leaveService.deleteLeave(existingLeave.getId(), user.getId());
         assertNotNull(existingLeave.getDeletedAt());
     }
 
     @Test
-    void shouldThrowForbiddenErrorWhenUserTriesToCancelLeaveThatDoesNotBelongToThem() {
+    void shouldThrowForbiddenErrorWhenUserTriesToDeleteLeaveThatDoesNotBelongToThem() {
         User user = createValidUser();
         User differentUser = createEmployee();
         LeaveCategory leaveCategory = createValidLeaveCategory();
@@ -1121,7 +1121,7 @@ class LeaveServiceTest {
         when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
 
         HttpException ex = assertThrows(HttpException.class,
-                () -> leaveService.cancelLeave(existingLeave.getId(), user.getId()));
+                () -> leaveService.deleteLeave(existingLeave.getId(), user.getId()));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
     }
@@ -1137,7 +1137,7 @@ class LeaveServiceTest {
         when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
 
         HttpException ex = assertThrows(HttpException.class,
-                () -> leaveService.cancelLeave(existingLeave.getId(), user.getId()));
+                () -> leaveService.deleteLeave(existingLeave.getId(), user.getId()));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
     }
@@ -1150,7 +1150,7 @@ class LeaveServiceTest {
         existingLeave.setDate(existingLeave.getDate().minusDays(1));
 
         when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
-        assertThrows(HttpException.class, () -> leaveService.cancelLeave(existingLeave.getId(), userId));
+        assertThrows(HttpException.class, () -> leaveService.deleteLeave(existingLeave.getId(), userId));
     }
 
     @Test
