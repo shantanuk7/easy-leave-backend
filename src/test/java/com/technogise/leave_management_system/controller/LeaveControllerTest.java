@@ -388,6 +388,23 @@ public class LeaveControllerTest {
     }
 
     @Test
+    void shouldReturn200WithNoLeavesFoundMessageWhenLeaveListIsEmpty() throws Exception {
+        List<LeaveResponse> emptyResponse = List.of();
+
+        when(leaveService.getAllLeaves(employee.getId(), "self", null, null, null))
+                .thenReturn(emptyResponse);
+
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .with(mockUser(employee))
+                        .param("scope", "self"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("No leaves found"))
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
     void shouldReturn403WhenEmployeeTryToGetLeaveListWithOrganizationScope() throws Exception {
         when(leaveService.getAllLeaves(employee.getId(), "organization", null, null , null))
                 .thenThrow(new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource"));
