@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.entity.AnnualLeave;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
@@ -56,7 +57,7 @@ class AnnualLeaveServiceTest {
     }
 
     private void mockCategoryAllocatedDays() {
-        when(leaveCategoryService.getAllocatedDaysByCategoryName("Annual Leave")).thenReturn((int) ANNUAL_LEAVE_ALLOCATED_DAYS);
+        when(leaveCategoryService.getAllocatedDaysByCategoryName(LeaveConstants.ANNUAL_LEAVE)).thenReturn((int) ANNUAL_LEAVE_ALLOCATED_DAYS);
     }
 
     @Test
@@ -157,7 +158,7 @@ class AnnualLeaveServiceTest {
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
                 .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 3.0, 21.0)));
 
-        annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Annual Leave",
+        annualLeaveService.syncOnLeaveUpdated(user, LeaveConstants.ANNUAL_LEAVE, LeaveConstants.ANNUAL_LEAVE,
                 DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 2.5 && al.getBalance() == 21.5));
@@ -169,7 +170,7 @@ class AnnualLeaveServiceTest {
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
                 .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 0.5, 23.5)));
 
-        annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Annual Leave",
+        annualLeaveService.syncOnLeaveUpdated(user, LeaveConstants.ANNUAL_LEAVE, LeaveConstants.ANNUAL_LEAVE,
                 DurationType.HALF_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 1.0 && al.getBalance() == 23.0));
@@ -180,7 +181,7 @@ class AnnualLeaveServiceTest {
         User user = createUser(1);
 
         annualLeaveService.syncOnLeaveUpdated(
-                user,"Annual Leave","Annual Leave", DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
+                user,LeaveConstants.ANNUAL_LEAVE,LeaveConstants.ANNUAL_LEAVE, DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository, never()).findByUserIdAndYear(any(), any());
         verify(annualLeaveRepository, never()).save(any());
@@ -203,7 +204,7 @@ class AnnualLeaveServiceTest {
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
                 .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 0.0, 24.0)));
 
-        annualLeaveService.syncOnLeaveUpdated(user, "Sick Leave", "Annual Leave",
+        annualLeaveService.syncOnLeaveUpdated(user, "Sick Leave", LeaveConstants.ANNUAL_LEAVE,
                 DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
 
         verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 1.0 && al.getBalance() == 23.0));
@@ -214,7 +215,7 @@ class AnnualLeaveServiceTest {
         User user = createUser(1);
         when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR)).thenReturn(Optional.empty());
 
-        assertThrows(HttpException.class, () -> annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Annual Leave",
+        assertThrows(HttpException.class, () -> annualLeaveService.syncOnLeaveUpdated(user, LeaveConstants.ANNUAL_LEAVE, LeaveConstants.ANNUAL_LEAVE,
                         DurationType.FULL_DAY, DurationType.HALF_DAY, CURRENT_YEAR));
     }
 
@@ -222,7 +223,7 @@ class AnnualLeaveServiceTest {
     void shouldNotSyncWhenCategoryChangesFromAnnualLeaveToAnyOtherLeaveCategory() {
         User user = createUser(1);
 
-        annualLeaveService.syncOnLeaveUpdated(user, "Annual Leave", "Sick Leave", DurationType.FULL_DAY,
+        annualLeaveService.syncOnLeaveUpdated(user, LeaveConstants.ANNUAL_LEAVE, "Sick Leave", DurationType.FULL_DAY,
                 DurationType.FULL_DAY, CURRENT_YEAR);
         verify(annualLeaveRepository, never()).findByUserIdAndYear(any(), any());
         verify(annualLeaveRepository, never()).save(any());

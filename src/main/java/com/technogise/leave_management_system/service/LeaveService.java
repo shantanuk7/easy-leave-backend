@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
@@ -191,7 +192,7 @@ public class LeaveService {
                     return leave;
                 }).toList();
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
-        if (category.getName().equals("Annual Leave")) {
+        if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDatesToApply.size(), LocalDate.now().getYear());
         }
         return savedLeaves.stream()

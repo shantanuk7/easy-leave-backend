@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
@@ -100,7 +101,7 @@ class LeaveServiceTest {
     private LeaveCategory createLeaveCategory() {
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(UUID.randomUUID());
-        leaveCategory.setName("Annual Leave");
+        leaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
         leaveCategory.setCreatedAt(LocalDateTime.now());
         leaveCategory.setUpdatedAt(LocalDateTime.now());
         return leaveCategory;
@@ -1068,7 +1069,7 @@ class LeaveServiceTest {
         CreateLeaveRequest request = createValidLeaveRequest();
         LeaveCategory annualLeaveCategory = new LeaveCategory();
         annualLeaveCategory.setId(leaveCategoryId);
-        annualLeaveCategory.setName("Annual Leave");
+        annualLeaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
