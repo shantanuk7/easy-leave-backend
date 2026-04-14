@@ -321,6 +321,24 @@ class LeaveServiceTest {
     }
 
     @Test
+    void shouldThrowForbiddenWhenNonManagerRequestsLeavesByEmployeeAndYear() {
+        User employee = createEmployee();
+        UUID targetEmpId = UUID.randomUUID();
+        Integer targetYear = 2024;
+
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+
+        HttpException exception = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(employee.getId(), "ORGANIZATION", null, targetEmpId, targetYear)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals("Not allowed to access this resource", exception.getMessage());
+
+        verify(leaveRepository, never()).findAllByUserIdAndDateBetween(any(), any(), any(), any());
+    }
+
+    @Test
     void shouldDefaultToCurrentYearWhenYearIsNotProvided() {
         User manager = createManager();
         User employee = createEmployee();
