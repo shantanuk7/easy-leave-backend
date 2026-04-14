@@ -156,7 +156,7 @@ GET /api/leaves?scope=organisation
       "id": "uuid",
       "date": "2026-03-30",
       "employeeName": "Priyansh",
-      "type": "Annual Leave",
+      "type": LeaveConstants.ANNUAL_LEAVE,
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "applyOn": "2026-03-01T10:00:00",
@@ -231,7 +231,7 @@ Content-Type: application/json
     {
       "id": "uuid",
       "date": "2026-04-10",
-      "leaveCategoryName": "Annual Leave",
+      "leaveCategoryName": LeaveConstants.ANNUAL_LEAVE,
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "description": "Dummy Description"
@@ -239,7 +239,7 @@ Content-Type: application/json
     {
       "id": "uuid",
       "date": "2026-04-13",
-      "leaveCategoryName": "Annual Leave",
+      "leaveCategoryName": LeaveConstants.ANNUAL_LEAVE,
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "description": "Dummy Description"
@@ -362,7 +362,7 @@ GET /api/leave-categories
   "data": [
     {
       "id": "uuid",
-      "name": "Annual Leave"
+      "name": LeaveConstants.ANNUAL_LEAVE
     },
     {
       "id": "uuid",

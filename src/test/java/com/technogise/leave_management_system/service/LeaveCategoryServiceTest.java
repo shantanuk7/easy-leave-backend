@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.LeaveCategoryResponse;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -51,7 +52,7 @@ class LeaveCategoryServiceTest {
     void shouldReturnAllLeaveCategories() {
         // Given
         UUID id = leaveCategoryId;
-        String categoryName = "Annual Leave";
+        String categoryName = LeaveConstants.ANNUAL_LEAVE;
 
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(id);
@@ -88,7 +89,7 @@ class LeaveCategoryServiceTest {
 
     @Test
     void shouldReturnAllocatedDaysWhenCategoryExists() {
-        String categoryName = "Annual Leave";
+        String categoryName = LeaveConstants.ANNUAL_LEAVE;
         int expectedAllocatedDays = 20;
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setName(categoryName);

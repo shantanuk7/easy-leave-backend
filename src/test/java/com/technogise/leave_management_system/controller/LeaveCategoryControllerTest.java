@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.controller;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.LeaveCategoryResponse;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -62,7 +63,7 @@ public class LeaveCategoryControllerTest {
         user.setRole(UserRole.EMPLOYEE);
 
         leaveCategory.setId(UUID.randomUUID());
-        leaveCategory.setName("Annual Leave");
+        leaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
     }
 
     private RequestPostProcessor mockUser(User user) {

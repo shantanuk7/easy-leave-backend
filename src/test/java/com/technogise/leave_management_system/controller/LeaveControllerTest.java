@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.controller;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.*;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
@@ -90,7 +91,7 @@ public class LeaveControllerTest {
         manager.setRole(UserRole.MANAGER);
 
         leaveCategory.setId(UUID.randomUUID());
-        leaveCategory.setName("Annual Leave");
+        leaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
         leaveCategory.setCreatedAt(LocalDateTime.now());
         leaveCategory.setUpdatedAt(LocalDateTime.now());
 
@@ -127,7 +128,7 @@ public class LeaveControllerTest {
 
     private CreateLeaveResponse createValidLeaveResponse() {
         CreateLeaveResponse leaveResponse = new CreateLeaveResponse();
-        leaveResponse.setLeaveCategoryName("Annual Leave");
+        leaveResponse.setLeaveCategoryName(LeaveConstants.ANNUAL_LEAVE);
         leaveResponse.setDescription("test leave description");
         leaveResponse.setDuration(DurationType.FULL_DAY);
         leaveResponse.setStartTime(LocalTime.of(12, 0, 0));
@@ -159,7 +160,7 @@ public class LeaveControllerTest {
         UpdateLeaveResponse response = new UpdateLeaveResponse();
         response.setId(UUID.randomUUID());
         response.setDate(LocalDate.now().plusDays(3));
-        response.setLeaveCategoryName("Annual Leave");
+        response.setLeaveCategoryName(LeaveConstants.ANNUAL_LEAVE);
         response.setDuration(DurationType.FULL_DAY);
         response.setStartTime(LocalTime.of(9, 0));
         response.setDescription("Updated description");
@@ -348,7 +349,7 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Leaves applied successfully"))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].leaveCategoryName").value("Annual Leave"))
+                .andExpect(jsonPath("$.data[0].leaveCategoryName").value(LeaveConstants.ANNUAL_LEAVE))
                 .andExpect(jsonPath("$.data[0].description").value("test leave description"))
                 .andExpect(jsonPath("$.data[0].duration").value("FULL_DAY"));
     }
@@ -435,7 +436,7 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Leave updated successfully"))
                 .andExpect(jsonPath("$.data.date").value(response.getDate().toString()))
-                .andExpect(jsonPath("$.data.leaveCategoryName").value("Annual Leave"))
+                .andExpect(jsonPath("$.data.leaveCategoryName").value(LeaveConstants.ANNUAL_LEAVE))
                 .andExpect(jsonPath("$.data.duration").value("FULL_DAY"))
                 .andExpect(jsonPath("$.data.description").value("Updated description"));
     }

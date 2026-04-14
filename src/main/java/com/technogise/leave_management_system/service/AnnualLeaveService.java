@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.entity.AnnualLeave;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
@@ -32,7 +33,7 @@ public class AnnualLeaveService {
 
         int joiningMonth = user.getCreatedAt().getMonthValue();
         int monthsRemaining = 13 - joiningMonth;
-        double totalAllocated = leaveCategoryService.getAllocatedDaysByCategoryName("Annual Leave");
+        double totalAllocated = leaveCategoryService.getAllocatedDaysByCategoryName(LeaveConstants.ANNUAL_LEAVE);
         double proratedTotal = (totalAllocated / 12.0) * monthsRemaining;
 
         AnnualLeave annualLeave = new AnnualLeave();
@@ -58,8 +59,8 @@ public class AnnualLeaveService {
     public void syncOnLeaveUpdated(User user, String oldCategoryName, String newCategoryName, DurationType oldDuration,
                                    DurationType newDuration, int year) {
 
-        boolean wasAnnual = oldCategoryName.equals("Annual Leave");
-        boolean isAnnual = newCategoryName.equals("Annual Leave");
+        boolean wasAnnual = oldCategoryName.equals(LeaveConstants.ANNUAL_LEAVE);
+        boolean isAnnual = newCategoryName.equals(LeaveConstants.ANNUAL_LEAVE);
 
         if (wasAnnual && isAnnual) {
             if (oldDuration == newDuration) {
