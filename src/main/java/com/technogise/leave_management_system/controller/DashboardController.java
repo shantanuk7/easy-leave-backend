@@ -19,7 +19,7 @@ public class DashboardController {
     }
 
     @GetMapping("/manager")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole(T(com.technogise.leave_management_system.enums.UserRole).MANAGER.name())")
     public ResponseEntity<SuccessResponse<EmployeeMetricsResponse>> getManagerDashboard() {
         EmployeeMetricsResponse dashboardResponse = dashboardService.getManagerDashboardData();
         return ResponseEntity.ok(
