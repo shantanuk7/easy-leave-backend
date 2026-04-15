@@ -17,6 +17,8 @@ public class AnnualLeaveService {
 
     private final AnnualLeaveRepository annualLeaveRepository;
     private final LeaveCategoryService leaveCategoryService;
+    private static final double FULL_DAY_VALUE = 1.0;
+    private static final double HALF_DAY_VALUE = 0.5;
 
     public AnnualLeaveService(AnnualLeaveRepository annualLeaveRepository,  LeaveCategoryService leaveCategoryService) {
         this.annualLeaveRepository = annualLeaveRepository;
@@ -48,7 +50,7 @@ public class AnnualLeaveService {
     public void syncOnLeaveCreated(User user, DurationType duration, int numberOfDates, int year) {
         AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
 
-        double leaveDaysChange = (duration == DurationType.FULL_DAY ? 1.0 : 0.5) * numberOfDates;
+        double leaveDaysChange = (duration == DurationType.FULL_DAY ? FULL_DAY_VALUE : HALF_DAY_VALUE) * numberOfDates;
 
         annualLeave.setTaken(annualLeave.getTaken() + leaveDaysChange);
         annualLeave.setBalance(annualLeave.getBalance() - leaveDaysChange);
@@ -68,17 +70,12 @@ public class AnnualLeaveService {
             }
 
             AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
-            double leaveDaysChange = (newDuration == DurationType.FULL_DAY) ? 0.5 : -0.5;
+            double leaveDaysChange = (newDuration == DurationType.FULL_DAY) ? HALF_DAY_VALUE : -HALF_DAY_VALUE;
             annualLeave.setTaken(annualLeave.getTaken() + leaveDaysChange);
             annualLeave.setBalance(annualLeave.getBalance() - leaveDaysChange);
             annualLeaveRepository.save(annualLeave);
-
-        }
-
-        else if (!wasAnnual && isAnnual) {
-
+        } else if (!wasAnnual && isAnnual) {
             syncOnLeaveCreated(user, newDuration, 1, year);
-
         }
     }
 
