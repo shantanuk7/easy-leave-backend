@@ -42,13 +42,13 @@ public class UserController {
                 .body(SuccessResponse.success("Users retrieved successfully", usersPage));
     }
 
-    @GetMapping("/{userId}/leave-balance")
+    @GetMapping("/{id}/leave-balance")
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<SuccessResponse<List<EmployeeLeavesRecordResponse>>> getEmployeeLeavesRecord(
-            @PathVariable UUID userId,
+            @PathVariable UUID id,
             @RequestParam(name = "year", required = false) Integer year
     ) {
-        List<EmployeeLeavesRecordResponse> leavesRecord = userService.getEmployeeLeavesRecordByYear(userId, year);
+        List<EmployeeLeavesRecordResponse> leavesRecord = userService.getEmployeeLeavesRecordByYear(id, year);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Employee leaves record retrieved successfully", leavesRecord));
     }
