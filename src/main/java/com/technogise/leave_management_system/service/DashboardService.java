@@ -7,6 +7,7 @@ import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Service
 public class DashboardService {
@@ -19,7 +20,7 @@ public class DashboardService {
     }
 
     public EmployeeMetricsResponse getManagerDashboardData() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
         LocalDate tomorrow = today.plusDays(1);
 
         long totalEmployees = userRepository.count();
