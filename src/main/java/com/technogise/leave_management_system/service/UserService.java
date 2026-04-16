@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
@@ -45,5 +46,22 @@ public class UserService {
                         u.getName(),
                         u.getRole()
                 ));
+    }
+
+    public boolean updateRole(UpdateUserRoleRequest request) {
+        User user = userRepository.findById(request.getEmployeeId())
+                .orElseThrow(() ->
+                        new HttpException(HttpStatus.NOT_FOUND,
+                                "User not found with id: " + request.getEmployeeId()));
+
+        if (user.getRole().equals(request.getRole())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "User already has role: " + request.getRole());
+        }
+
+        user.setRole(request.getRole());
+        userRepository.save(user);
+
+        return true;
     }
 }
