@@ -6,6 +6,7 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.LeaveService;
 import jakarta.validation.Valid;
@@ -39,7 +40,7 @@ public class LeaveController {
     @GetMapping
     public ResponseEntity<SuccessResponse<List<LeaveResponse>>> findAllLeave(
             @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "scope", defaultValue = "SELF") String scope,
+            @RequestParam(name = "scope", defaultValue = ScopeType.DEFAULT_SCOPE) String scope,
             @RequestParam(name = "empId", required = false) UUID empId,
             @RequestParam(name = "year", required = false) Integer year,
             @AuthenticationPrincipal User user
