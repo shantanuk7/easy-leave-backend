@@ -48,7 +48,13 @@ public class UserService {
                 ));
     }
 
-    public boolean updateRole(UpdateUserRoleRequest request) {
+    public boolean updateRole(UUID adminId, UpdateUserRoleRequest request) {
+
+        if (adminId.equals(request.getEmployeeId())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "You cannot change your own role");
+        }
+
         User user = userRepository.findById(request.getEmployeeId())
                 .orElseThrow(() ->
                         new HttpException(HttpStatus.NOT_FOUND,
