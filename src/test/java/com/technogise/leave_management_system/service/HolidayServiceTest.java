@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -28,12 +29,12 @@ class HolidayServiceTest {
     @InjectMocks
     private HolidayService holidayService;
 
-    private Holiday savedHoliday;
+    private Holiday mockHoliday;
     private HolidayRequest holidayRequest;
 
     @BeforeEach
     void setUp() {
-        savedHoliday = Holiday.builder()
+        mockHoliday = Holiday.builder()
                 .id(UUID.randomUUID())
                 .name("Diwali")
                 .type(HolidayType.FIXED)
@@ -53,13 +54,29 @@ class HolidayServiceTest {
     @Test
     void shouldCreateAndReturnHolidaySuccessfully() {
         // When
-        when(holidayRepository.save(any(Holiday.class))).thenReturn(savedHoliday);
+        when(holidayRepository.save(any(Holiday.class))).thenReturn(mockHoliday);
         HolidayResponse response = holidayService.createHoliday(holidayRequest);
 
         // Then
-        assertEquals(savedHoliday.getId(), response.getId());
-        assertEquals(savedHoliday.getName(), response.getName());
-        assertEquals(savedHoliday.getType(), response.getType());
-        assertEquals(savedHoliday.getDate(), response.getDate());
+        assertEquals(mockHoliday.getId(), response.getId());
+        assertEquals(mockHoliday.getName(), response.getName());
+        assertEquals(mockHoliday.getType(), response.getType());
+        assertEquals(mockHoliday.getDate(), response.getDate());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenHolidayAlreadyExists() {
+        // When
+        when(holidayRepository.findByNameAndDateBetween(
+                any(String.class),
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(mockHoliday);
+
+        // Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            holidayService.createHoliday(holidayRequest);
+        });
+        assertEquals("Holiday already exists in the current year", exception.getMessage());
     }
 }
