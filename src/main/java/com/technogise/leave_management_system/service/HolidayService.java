@@ -3,12 +3,14 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
 import com.technogise.leave_management_system.entity.Holiday;
+import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.HolidayRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 
 @Service
 public class HolidayService {
@@ -41,9 +43,20 @@ public class HolidayService {
         }
     }
 
+    public void validateWeekendDay(LocalDate date) {
+        boolean isWeekend = Arrays.stream(WeekendDay.values())
+                .anyMatch(weekend -> weekend.getDayOfWeek() == date.getDayOfWeek());
+
+        if (isWeekend) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Holiday cannot be created on a weekend day");
+        }
+    }
+
     public HolidayResponse createHoliday(HolidayRequest request) {
         validateDuplicateHolidayInYear(request.getName());
         validateDuplicateDate(request.getDate());
+        validateWeekendDay(request.getDate());
 
         Holiday holiday = Holiday.builder()
                 .name(request.getName())

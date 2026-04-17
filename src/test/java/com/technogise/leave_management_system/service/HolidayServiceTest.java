@@ -39,7 +39,7 @@ class HolidayServiceTest {
                 .id(UUID.randomUUID())
                 .name("Diwali")
                 .type(HolidayType.FIXED)
-                .date(LocalDate.of(2026, 11, 8))
+                .date(LocalDate.of(2026, 11, 9))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .deletedAt(null)
@@ -48,7 +48,7 @@ class HolidayServiceTest {
         holidayRequest = HolidayRequest.builder()
                 .name("Diwali")
                 .type(HolidayType.FIXED)
-                .date(LocalDate.of(2026, 11, 8))
+                .date(LocalDate.of(2026, 11, 9))
                 .build();
     }
 
@@ -89,5 +89,19 @@ class HolidayServiceTest {
         HttpException exception = assertThrows(HttpException.class,
                 () -> holidayService.createHoliday(holidayRequest));
         assertEquals("Holiday already exists on the given date", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenHolidayDateIsWeekend() {
+        // Given
+        HolidayRequest request = HolidayRequest.builder()
+                .name("Independence Day")
+                .type(HolidayType.FIXED)
+                .date(LocalDate.of(2026, 8, 15))
+                .build();
+
+        // Then
+        HttpException exception = assertThrows(HttpException.class, () -> holidayService.createHoliday(request));
+        assertEquals("Holiday cannot be created on a weekend day", exception.getMessage());
     }
 }
