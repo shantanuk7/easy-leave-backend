@@ -17,28 +17,28 @@ import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAu
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @WebMvcTest(value = HolidayController.class, excludeAutoConfiguration = {
     OAuth2ClientAutoConfiguration.class,
     OAuth2ClientWebSecurityAutoConfiguration.class
 })
+@EnableMethodSecurity
 class HolidayControllerTest {
     @MockitoBean
     private HolidayService holidayService;
@@ -82,22 +82,13 @@ class HolidayControllerTest {
                 LocalDate.of(2026, 11, 8));
     }
 
-    private RequestPostProcessor mockUser(User user) {
-        return request -> {
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(user, null, List.of());
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            request.setUserPrincipal(auth);
-            return request;
-        };
-    }
-
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldCreateHolidayAndReturn201() throws Exception {
         when(holidayService.createHoliday(any(HolidayRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/holidays")
-                        .with(mockUser(manager))
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -105,5 +96,18 @@ class HolidayControllerTest {
                 .andExpect(jsonPath("$.data.name").value("Diwali"))
                 .andExpect(jsonPath("$.data.type").value("FIXED"))
                 .andExpect(jsonPath("$.data.date").value("2026-11-08"));
+    }
+
+    @Test
+    @WithMockUser(roles = "EMPLOYEE")
+    void shouldReturn403WhenNonAdminUserWantsToCreateHoliday() throws Exception {
+        when(holidayService.createHoliday(any(HolidayRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/holidays")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Access Denied"));
     }
 }
