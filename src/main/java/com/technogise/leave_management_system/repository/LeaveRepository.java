@@ -16,7 +16,7 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     @EntityGraph(attributePaths = {"user","leaveCategory"})
     List<Leave> findAllByUserIdAndDeletedAtNull(UUID userId, Sort sort);
 
-    List<Leave>findAllByDeletedAtIsNull(Sort sort);
+    List<Leave> findAllByDeletedAtIsNull(Sort sort);
 
     long countByDate(LocalDate date);
 
