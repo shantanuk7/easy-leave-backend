@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
 import com.technogise.leave_management_system.entity.Holiday;
 import com.technogise.leave_management_system.enums.HolidayType;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.HolidayRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,9 +75,19 @@ class HolidayServiceTest {
         )).thenReturn(mockHoliday);
 
         // Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            holidayService.createHoliday(holidayRequest);
-        });
+        HttpException exception = assertThrows(HttpException.class,
+                () -> holidayService.createHoliday(holidayRequest));
         assertEquals("Holiday already exists in the current year", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenHolidayDateAlreadyExists() {
+        // When
+        when(holidayRepository.findByDate(any(LocalDate.class))).thenReturn(mockHoliday);
+
+        // Then
+        HttpException exception = assertThrows(HttpException.class,
+                () -> holidayService.createHoliday(holidayRequest));
+        assertEquals("Holiday already exists on the given date", exception.getMessage());
     }
 }

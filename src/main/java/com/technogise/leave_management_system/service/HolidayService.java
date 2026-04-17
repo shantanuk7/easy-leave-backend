@@ -3,7 +3,9 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
 import com.technogise.leave_management_system.entity.Holiday;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.HolidayRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -16,15 +18,32 @@ public class HolidayService {
         this.holidayRepository = holidayRepository;
     }
 
-    public HolidayResponse createHoliday(HolidayRequest request) {
+    private void validateDuplicateHolidayInYear(String name) {
         int currentYear = LocalDate.now().getYear();
         LocalDate startDate = LocalDate.of(currentYear, 1, 1);
         LocalDate endDate = LocalDate.of(currentYear, 12, 31);
 
-        Holiday holidayExists = holidayRepository.findByNameAndDateBetween(request.getName(), startDate, endDate);
+        Holiday holidayExists = holidayRepository
+                .findByNameAndDateBetween(name, startDate, endDate);
+
         if (holidayExists != null) {
-            throw new IllegalArgumentException("Holiday already exists in the current year");
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "Holiday already exists in the current year");
         }
+    }
+
+    private void validateDuplicateDate(LocalDate date) {
+        Holiday dateExists = holidayRepository.findByDate(date);
+
+        if (dateExists != null) {
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "Holiday already exists on the given date");
+        }
+    }
+
+    public HolidayResponse createHoliday(HolidayRequest request) {
+        validateDuplicateHolidayInYear(request.getName());
+        validateDuplicateDate(request.getDate());
 
         Holiday holiday = Holiday.builder()
                 .name(request.getName())
