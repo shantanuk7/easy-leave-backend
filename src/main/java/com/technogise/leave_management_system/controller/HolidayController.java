@@ -4,9 +4,11 @@ import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.HolidayService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,7 +22,7 @@ public class HolidayController {
     }
 
     @PostMapping
-    public ResponseEntity<SuccessResponse<HolidayResponse>> createHoliday(HolidayRequest request) {
+    public ResponseEntity<SuccessResponse<HolidayResponse>> createHoliday(@RequestBody @Valid HolidayRequest request) {
         HolidayResponse response = holidayService.createHoliday(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
