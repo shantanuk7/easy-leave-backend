@@ -166,7 +166,7 @@ public class LeaveService {
                 filterValidWorkingDates(request.getDates());
 
         List<LocalDate> newDates =
-                removeAlreadyAppliedDates(userId, workingDates);
+                filterNonOverlappingLeaveDates(userId, workingDates);
 
         List<Leave> leavesToSave = newDates.stream()
                 .map(date -> {
@@ -240,7 +240,7 @@ public class LeaveService {
         return workingDays;
     }
 
-    private List<LocalDate> removeAlreadyAppliedDates(UUID userId, List<LocalDate> dates) {
+    private List<LocalDate> filterNonOverlappingLeaveDates(UUID userId, List<LocalDate> dates) {
 
         Set<LocalDate> existingDates = leaveRepository
                 .findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
