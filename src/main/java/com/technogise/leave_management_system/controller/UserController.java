@@ -44,13 +44,13 @@ public class UserController {
 
     @PatchMapping("/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<SuccessResponse<Boolean>> updateUserRole(
+    public ResponseEntity<SuccessResponse<Void>> updateUserRole(
             @AuthenticationPrincipal User user,
             @Valid @RequestBody UpdateUserRoleRequest request
     ) {
-        boolean result = userService.updateRole(user.getId(), request);
+        userService.updateRole(user.getId(), request);
         return ResponseEntity.ok(
-                new SuccessResponse<>(true, "Role updated successfully", result)
+                new SuccessResponse<>(true, "Role updated successfully", null)
         );
     }
 }
