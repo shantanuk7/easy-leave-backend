@@ -135,12 +135,11 @@ class UserServiceTest {
         User user = new User();
         user.setId(userId);
         user.setRole(UserRole.EMPLOYEE);
+
         UpdateUserRoleRequest request =
                 new UpdateUserRoleRequest(userId, UserRole.MANAGER);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenReturn(user);
-        boolean result = userService.updateRole(adminId, request);
-        assertTrue(result);
+        userService.updateRole(adminId, request);
         assertEquals(UserRole.MANAGER, user.getRole());
     }
 

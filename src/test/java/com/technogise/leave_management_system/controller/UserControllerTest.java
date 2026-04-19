@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -103,11 +104,11 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.content[1].name").value(responses.get(1).getName()));
     }
     @Test
-    void shouldReturnTrueWhenRoleGetUpdated() throws Exception {
+    void shouldReturnSuccessWhenRoleUpdated() throws Exception {
         UpdateUserRoleRequest request =
                 new UpdateUserRoleRequest(employee.getId(), UserRole.MANAGER);
-        when(userService.updateRole(any(UUID.class), any(UpdateUserRoleRequest.class)))
-                .thenReturn(true);
+        doNothing().when(userService)
+                .updateRole(any(UUID.class), any(UpdateUserRoleRequest.class));
         mockMvc.perform(MockMvcRequestBuilders
                         .patch("/api/users/role")
                         .with(mockUser(admin))
