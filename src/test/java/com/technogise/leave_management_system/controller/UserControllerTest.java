@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.controller;
 
+import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
@@ -16,12 +17,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.UUID;
@@ -99,4 +102,19 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.content[1].id").value(responses.get(1).getId().toString()))
                 .andExpect(jsonPath("$.data.content[1].name").value(responses.get(1).getName()));
     }
+    @Test
+    void shouldReturnTrueWhenRoleGetUpdated() throws Exception {
+        UpdateUserRoleRequest request =
+                new UpdateUserRoleRequest(employee.getId(), UserRole.MANAGER);
+        when(userService.updateRole(any(UUID.class), any(UpdateUserRoleRequest.class)))
+                .thenReturn(true);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .patch("/api/users/role")
+                        .with(mockUser(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new ObjectMapper().writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
 }
+
