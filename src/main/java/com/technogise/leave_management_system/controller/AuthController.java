@@ -51,7 +51,7 @@ public class AuthController {
     public ResponseEntity<SuccessResponse<Void>> logout(HttpServletResponse response) {
         log.info("POST /api/auth/logout called");
 
-        Cookie cookie = new Cookie("token", null);
+        Cookie cookie = new Cookie("token", "");
         cookie.setHttpOnly(true);
         cookie.setSecure(cookieSecure);
         cookie.setPath("/");
