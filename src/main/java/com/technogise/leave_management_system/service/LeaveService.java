@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -106,7 +107,7 @@ public class LeaveService {
 
         userService.getUserByUserId(empId);
 
-        int targetYear = (year != null) ? year : LocalDate.now().getYear();
+        int targetYear = (year != null) ? year : LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
         LocalDate startDate = LocalDate.of(targetYear, 1, 1);
         LocalDate endDate = LocalDate.of(targetYear, 12, 31);
 
