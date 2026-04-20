@@ -6,6 +6,7 @@ import com.technogise.leave_management_system.entity.Holiday;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.HolidayRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 
 @Service
+@Transactional
 public class HolidayService {
     private final HolidayRepository holidayRepository;
 
@@ -25,19 +27,17 @@ public class HolidayService {
         LocalDate startDate = LocalDate.of(currentYear, 1, 1);
         LocalDate endDate = LocalDate.of(currentYear, 12, 31);
 
-        Holiday holidayExists = holidayRepository
+        Holiday holiday = holidayRepository
                 .findByNameAndDateBetween(name, startDate, endDate);
 
-        if (holidayExists != null) {
+        if (holiday != null) {
             throw new HttpException(HttpStatus.CONFLICT,
                     "Holiday already exists in the current year");
         }
     }
 
     private void validateDuplicateDate(LocalDate date) {
-        Holiday dateExists = holidayRepository.findByDate(date);
-
-        if (dateExists != null) {
+        if (holidayRepository.existsByDate(date)) {
             throw new HttpException(HttpStatus.CONFLICT,
                     "Holiday already exists on the given date");
         }

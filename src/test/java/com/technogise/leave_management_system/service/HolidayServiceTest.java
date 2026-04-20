@@ -83,7 +83,7 @@ class HolidayServiceTest {
     @Test
     void shouldThrowExceptionWhenHolidayDateAlreadyExists() {
         // When
-        when(holidayRepository.findByDate(any(LocalDate.class))).thenReturn(mockHoliday);
+        when(holidayRepository.existsByDate(any(LocalDate.class))).thenReturn(true);
 
         // Then
         HttpException exception = assertThrows(HttpException.class,
