@@ -98,15 +98,13 @@ GET /api/auth/me
 
 ---
 
-# Leave Management System API
-
-## Get All Leaves — `GET /api/leaves`
+### Get All Leaves — `GET /api/leaves`
 
 Allows an authenticated user to retrieve leave records. Users can view their own leaves, while Managers can view leaves for the entire organization or specific employees.
 
 ---
 
-### Query Parameters
+#### Query Parameters
 
 | Parameter | Required | Default | Accepted Values | Description |
 | :--- | :--- | :--- | :--- | :--- |
@@ -117,7 +115,7 @@ Allows an authenticated user to retrieve leave records. Users can view their own
 
 ---
 
-### How Scope and Authorization Work
+#### How Scope and Authorization Work
 
 | Scope | Who can use it | Behavior |
 | :--- | :--- | :--- |
@@ -128,9 +126,7 @@ Allows an authenticated user to retrieve leave records. Users can view their own
 
 ---
 
----
-### How Status Works
-
+#### How Status Works
 
 
 If the `status` parameter is used, the system filters the results based on the current date:* **None provided:** Returns all leaves regardless of date.* **upcoming:** Returns leaves with a date after today.* **ongoing:** Returns leaves with today's date.* **completed:** Returns leaves with a date before today.
@@ -547,3 +543,67 @@ Allows an **ADMIN** to update the role of a user in the system.
 }
 ```
 ---
+
+### Add holiday - `POST /api/holidays`
+This API allows `ADMIN` users to create holidays in the system with proper validations and error handling.
+
+**Endpoint:** `POST /api/holidays`
+
+**Authorization:** Only users with `ADMIN` role can access this API
+
+**Request Body:**
+```json
+{
+    "name": "Diwali",
+    "type": "FIXED",
+    "date": "2026-11-08"
+}
+```
+
+**Response:**
+Success Response (201)
+```json
+{
+  "success": true,
+  "message": "Holiday created successfully",
+  "data": {
+    "id": "uuid",
+    "name": "Diwali",
+    "type": "FIXED",
+    "date": "2026-11-08"
+  }
+}
+```
+
+---
+
+### Add holiday - `POST /api/holidays`
+This API allows `ADMIN` users to create holidays in the system with proper validations and error handling.
+
+**Endpoint:** `POST /api/holidays`
+
+**Authorization:** Only users with `ADMIN` role can access this API
+
+**Request Body:**
+```json
+{
+    "name": "Diwali",
+    "type": "FIXED",
+    "date": "2026-11-08"
+}
+```
+
+**Response:**
+Success Response (201)
+```json
+{
+  "success": true,
+  "message": "Holiday created successfully",
+  "data": {
+    "id": "uuid",
+    "name": "Diwali",
+    "type": "FIXED",
+    "date": "2026-11-08"
+  }
+}
+```
