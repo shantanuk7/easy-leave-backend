@@ -95,7 +95,10 @@ public class HolidayService {
     public List<HolidayResponse> getHolidays(String type) {
 
         HolidayType holidayType = validateHolidayType(type);
-        List<Holiday> holidays = holidayRepository.findAll();
+        List<Holiday> holidays =
+                holidayType == null
+                        ? holidayRepository.findAll()
+                        : holidayRepository.findAllByType(holidayType);
 
         return holidays.stream()
                 .map(holiday -> new HolidayResponse(

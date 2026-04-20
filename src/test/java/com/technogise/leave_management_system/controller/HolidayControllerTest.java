@@ -130,4 +130,18 @@ class HolidayControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Invalid holiday type parameter"));
     }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn200WithListOfFixedHolidaysWhenHolidayTypeIsValid() throws Exception {
+        when(holidayService.getHolidays("FIXED")).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/holidays?type=FIXED")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Holidays retrieved successfully"))
+                .andExpect(jsonPath("$.data[0].name").value("Diwali"))
+                .andExpect(jsonPath("$.data[0].type").value("FIXED"))
+                .andExpect(jsonPath("$.data[0].date").value("2026-11-08"));
+    }
 }

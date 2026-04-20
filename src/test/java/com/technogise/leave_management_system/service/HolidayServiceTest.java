@@ -121,4 +121,15 @@ class HolidayServiceTest {
     void shouldThrowBadRequestExceptionWhenInvalidHolidayTypeIsProvided() {
         assertThrows(HttpException.class, () -> holidayService.getHolidays("RANDOM"));
     }
+
+    @Test
+    void shouldFetchHolidaysByTypeSuccessfully() {
+        // When
+        when(holidayRepository.findAllByType(HolidayType.FIXED)).thenReturn(List.of(mockHoliday));
+        List<HolidayResponse> responses = holidayService.getHolidays("FIXED");
+
+        // Then
+        assertEquals(1, responses.size());
+        assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
 }
