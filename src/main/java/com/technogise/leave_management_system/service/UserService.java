@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -85,7 +86,7 @@ public class UserService {
     public List<EmployeeLeavesRecordResponse> getEmployeeLeavesRecordByYear(UUID userId, Integer year) {
         getUserByUserId(userId);
 
-        int requestedYear = (year != null) ? year : LocalDate.now().getYear();
+        int requestedYear = (year != null) ? year : LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
 
         List<LeaveCategory> leaveCategories = leaveCategoryRepository.findAll();
         List<EmployeeLeavesRecordResponse> leavesRecord = new ArrayList<>();
