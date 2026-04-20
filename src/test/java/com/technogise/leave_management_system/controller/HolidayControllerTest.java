@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -30,6 +31,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 @AutoConfigureMockMvc
 @WebMvcTest(value = HolidayController.class, excludeAutoConfiguration = {
@@ -101,5 +103,19 @@ class HolidayControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Access Denied"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldReturn200WithListOfAllHolidays() throws Exception {
+        when(holidayService.getHolidays()).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/holidays")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Holidays retrieved successfully"))
+                .andExpect(jsonPath("$.data[0].name").value("Diwali"))
+                .andExpect(jsonPath("$.data[0].type").value("FIXED"))
+                .andExpect(jsonPath("$.data[0].date").value("2026-11-08"));
     }
 }
