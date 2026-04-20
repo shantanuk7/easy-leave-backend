@@ -2,9 +2,7 @@ package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
-import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.HolidayType;
-import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.repository.HolidayRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.service.HolidayService;
@@ -60,15 +58,9 @@ class HolidayControllerTest {
 
     private HolidayRequest request;
     private HolidayResponse response;
-    private final User manager = new User();
 
     @BeforeEach
     void setUp() {
-        manager.setId(UUID.randomUUID());
-        manager.setName("Raj");
-        manager.setEmail("raj@technogise.com");
-        manager.setRole(UserRole.MANAGER);
-
         request = new HolidayRequest(
                 "Diwali",
                 HolidayType.FIXED,
