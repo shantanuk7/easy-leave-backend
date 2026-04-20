@@ -615,3 +615,38 @@ Allows a user to cancel an upcoming leave. The leave is soft deleted — the rec
 | `409` | Leave is already cancelled |
 
 ---
+
+### Get Holidays - `GET /api/holidays`
+
+This API allows authenticated users to retrieve all holidays. Optionally filter by type using the `type` query parameter.
+
+**Endpoint:** `GET /api/holidays`
+
+**Query Parameters:**
+
+| Parameter | Required | Values              |
+|-----------|----------|---------------------|
+| `type`    | No       | `FIXED`, `OPTIONAL` |
+
+**Response:**
+Success Response (200)
+```json
+{
+  "success": true,
+  "message": "Holidays retrieved successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Diwali",
+      "type": "FIXED",
+      "date": "2026-11-08"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Scenario                        |
+|-------------|---------------------------------|
+| `400`       | Invalid `type` parameter value  |
