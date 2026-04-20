@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -40,8 +41,10 @@ public class HolidayController {
     }
 
     @GetMapping
-    public ResponseEntity<SuccessResponse<List<HolidayResponse>>> getHolidays() {
-        List<HolidayResponse> response = holidayService.getHolidays();
+    public ResponseEntity<SuccessResponse<List<HolidayResponse>>> getHolidays(
+            @RequestParam(name = "type", required = false) String type
+    ) {
+        List<HolidayResponse> response = holidayService.getHolidays(type);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Holidays retrieved successfully", response));
