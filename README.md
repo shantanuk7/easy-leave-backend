@@ -98,55 +98,73 @@ GET /api/auth/me
 
 ---
 
-### Get All Leaves — `GET /api/leaves`
+# Leave Management System API
 
-Allows an authenticated user to retrieve leave records. Based on the `scope` parameter, a user can either view their **own leaves** or (if they are a Manager) view **all employees' leaves**.
+## Get All Leaves — `GET /api/leaves`
 
----
-
-#### Query Parameters
-
-| Parameter | Required | Default | Accepted Values                   |
-|-----------|----------|---------|-----------------------------------|
-| `scope`   | No       | `self`  | `self`, `organisation`            |
-| `status`  | No       | —       | `upcoming`,`ongoing`, `completed` |
+Allows an authenticated user to retrieve leave records. Users can view their own leaves, while Managers can view leaves for the entire organization or specific employees.
 
 ---
 
-#### How Scope Works
+### Query Parameters
 
-| Scope  | Who can use it       | What it returns                        |
-|--------|----------------------|----------------------------------------|
-| `self` | Any user             | Only the requesting user's own leaves  |
-| `team` | Manager only         | Leaves of all employees in the system  |
-
----
-
-#### How Status Works
-
-| Status      | What it returns                          |
-|-------------|------------------------------------------|
-| _(not set)_ | All leaves regardless of date            |
-| `upcoming`  | Only leaves with a date **after** today  |
-| `ongoing`   | Only leaves with a date  today           |
-| `completed` | Only leaves with a date **before** today |
+| Parameter | Required | Default | Accepted Values | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scope` | No | `self` | `self`, `organisation` | Determines the breadth of the search. |
+| `status` | No | — | `upcoming`, `ongoing`, `completed` | Filters leaves based on the current date. |
+| `empId` | No | — | UUID | Filter by a specific employee (Requires `organisation` scope). |
+| `year` | No | Current | Integer (e.g., 2026) | Filter by year (Used in conjunction with `empId`). |
 
 ---
 
-#### Example Requests
+### How Scope and Authorization Work
 
-**Employee fetching their own upcoming leaves**
-```
+| Scope | Who can use it | Behavior |
+| :--- | :--- | :--- |
+| `self` | Any User | Returns only the requesting user's own leaves. |
+| `organisation` | Manager Only | Returns leaves for all employees or a specific employee if `empId` is provided. |
+
+**Note:** If `empId` is provided, the `scope` must be set to `organisation`. Providing an `empId` with `scope=self` will result in a `400 Bad Request`.
+
+---
+
+---
+### How Status Works
+
+
+
+If the `status` parameter is used, the system filters the results based on the current date:* **None provided:** Returns all leaves regardless of date.* **upcoming:** Returns leaves with a date after today.* **ongoing:** Returns leaves with today's date.* **completed:** Returns leaves with a date before today.
+
+
+
+---
+### Date Validation Rules
+
+
+
+When applying for or updating leaves, the following rules apply:1.  **Past Dates:** Must be within the current calendar month.2.  **Future Dates:** Must be within the current calendar year.3.  **Weekends:** Leaves cannot be applied for or moved to Saturdays or Sundays.
+
+
+
+---
+### Example Requests**Employee fetching their own upcoming leaves**
+
 GET /api/leaves?scope=self&status=upcoming
-```
 
-**Manager fetching all team leaves**
-```
+
+
+**Manager fetching all leaves for the organization**
+
 GET /api/leaves?scope=organisation
-```
+
+
+
+**Manager fetching leaves for a specific employee in a specific year**
+
+GET /api/leaves?scope=organisation&empId=550e8400-e29b-41d4-a716-446655440000&year=2026
 
 ---
-#### Response
+### Response Format
 ```json
 {
   "success": true,
@@ -154,13 +172,13 @@ GET /api/leaves?scope=organisation
   "data": [
     {
       "id": "uuid",
-      "date": "2026-03-30",
+      "date": "2026-04-20",
       "employeeName": "Priyansh",
       "type": "Annual Leave",
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
-      "applyOn": "2026-03-01T10:00:00",
-      "reason": "Taking annual leave"
+      "updatedAt": "2026-04-01T10:00:00",
+      "description": "Taking annual leave"
     }
   ]
 }
