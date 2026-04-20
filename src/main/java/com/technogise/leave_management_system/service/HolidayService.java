@@ -3,6 +3,7 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
 import com.technogise.leave_management_system.entity.Holiday;
+import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.HolidayRepository;
@@ -55,6 +56,21 @@ public class HolidayService {
         }
     }
 
+    private HolidayType validateHolidayType(String type) {
+        if (type == null || type.isBlank()) {
+            return null;
+        }
+
+        try {
+            return HolidayType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid holiday type parameter"
+            );
+        }
+    }
+
     public HolidayResponse createHoliday(HolidayRequest request) {
         validateDuplicateHolidayInYear(request.getName(), request.getDate());
         validateDuplicateDate(request.getDate());
@@ -76,7 +92,9 @@ public class HolidayService {
         );
     }
 
-    public List<HolidayResponse> getHolidays() {
+    public List<HolidayResponse> getHolidays(String type) {
+
+        HolidayType holidayType = validateHolidayType(type);
         List<Holiday> holidays = holidayRepository.findAll();
 
         return holidays.stream()

@@ -3,6 +3,7 @@ package com.technogise.leave_management_system.controller;
 import com.technogise.leave_management_system.dto.HolidayRequest;
 import com.technogise.leave_management_system.dto.HolidayResponse;
 import com.technogise.leave_management_system.enums.HolidayType;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.HolidayRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import com.technogise.leave_management_system.service.HolidayService;
@@ -14,6 +15,7 @@ import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2Clien
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -108,7 +110,7 @@ class HolidayControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldReturn200WithListOfAllHolidays() throws Exception {
-        when(holidayService.getHolidays()).thenReturn(List.of(response));
+        when(holidayService.getHolidays(null)).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/holidays")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -117,5 +119,15 @@ class HolidayControllerTest {
                 .andExpect(jsonPath("$.data[0].name").value("Diwali"))
                 .andExpect(jsonPath("$.data[0].type").value("FIXED"))
                 .andExpect(jsonPath("$.data[0].date").value("2026-11-08"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldThrow400BadRequestWhenHolidayTypeIsInvalid() throws Exception {
+        when(holidayService.getHolidays("RANDOM")).thenThrow(new HttpException(HttpStatus.BAD_REQUEST, "Invalid holiday type parameter"));
+
+        mockMvc.perform(get("/api/holidays?type=RANDOM"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid holiday type parameter"));
     }
 }
