@@ -120,7 +120,7 @@ public class LeaveService {
 
         if (empId != null && !scope.equalsIgnoreCase(ORGANIZATION.toString())) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "empId can only be used with scope=ORGANIZATION");
+                    "empId can only be used when scope is ORGANIZATION");
         }
 
         List<Leave> leaveList = (empId != null)
@@ -157,7 +157,7 @@ public class LeaveService {
                 .filter(this::isValidLeaveDate).toList();
         if (validDates.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "Dates must be within the current month for past dates, or within the current year for future dates.");
+                    String.format("Invalid date range. Past dates must be within %s, and future dates must be within %d.",LocalDate.now().getMonth().name().toLowerCase(), LocalDate.now().getYear()));
         }
         List<LocalDate> workingDaysOnly = validDates.stream()
                 .filter(date -> !isWeekendDay(date)).toList();

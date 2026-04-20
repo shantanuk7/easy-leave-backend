@@ -52,7 +52,7 @@ public class LeaveController {
 
         log.debug("Returning {} leaves for userId={}", leaveList.size(), user.getId());
 
-        String message = leaveList.isEmpty() ? "No leaves found" : "Leaves retrieved successfully";
+        String message = leaveList.isEmpty() ? "No leave found" : "Leaves retrieved successfully";
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success(message, leaveList));

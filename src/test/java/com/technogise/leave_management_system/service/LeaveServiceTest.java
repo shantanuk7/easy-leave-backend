@@ -239,7 +239,7 @@ class LeaveServiceTest {
                 leaveService.getAllLeaves(manager.getId(), "SELF", null, empId, null));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("empId can only be used with scope=ORGANIZATION", ex.getMessage());
+        assertEquals("empId can only be used when scope is ORGANIZATION", ex.getMessage());
     }
 
     @Test

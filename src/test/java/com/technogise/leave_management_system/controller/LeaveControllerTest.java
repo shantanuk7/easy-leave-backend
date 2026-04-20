@@ -400,7 +400,7 @@ public class LeaveControllerTest {
                         .param("scope", "self"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("No leaves found"))
+                .andExpect(jsonPath("$.message").value("No leave found"))
                 .andExpect(jsonPath("$.data").isEmpty());
     }
 
