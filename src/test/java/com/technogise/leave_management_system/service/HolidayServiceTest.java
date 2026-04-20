@@ -132,4 +132,12 @@ class HolidayServiceTest {
         assertEquals(1, responses.size());
         assertEquals(mockHoliday.getId(), responses.getFirst().getId());
     }
+
+    @Test
+    void shouldReturnAllHolidaysWhenHolidayTypeIsBlank() {
+        when(holidayRepository.findAll()).thenReturn(List.of(mockHoliday));
+        List<HolidayResponse> responses = holidayService.getHolidays("");
+        assertEquals(1, responses.size());
+        assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
 }
