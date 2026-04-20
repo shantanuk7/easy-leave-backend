@@ -102,8 +102,6 @@ GET /api/auth/me
 
 Allows an authenticated user to retrieve leave records. Based on the `scope` parameter, a user can either view their **own leaves** or (if they are a Manager) view **all employees' leaves**.
 
----
-
 #### Query Parameters
 
 | Parameter | Required | Default | Accepted Values                   |
@@ -111,7 +109,6 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 | `scope`   | No       | `self`  | `self`, `organisation`            |
 | `status`  | No       | —       | `upcoming`,`ongoing`, `completed` |
 
----
 
 #### How Scope Works
 
@@ -119,8 +116,6 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 |--------|----------------------|----------------------------------------|
 | `self` | Any user             | Only the requesting user's own leaves  |
 | `team` | Manager only         | Leaves of all employees in the system  |
-
----
 
 #### How Status Works
 
@@ -130,8 +125,6 @@ Allows an authenticated user to retrieve leave records. Based on the `scope` par
 | `upcoming`  | Only leaves with a date **after** today  |
 | `ongoing`   | Only leaves with a date  today           |
 | `completed` | Only leaves with a date **before** today |
-
----
 
 #### Example Requests
 
@@ -165,11 +158,11 @@ GET /api/leaves?scope=organisation
   ]
 }
 ```
+
+---
 ### Apply Leave — `POST /api/leaves`
 
 Allows an user to apply for one or more leaves in a single request. Each date in the request is processed individually. Weekends, already-applied dates, and dates outside the allowed range are automatically skipped or rejected.
- 
----
 
 #### Request Body
 
@@ -180,8 +173,6 @@ Allows an user to apply for one or more leaves in a single request. Each date in
 | `duration`       | String (enum)      | Yes      | `FULL_DAY` or `HALF_DAY`                                 |
 | `startTime`      | String (LocalTime) | Yes      | Start time in `HH:mm` format                          |
 | `description`    | String             | Yes      | Reason for the leave (max 1000 characters)               |
- 
----
 
 #### Date Validation Rules
 
@@ -196,8 +187,6 @@ Allows an user to apply for one or more leaves in a single request. Each date in
 | Already applied dates       | Skipped silently — only new dates are saved                         |
 
 > If **all** provided dates are invalid (out of range, weekends, or already applied), the request fails with an appropriate error.
- 
----
 
 #### Example Request
 
@@ -216,8 +205,6 @@ Content-Type: application/json
   "description": "Dummy Description"
 }
 ```
- 
----
 
 #### Response
 
@@ -248,9 +235,7 @@ Content-Type: application/json
 }
 ```
 
- Note: The response contains one entry per successfully saved date. Skipped dates (weekends or duplicates) will not appear in the response.
- 
----
+Note: The response contains one entry per successfully saved date. Skipped dates (weekends or duplicates) will not appear in the response.
 
 #### Error Responses
 
@@ -272,27 +257,25 @@ Content-Type: application/json
   "message": "Dates must be within the current month for past dates, or within the current year for future dates."
 }
 ```
-## Get All Users — `GET /api/users`
+
+---
+
+### Get All Users — `GET /api/users`
 
 Allows a **Manager** or **Admin** to fetch a paginated list of all users in the system.  
 The users are sorted alphabetically by name by default. Employees cannot access this endpoint.
 
----
 
-### Query Parameters
+#### Query Parameters
 
 | Parameter | Type   | Default  | Description                                 |
 |-----------|--------|----------|---------------------------------------------|
 | page      | int    | 0        | Page number (0-indexed)                     |
 | size      | int    | 50       | Number of users per page                     |
 
----
-### Example Request
-#### GET /api/users?page=0&size=20
-#### Authorization: Bearer <JWT_TOKEN>
----
+#### Example Request - `GET /api/users?page=0&size=20`
 #### Actual Query
-```
+```postgresql
 SELECT id, email, name, role
 FROM users
 ORDER BY name ASC
@@ -325,13 +308,9 @@ LIMIT 20 OFFSET 0;
  
 ---
 
- 
-
 ### Get Leave Categories — `GET /api/leave-categories`
 
 Allows a user to retrieve all available leave categories (for example, Annual Leave, Sick Leave) to use while applying for leave.
-
----
 
 #### Request Headers
 
@@ -341,15 +320,11 @@ No custom headers are required for this API.
 
 This API does not accept any query parameters.
 
----
-
 #### Example Request
 
 ```
 GET /api/leave-categories
 ```
-
----
 
 #### Response
 
@@ -374,13 +349,13 @@ GET /api/leave-categories
 
 Note: If no leave categories exist, the API returns `200 OK` with an empty array in `data`.
 
+---
+
 ### Update Scheduled Leave Endpoint
 
 ```bash
 PATCH /api/leaves/{id}
 ```
-
----
 
 #### Request Body
 
@@ -391,8 +366,6 @@ PATCH /api/leaves/{id}
 | duration        | String    | Yes      | `FULL_DAY` or `HALF_DAY`             |
 | startTime       | LocalTime | Yes      | Format: `HH:mm:ss`                   |
 | description     | String    | Yes      | Max 1000 characters, cannot be blank |
-
----
 
 #### Example Request
 
@@ -406,8 +379,6 @@ PATCH /api/leaves/{id}
 }
 ```
 
----
-
 #### Validation Rules
 
 | Rule                  | Description                                          | Error           |
@@ -418,8 +389,6 @@ PATCH /api/leaves/{id}
 | Weekend Restriction   | Cannot update leave to Saturday or Sunday            | 400 Bad Request |
 | Conflict Check        | No duplicate leave allowed on same date              | 409 Conflict    |
 | Leave Category Exists | Category must exist                                  | 404 Not Found   |
-
----
 
 #### Response
 
@@ -439,8 +408,6 @@ PATCH /api/leaves/{id}
   }
 }
 ```
-
----
 
 #### Error Responses
 
@@ -471,3 +438,38 @@ Provides manager-specific dashboard metrics including total employees, employees
 }
 ```
 ---
+### Employee Leave Balance Record - `GET api/users/{userId}/leave-balance?year=YYYY`
+This API allows managers to retrieve an employee’s leave balance records for a specific year.
+It provides category-wise details such as total leaves, leaves taken, and remaining leaves.
+
+**Endpoint:** `GET api/users/{userId}/leave-balance?year=YYYY`  
+**Authorization:** Requires `MANAGER` role
+
+#### Path & Query Parameters
+
+| Parameter | Type   | Required  | Description                              |
+|-----------|--------|----------|------------------------------------------|
+| userId      | UUID    | Yes        | ID of the employee                     |
+| year      | Integer    | No       | Year for which leave records are required|
+
+#### Behavior
+- If year is provided → returns leave records for that year
+- If year is not provided → defaults to current year
+
+
+#### Success Response (200)
+```json
+{
+  "success": true,
+  "message": "Employee leaves record retrieved successfully",
+  "data": [
+    {
+      "leaveId": "uuid",
+      "leaveType": "Annual",
+      "totalLeavesAvailable": 24,
+      "leavesTaken": 4,
+      "leavesRemaining": 20
+    }
+  ]
+}
+```
