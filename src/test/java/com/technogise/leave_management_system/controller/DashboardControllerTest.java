@@ -55,11 +55,11 @@ public class DashboardControllerTest {
     }
     @Test
     @WithMockUser(roles = "EMPLOYEE")
-    void shouldReturn500WhenEmployeeRequestsManagerDashboard() throws Exception {
+    void shouldReturn403WhenEmployeeRequestsManagerDashboard() throws Exception {
         EmployeeMetricsResponse response = new EmployeeMetricsResponse(20,20,20);
         when(dashboardService.getManagerDashboardData()).thenReturn(response);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/dashboard/manager"))
-                .andExpect(status().isInternalServerError())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Access Denied"));
     }
 }
