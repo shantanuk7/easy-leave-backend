@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -103,5 +104,16 @@ class HolidayServiceTest {
         // Then
         HttpException exception = assertThrows(HttpException.class, () -> holidayService.createHoliday(request));
         assertEquals("Holiday cannot be created on a weekend day", exception.getMessage());
+    }
+
+    @Test
+    void shouldFetchAllHolidaysSuccessfully() {
+        // When
+        when(holidayRepository.findAll()).thenReturn(List.of(mockHoliday));
+        List<HolidayResponse> responses = holidayService.getHolidays();
+
+        // Then
+        assertEquals(1, responses.size());
+        assertEquals(mockHoliday.getId(), responses.getFirst().getId());
     }
 }

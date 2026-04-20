@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 
 @Service
 @Transactional
@@ -73,5 +74,18 @@ public class HolidayService {
                 savedHoliday.getType(),
                 savedHoliday.getDate()
         );
+    }
+
+    public List<HolidayResponse> getHolidays() {
+        List<Holiday> holidays = holidayRepository.findAll();
+
+        return holidays.stream()
+                .map(holiday -> new HolidayResponse(
+                        holiday.getId(),
+                        holiday.getName(),
+                        holiday.getType(),
+                        holiday.getDate()
+                ))
+                .toList();
     }
 }
