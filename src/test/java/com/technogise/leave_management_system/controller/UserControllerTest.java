@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -33,13 +35,16 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @WebMvcTest(value = UserController.class, excludeAutoConfiguration = {
     OAuth2ClientAutoConfiguration.class,
     OAuth2ClientWebSecurityAutoConfiguration.class
 })
+@EnableMethodSecurity
 class UserControllerTest {
 
     @MockitoBean
@@ -55,18 +60,8 @@ class UserControllerTest {
     private MockMvc mockMvc;
 
     private User employee;
-    private User manager;
     private User admin;
-
-    private RequestPostProcessor mockUser(User user) {
-        return request -> {
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(user, null, List.of());
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            request.setUserPrincipal(auth);
-            return request;
-        };
-    }
+    private User manager;
 
     @BeforeEach
     void setUp() {
@@ -90,6 +85,7 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldReturn200WithListOfAllUsersWhenManagerOrAdminRequests() throws Exception {
         List<UserResponse> responses = List.of(
                 new UserResponse(employee.getId(), employee.getEmail(), employee.getName(), employee.getRole()),
@@ -101,8 +97,7 @@ class UserControllerTest {
                 .thenReturn(page);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/users")
                         .param("page", "0")
-                        .param("size", "50")
-                        .with(mockUser(admin)))
+                        .param("size", "50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Users retrieved successfully"))
@@ -111,7 +106,9 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.content[1].id").value(responses.get(1).getId().toString()))
                 .andExpect(jsonPath("$.data.content[1].name").value(responses.get(1).getName()));
     }
+
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldReturnSuccessWhenRoleUpdated() throws Exception {
         UpdateUserRoleRequest request =
                 new UpdateUserRoleRequest(employee.getId(), UserRole.MANAGER);
@@ -119,7 +116,6 @@ class UserControllerTest {
                 .updateRole(any(UUID.class), any(UpdateUserRoleRequest.class));
         mockMvc.perform(MockMvcRequestBuilders
                         .patch("/api/users/role")
-                        .with(mockUser(admin))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(new ObjectMapper().writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -127,6 +123,7 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "MANAGER")
     void shouldReturn200AndLeaveBalanceOfSingleEmployee() throws Exception {
         List<EmployeeLeavesRecordResponse> mockResponse = List.of(
                 EmployeeLeavesRecordResponse.builder()
@@ -143,8 +140,7 @@ class UserControllerTest {
 
         mockMvc.perform(MockMvcRequestBuilders
                         .get("/api/users/{userId}/leave-balance", employee.getId())
-                        .param("year", "2026")
-                        .with(mockUser(manager)))
+                        .param("year", "2026"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message")
@@ -155,16 +151,31 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldReturnEmptyListWhenNoLeavesExist() throws Exception {
         when(userService.getEmployeeLeavesRecordByYear(employee.getId(), 2026))
                 .thenReturn(List.of());
 
         mockMvc.perform(MockMvcRequestBuilders
                         .get("/api/users/{userId}/leave-balance", employee.getId())
-                        .param("year", "2026")
-                        .with(mockUser(admin)))
+                        .param("year", "2026"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    @WithMockUser(roles = "MANAGER")
+    void shouldReturn200WithUserDetailsWhenManagerRequests() throws Exception {
+        UserResponse response = new UserResponse(manager.getEmail(), manager.getName());
+
+        when(userService.getUserDetails(manager.getId())).thenReturn(response);
+
+        mockMvc.perform(get("/api/users/{id}", manager.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("User details retrieved successfully"))
+                .andExpect(jsonPath("$.data.email").value(response.getEmail()))
+                .andExpect(jsonPath("$.data.name").value(response.getName()));
     }
 }

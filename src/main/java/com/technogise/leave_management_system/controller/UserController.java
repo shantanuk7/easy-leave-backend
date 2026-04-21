@@ -70,4 +70,17 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(SuccessResponse.success("Employee leaves record retrieved successfully", leavesRecord));
     }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<SuccessResponse<UserResponse>> getUserDetails(@PathVariable UUID id) {
+        log.info("GET /api/users called for user details");
+
+        UserResponse userDetails = userService.getUserDetails(id);
+
+        log.debug("Returning details for user: {}", userDetails.getEmail());
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(SuccessResponse.success("User details retrieved successfully", userDetails));
+    }
 }
