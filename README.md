@@ -471,3 +471,26 @@ Provides manager-specific dashboard metrics including total employees, employees
 }
 ```
 ---
+## Logout — `POST /api/auth/logout`
+Clears the JWT authentication cookie, effectively logging the user out of the system.
+
+---
+
+### Request Body
+No request body required.
+
+---
+
+### Example Request
+#### POST /api/auth/logout
+
+### Response
+{
+"success": true,
+"message": "Logout successful",
+"data": null
+}
+
+### Notes
+- Clears the `token` cookie by setting it with an empty value and `maxAge=0`
+- Cookie attributes (`secure`, `path`, `sameSite`) match those set during login in `OAuth2LoginSuccessHandler`

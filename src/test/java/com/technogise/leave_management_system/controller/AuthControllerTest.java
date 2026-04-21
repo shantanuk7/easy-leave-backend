@@ -26,8 +26,8 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(value = AuthController.class, excludeAutoConfiguration = {
@@ -96,5 +96,24 @@ class AuthControllerTest {
                         .with(mockUserDetails(mockUser)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("User not found"));
+    }
+
+    @Test
+    void shouldReturn200WithSuccessMessageOnLogout() throws Exception {
+        mockMvc.perform(post("/api/auth/logout"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Logout successful"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void shouldClearTokenCookieOnLogout() throws Exception {
+        mockMvc.perform(post("/api/auth/logout"))
+                .andExpect(status().isOk())
+                .andExpect(cookie().value("token", ""))
+                .andExpect(cookie().maxAge("token", 0))
+                .andExpect(cookie().httpOnly("token", true))
+                .andExpect(cookie().path("token", "/"));
     }
 }
