@@ -230,6 +230,19 @@ class LeaveServiceTest {
     }
 
     @Test
+    void shouldThrowBadRequestWhenEmpIdIsProvidedWithScopeSelf() {
+        User manager = createManager();
+        UUID empId = UUID.randomUUID();
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(manager.getId(), "SELF", null, empId, null));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("empId can only be used when scope is ORGANIZATION", ex.getMessage());
+    }
+
+    @Test
     void shouldThrowBadRequestWhenStatusParamIsInvalid() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
@@ -246,7 +259,7 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null);
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null,null ,null);
 
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
@@ -260,7 +273,7 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "");
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "", null ,null);
 
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
@@ -275,10 +288,81 @@ class LeaveServiceTest {
         when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming");
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming", null,null);
 
         assertEquals(1, result.size());
         assertEquals("Employee", result.getFirst().employeeName);
+    }
+
+    @Test
+    void shouldReturnEmployeeLeavesForGivenYearWhenManagerProvidesEmpIdAndYear() {
+        User manager = createManager();
+        User employee = createEmployee();
+        LeaveCategory category = createLeaveCategory();
+        Leave leave = createEmployeeLeave(employee, category);
+        leave.setDate(LocalDate.of(2024, 6, 15));
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2024, 12, 31);
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserIdAndDateBetween(
+                employee.getId(), startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date")))
+                .thenReturn(List.of(leave));
+
+        List<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(), "ORGANIZATION", null, employee.getId(), 2024);
+
+        assertEquals(1, result.size());
+        assertEquals(employee.getName(), result.getFirst().employeeName);
+        assertEquals(LocalDate.of(2024, 6, 15), result.getFirst().date);
+    }
+
+    @Test
+    void shouldThrowForbiddenWhenNonManagerRequestsLeavesByEmployeeAndYear() {
+        User employee = createEmployee();
+        UUID targetEmpId = UUID.randomUUID();
+        Integer targetYear = 2024;
+
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+
+        HttpException exception = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(employee.getId(), "ORGANIZATION", null, targetEmpId, targetYear)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals("Not allowed to access this resource", exception.getMessage());
+
+        verify(leaveRepository, never()).findAllByUserIdAndDateBetween(any(), any(), any(), any());
+    }
+
+    @Test
+    void shouldDefaultToCurrentYearWhenYearIsNotProvided() {
+        User manager = createManager();
+        User employee = createEmployee();
+        LeaveCategory category = createLeaveCategory();
+        Leave leave = createEmployeeLeave(employee, category);
+
+        int currentYear = LocalDate.now().getYear();
+        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
+        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserIdAndDateBetween(
+                employee.getId(), startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date")))
+                .thenReturn(List.of(leave));
+
+        List<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(), "ORGANIZATION", null, employee.getId(), null);
+
+        assertEquals(1, result.size());
+        verify(leaveRepository).findAllByUserIdAndDateBetween(
+                employee.getId(), startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date"));
     }
 
     @Test
@@ -288,7 +372,7 @@ class LeaveServiceTest {
                 .thenThrow(new HttpException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
         assertThrows(HttpException.class, () ->
-                leaveService.getAllLeaves(employee.getId(), "self", null));
+                leaveService.getAllLeaves(employee.getId(), "self", null, null ,null));
     }
 
     @Test

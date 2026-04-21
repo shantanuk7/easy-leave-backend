@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -76,15 +77,8 @@ public class LeaveService {
         throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid status query parameter");
     }
 
-    public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status) {
-        User user = userService.getUserByUserId(userId);
-        List<Leave> leaveList = filterLeavesByScope(scope, user);
-
-        if (status != null && !status.isBlank()) {
-            leaveList = filterLeavesByStatus(status, leaveList);
-        }
-
-        return leaveList.stream().map(leave -> new LeaveResponse(
+    private LeaveResponse mapToLeaveResponse(Leave leave) {
+        return new LeaveResponse(
                 leave.getId(),
                 leave.getDate(),
                 leave.getUser().getName(),
@@ -93,7 +87,48 @@ public class LeaveService {
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
                 leave.getDescription()
-        )).toList();
+        );
+    }
+
+    private List<Leave> getLeavesByScopeAndStatus(User user, String scope, String status) {
+        List<Leave> leaveList = filterLeavesByScope(scope, user);
+
+        if (status != null && !status.isBlank()) {
+            return filterLeavesByStatus(status, leaveList);
+        }
+
+        return leaveList;
+    }
+    private List<Leave> getLeavesByEmployeeAndYear(User user, UUID empId, Integer year) {
+        if (!user.getRole().equals(UserRole.MANAGER)) {
+            throw new HttpException(HttpStatus.FORBIDDEN,
+                    "Not allowed to access this resource");
+        }
+
+        userService.getUserByUserId(empId);
+
+        int targetYear = (year != null) ? year : LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
+        LocalDate startDate = LocalDate.of(targetYear, 1, 1);
+        LocalDate endDate = LocalDate.of(targetYear, 12, 31);
+
+        return leaveRepository.findAllByUserIdAndDateBetween(
+                empId, startDate, endDate,
+                Sort.by(Sort.Direction.DESC, "date"));
+    }
+
+    public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status, UUID empId, Integer year) {
+        User user = userService.getUserByUserId(userId);
+
+        if (empId != null && !scope.equalsIgnoreCase(ORGANIZATION.toString())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "empId can only be used when scope is ORGANIZATION");
+        }
+
+        List<Leave> leaveList = (empId != null)
+                ? getLeavesByEmployeeAndYear(user, empId, year)
+                : getLeavesByScopeAndStatus(user, scope, status);
+
+        return leaveList.stream().map(this::mapToLeaveResponse).toList();
     }
 
     public boolean isValidLeaveDate(LocalDate date) {
@@ -123,7 +158,7 @@ public class LeaveService {
                 .filter(this::isValidLeaveDate).toList();
         if (validDates.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "Dates must be within the current month for past dates, or within the current year for future dates.");
+                    String.format("Invalid date range. Past dates must be within %s, and future dates must be within %d.",LocalDate.now().getMonth().name().toLowerCase(), LocalDate.now().getYear()));
         }
         List<LocalDate> workingDaysOnly = validDates.stream()
                 .filter(date -> !isWeekendDay(date)).toList();

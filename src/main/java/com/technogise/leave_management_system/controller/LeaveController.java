@@ -6,6 +6,7 @@ import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.LeaveService;
 import jakarta.validation.Valid;
@@ -39,17 +40,23 @@ public class LeaveController {
     @GetMapping
     public ResponseEntity<SuccessResponse<List<LeaveResponse>>> findAllLeave(
             @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "scope", defaultValue = "self") String scope,
+            @RequestParam(name = "scope", defaultValue = ScopeType.DEFAULT_SCOPE) String scope,
+            @RequestParam(name = "empId", required = false) UUID empId,
+            @RequestParam(name = "year", required = false) Integer year,
             @AuthenticationPrincipal User user
     ) {
-        log.info("GET /api/leaves called by userId={}, scope={}, status={}", user.getId(), scope, status);
-        UUID userId = user.getId();
-        List<LeaveResponse> leaveList = leaveService.getAllLeaves(userId, scope, status);
-        log.debug("Returning {} leaves for userId={}", leaveList.size(), user.getId());
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(SuccessResponse.success("Leaves retrieved successfully", leaveList));
-    }
+        log.info("GET /api/leaves called by userId={}, scope={}, status={}, empId={}, year={}",
+                user.getId(), scope, status, empId, year);
 
+        List<LeaveResponse> leaveList = leaveService.getAllLeaves(user.getId(), scope, status, empId, year);
+
+        log.debug("Returning {} leaves for userId={}", leaveList.size(), user.getId());
+
+        String message = leaveList.isEmpty() ? "No leave found" : "Leaves retrieved successfully";
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(SuccessResponse.success(message, leaveList));
+    }
     @PostMapping
     public ResponseEntity<SuccessResponse<List<CreateLeaveResponse>>> applyLeave(
             @AuthenticationPrincipal User user,
