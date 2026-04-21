@@ -1073,7 +1073,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -1090,7 +1090,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
