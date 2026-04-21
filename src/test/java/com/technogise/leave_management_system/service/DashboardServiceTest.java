@@ -32,8 +32,8 @@ public class DashboardServiceTest {
         LocalDate tomorrow = today.plusDays(1);
 
         when(userRepository.count()).thenReturn(50L);
-        when(leaveRepository.countByDate(today)).thenReturn(10L);
-        when(leaveRepository.countByDate(tomorrow)).thenReturn(5L);
+        when(leaveRepository.countByDateAndDeletedAtIsNull(today)).thenReturn(10L);
+        when(leaveRepository.countByDateAndDeletedAtIsNull(tomorrow)).thenReturn(5L);
         EmployeeMetricsResponse response = dashboardService.getManagerDashboardData();
         assertEquals(50L, response.getTotalEmployees());
         assertEquals(10L, response.getTotalEmployeesOnLeaveToday());
@@ -46,8 +46,8 @@ public class DashboardServiceTest {
         LocalDate tomorrow = today.plusDays(1);
 
         when(userRepository.count()).thenReturn(1000L);
-        when(leaveRepository.countByDate(today)).thenReturn(300L);
-        when(leaveRepository.countByDate(tomorrow)).thenReturn(250L);
+        when(leaveRepository.countByDateAndDeletedAtIsNull(today)).thenReturn(300L);
+        when(leaveRepository.countByDateAndDeletedAtIsNull(tomorrow)).thenReturn(250L);
 
         EmployeeMetricsResponse response = dashboardService.getManagerDashboardData();
 
