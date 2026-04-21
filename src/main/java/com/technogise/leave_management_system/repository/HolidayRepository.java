@@ -9,6 +9,6 @@ import java.util.UUID;
 
 @Repository
 public interface HolidayRepository extends JpaRepository<Holiday, UUID> {
-    Holiday findByNameAndDateBetween(String name, LocalDate startDate, LocalDate endDate);
+    boolean existsByNameIgnoreCaseAndDateBetween(String name, LocalDate startDate, LocalDate endDate);
     boolean existsByDate(LocalDate date);
 }

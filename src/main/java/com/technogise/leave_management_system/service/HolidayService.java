@@ -22,17 +22,18 @@ public class HolidayService {
         this.holidayRepository = holidayRepository;
     }
 
-    private void validateDuplicateHolidayInYear(String name) {
-        int currentYear = LocalDate.now().getYear();
-        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
-        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+    private void validateDuplicateHolidayInYear(String name, LocalDate date) {
+        int year = date.getYear();
 
-        Holiday holiday = holidayRepository
-                .findByNameAndDateBetween(name, startDate, endDate);
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
 
-        if (holiday != null) {
+        boolean exists = holidayRepository
+                .existsByNameIgnoreCaseAndDateBetween(name, startDate, endDate);
+
+        if (exists) {
             throw new HttpException(HttpStatus.CONFLICT,
-                    "Holiday already exists in the current year");
+                    "Holiday already exists in the given year");
         }
     }
 
@@ -54,12 +55,12 @@ public class HolidayService {
     }
 
     public HolidayResponse createHoliday(HolidayRequest request) {
-        validateDuplicateHolidayInYear(request.getName());
+        validateDuplicateHolidayInYear(request.getName(), request.getDate());
         validateDuplicateDate(request.getDate());
         validateWeekendDay(request.getDate());
 
         Holiday holiday = Holiday.builder()
-                .name(request.getName())
+                .name(request.getName().trim())
                 .type(request.getType())
                 .date(request.getDate())
                 .build();

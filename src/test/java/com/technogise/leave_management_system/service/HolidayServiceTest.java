@@ -68,16 +68,16 @@ class HolidayServiceTest {
     @Test
     void shouldThrowExceptionWhenHolidayAlreadyExists() {
         // When
-        when(holidayRepository.findByNameAndDateBetween(
+        when(holidayRepository.existsByNameIgnoreCaseAndDateBetween(
                 any(String.class),
                 any(LocalDate.class),
                 any(LocalDate.class)
-        )).thenReturn(mockHoliday);
+        )).thenReturn(true);
 
         // Then
         HttpException exception = assertThrows(HttpException.class,
                 () -> holidayService.createHoliday(holidayRequest));
-        assertEquals("Holiday already exists in the current year", exception.getMessage());
+        assertEquals("Holiday already exists in the given year", exception.getMessage());
     }
 
     @Test
