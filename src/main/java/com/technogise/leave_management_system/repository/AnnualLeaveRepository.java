@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -21,4 +22,6 @@ public interface AnnualLeaveRepository extends JpaRepository<AnnualLeave, UUID> 
 
     @Query("SELECT DISTINCT al.year FROM annual_leaves al ORDER BY al.year DESC")
     List<String> findDistinctYears();
+
+    Optional<AnnualLeave> findByUserIdAndYear(UUID userId, String year);
 }

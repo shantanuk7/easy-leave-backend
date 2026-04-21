@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.LeaveCategoryResponse;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -10,11 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
@@ -53,7 +52,7 @@ class LeaveCategoryServiceTest {
     void shouldReturnAllLeaveCategories() {
         // Given
         UUID id = leaveCategoryId;
-        String categoryName = "Annual Leave";
+        String categoryName = LeaveConstants.ANNUAL_LEAVE;
 
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(id);
@@ -86,5 +85,32 @@ class LeaveCategoryServiceTest {
 
         //Then
         assertEquals(0, actualResponse.size());
+    }
+
+    @Test
+    void shouldReturnAllocatedDaysWhenCategoryExists() {
+        String categoryName = LeaveConstants.ANNUAL_LEAVE;
+        int expectedAllocatedDays = 20;
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setName(categoryName);
+        leaveCategory.setAllocatedDays(expectedAllocatedDays);
+
+        when(leaveCategoryRepository.findByName(categoryName)).thenReturn(Optional.of(leaveCategory));
+
+        int actualAllocatedDays = leaveCategoryService.getAllocatedDaysByCategoryName(categoryName);
+
+        assertEquals(expectedAllocatedDays, actualAllocatedDays);
+    }
+
+    @Test
+    void shouldThrowHttpExceptionWhenCategoryNotFound() {
+        String categoryName = "InvalidCategory";
+
+        when(leaveCategoryRepository.findByName(categoryName)).thenReturn(Optional.empty());
+
+        HttpException exception = assertThrows(HttpException.class, () ->
+                leaveCategoryService.getAllocatedDaysByCategoryName(categoryName));
+
+        assertEquals("Leave category not found with name: " + categoryName, exception.getMessage());
     }
 }

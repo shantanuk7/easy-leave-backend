@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
@@ -8,6 +9,7 @@ import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -39,13 +41,15 @@ public class LeaveService {
     private final LeaveRepository leaveRepository;
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
+    private final AnnualLeaveService annualLeaveService;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
-                        LeaveCategoryService leaveCategoryService) {
+                        LeaveCategoryService leaveCategoryService, AnnualLeaveService annualLeaveService) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
+        this.annualLeaveService = annualLeaveService;
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -162,7 +166,6 @@ public class LeaveService {
         }
         List<LocalDate> workingDaysOnly = validDates.stream()
                 .filter(date -> !isWeekendDay(date)).toList();
-
         if (workingDaysOnly.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply for leave on weekends.");
         }
@@ -170,7 +173,6 @@ public class LeaveService {
         Set<LocalDate> alreadyTakenDates = existingLeaves.stream()
                 .map(Leave::getDate)
                 .collect(Collectors.toSet());
-
         List<LocalDate> newDatesToApply = workingDaysOnly.stream()
                 .filter(date -> !alreadyTakenDates.contains(date))
                 .toList();
@@ -189,8 +191,10 @@ public class LeaveService {
                     leave.setDuration(request.getDuration());
                     return leave;
                 }).toList();
-
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
+        if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDatesToApply.size(), LocalDate.now().getYear());
+        }
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),
@@ -211,11 +215,7 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
 
-        return new LeaveResponse(
-                leave.getId(),
-                leave.getDate(),
-                leave.getUser().getName(),
-                leave.getLeaveCategory().getName(),
+        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), leave.getLeaveCategory().getName(),
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
@@ -236,6 +236,9 @@ public class LeaveService {
         validateLeaveOwnership(leave, userId);
         validateExistingLeaveDate(leave.getDate());
 
+        DurationType oldDuration = leave.getDuration();
+        String oldCategoryName = leave.getLeaveCategory().getName();
+
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
             validateNewLeaveDateIsNotWeekend(request.getDate());
@@ -251,6 +254,12 @@ public class LeaveService {
         Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
+
+        if (request.getDuration() != null) {
+            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldCategoryName, savedLeave.getLeaveCategory().getName(),
+                    oldDuration, savedLeave.getDuration(), savedLeave.getDate().getYear());
+        }
+
         return mapToUpdateLeaveResponse(savedLeave);
     }
 

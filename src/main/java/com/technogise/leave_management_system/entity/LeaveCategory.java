@@ -28,6 +28,9 @@ public class LeaveCategory {
     @Column(name = "name", unique = true, nullable = false, length = 50)
     private String name;
 
+    @Column(name = "allocated_days", nullable = false)
+    private int allocatedDays;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
