@@ -512,3 +512,38 @@ No request body required.
 ### Notes
 - Clears the `token` cookie by setting it with an empty value and `maxAge=0`
 - Cookie attributes (`secure`, `path`, `sameSite`) match those set during login in `OAuth2LoginSuccessHandler`
+
+
+## Update User Role — `PATCH /api/users/role`
+
+Allows an **ADMIN** to update the role of a user in the system.
+
+---
+
+### Request Body
+
+| Field       | Type | Required | Description                          |
+|------------|------|----------|--------------------------------------|
+| employeeId | UUID | Yes      | ID of the user whose role is updated |
+| role       | Enum | Yes      | New role (`EMPLOYEE`, `MANAGER`, `ADMIN`) |
+
+---
+
+### Example Request
+#### PATCH /api/users/role
+
+```
+{
+  "employeeId": "27ba9c6d-72eb-4231-a662-bfe752130fc8",
+  "role": "MANAGER"
+}
+```
+### Response
+```
+{
+  "success": true,
+  "message": "Role updated successfully",
+  "data": null
+}
+```
+---

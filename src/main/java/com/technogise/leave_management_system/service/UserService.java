@@ -1,10 +1,12 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -45,5 +47,22 @@ public class UserService {
                         u.getName(),
                         u.getRole()
                 ));
+    }
+
+    @Transactional
+    public void updateRole(UUID adminId, UpdateUserRoleRequest request) {
+        if (adminId.equals(request.getEmployeeId())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "You cannot change your own role");
+        }
+        User user = userRepository.findById(request.getEmployeeId())
+                .orElseThrow(() ->
+                        new HttpException(HttpStatus.NOT_FOUND,
+                                "User not found with id: " + request.getEmployeeId()));
+        if (user.getRole().equals(request.getRole())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "User already has role: " + request.getRole());
+        }
+        user.setRole(request.getRole());
     }
 }

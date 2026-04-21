@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
@@ -125,5 +126,57 @@ class UserServiceTest {
         UserResponse second = result.getContent().get(1);
         assertEquals(admin.getId(), second.getId());
         assertEquals(admin.getEmail(), second.getEmail());
+    }
+
+    @Test
+    void shouldUpdateRoleSuccessfully() {
+        UUID adminId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        user.setRole(UserRole.EMPLOYEE);
+
+        UpdateUserRoleRequest request =
+                new UpdateUserRoleRequest(userId, UserRole.MANAGER);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        userService.updateRole(adminId, request);
+        assertEquals(UserRole.MANAGER, user.getRole());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenAdminTriesToUpdateOwnRole() {
+        UUID adminId = UUID.randomUUID();
+        UpdateUserRoleRequest request =
+                new UpdateUserRoleRequest(adminId, UserRole.MANAGER);
+        HttpException exception = assertThrows(HttpException.class,
+                () -> userService.updateRole(adminId, request));
+        assertEquals("You cannot change your own role", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUserNotFound() {
+        UUID adminId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UpdateUserRoleRequest request =
+                new UpdateUserRoleRequest(userId, UserRole.MANAGER);
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        HttpException exception = assertThrows(HttpException.class,
+                () -> userService.updateRole(adminId, request));
+        assertEquals("User not found with id: " + userId, exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRoleIsSame() {
+        UUID adminId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        user.setRole(UserRole.MANAGER);
+        UpdateUserRoleRequest request =
+                new UpdateUserRoleRequest(userId, UserRole.MANAGER);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        HttpException exception = assertThrows(HttpException.class,
+                () -> userService.updateRole(adminId, request));
+        assertEquals("User already has role: MANAGER", exception.getMessage());
     }
 }
