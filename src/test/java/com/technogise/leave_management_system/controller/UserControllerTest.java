@@ -1,6 +1,7 @@
 package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
+import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
@@ -54,6 +55,7 @@ class UserControllerTest {
     private MockMvc mockMvc;
 
     private User employee;
+    private User manager;
     private User admin;
 
     private RequestPostProcessor mockUser(User user) {
@@ -73,6 +75,12 @@ class UserControllerTest {
         employee.setName("Priyansh Saxena");
         employee.setRole(UserRole.EMPLOYEE);
         employee.setEmail("priyansh@technogise.com");
+
+        manager = new User();
+        manager.setId(UUID.randomUUID());
+        manager.setName("Raj");
+        manager.setRole(UserRole.MANAGER);
+        manager.setEmail("raj@technogise.com");
 
         admin = new User();
         admin.setId(UUID.randomUUID());
@@ -117,5 +125,46 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
-}
 
+    @Test
+    void shouldReturn200AndLeaveBalanceOfSingleEmployee() throws Exception {
+        List<EmployeeLeavesRecordResponse> mockResponse = List.of(
+                EmployeeLeavesRecordResponse.builder()
+                        .leaveId(UUID.randomUUID())
+                        .leaveType("Annual")
+                        .leavesTaken(4)
+                        .totalLeavesAvailable(24)
+                        .leavesRemaining(20)
+                        .build()
+        );
+
+        when(userService.getEmployeeLeavesRecordByYear(employee.getId(), 2026))
+                .thenReturn(mockResponse);
+
+        mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/users/{userId}/leave-balance", employee.getId())
+                        .param("year", "2026")
+                        .with(mockUser(manager)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message")
+                        .value("Employee leaves record retrieved successfully"))
+                .andExpect(jsonPath("$.data[0].leaveType").value("Annual"))
+                .andExpect(jsonPath("$.data[0].leavesTaken").value(4))
+                .andExpect(jsonPath("$.data[0].leavesRemaining").value(20));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoLeavesExist() throws Exception {
+        when(userService.getEmployeeLeavesRecordByYear(employee.getId(), 2026))
+                .thenReturn(List.of());
+
+        mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/users/{userId}/leave-balance", employee.getId())
+                        .param("year", "2026")
+                        .with(mockUser(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+}
