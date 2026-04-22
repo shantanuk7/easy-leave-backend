@@ -294,7 +294,10 @@ public class LeaveService {
 
         Leave savedLeave = leaveRepository.save(leave);
 
-        if (request.getDuration() != null) {
+        boolean categoryChanged = request.getLeaveCategoryId() != null;
+        boolean durationChanged = request.getDuration() != null;
+
+        if (categoryChanged || durationChanged) {
             annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldCategoryName, savedLeave.getLeaveCategory().getName(),
                     oldDuration, savedLeave.getDuration(), savedLeave.getDate().getYear());
         }
