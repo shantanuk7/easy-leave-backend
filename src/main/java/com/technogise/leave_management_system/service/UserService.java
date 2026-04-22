@@ -3,10 +3,12 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
+import com.technogise.leave_management_system.entity.AnnualLeave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
 import com.technogise.leave_management_system.repository.LeaveCategoryRepository;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -28,15 +31,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final LeaveCategoryRepository leaveCategoryRepository;
     private final LeaveRepository leaveRepository;
+    private final AnnualLeaveRepository annualLeaveRepository;
 
     public UserService(
             UserRepository userRepository,
             LeaveCategoryRepository leaveCategoryRepository,
-            LeaveRepository leaveRepository
+            LeaveRepository leaveRepository,
+            AnnualLeaveRepository annualLeaveRepository
     ) {
         this.userRepository = userRepository;
         this.leaveCategoryRepository = leaveCategoryRepository;
         this.leaveRepository = leaveRepository;
+        this.annualLeaveRepository = annualLeaveRepository;
     }
 
     public User findOrCreateUser(String email, String name) {
@@ -87,6 +93,8 @@ public class UserService {
         getUserByUserId(userId);
 
         int requestedYear = (year != null) ? year : LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
+        Optional<AnnualLeave> annualLeave =
+                annualLeaveRepository.findByUserIdAndYear(userId, String.valueOf(requestedYear));
 
         List<LeaveCategory> leaveCategories = leaveCategoryRepository.findAll();
         List<EmployeeLeavesRecordResponse> leavesRecord = new ArrayList<>();
@@ -98,14 +106,17 @@ public class UserService {
             long leavesTaken = leaveRepository.
                     countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(userId, category.getId(), startDate, endDate);
 
+            double totalLeaves = category.getName().equalsIgnoreCase("Annual Leave")
+                    ? annualLeave.map(AnnualLeave::getTotal).orElse(0.0) : category.getAllocatedDays();
+
             if (leavesTaken > 0) {
                 leavesRecord.add(EmployeeLeavesRecordResponse
                         .builder()
                         .leaveId(category.getId())
                         .leaveType(category.getName())
                         .leavesTaken(leavesTaken)
-                        .totalLeavesAvailable(category.getAllocatedDays())
-                        .leavesRemaining(category.getAllocatedDays() - leavesTaken)
+                        .totalLeavesAvailable(totalLeaves)
+                        .leavesRemaining(totalLeaves - leavesTaken)
                         .build()
                 );
             }
