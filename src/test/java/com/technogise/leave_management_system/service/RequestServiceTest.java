@@ -16,8 +16,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,7 +83,7 @@ class RequestServiceTest {
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasNullLeaveCategoryId() {
-        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now().minusMonths(1));
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(ZoneId.of("Asia/Kolkata")).minusMonths(1));
         payload.setLeaveCategoryId(null);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
@@ -94,7 +97,7 @@ class RequestServiceTest {
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasDateInCurrentMonth() {
-        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now());
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(ZoneId.of("Asia/Kolkata")));
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
@@ -108,7 +111,7 @@ class RequestServiceTest {
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasDateInFutureMonth() {
-        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now().plusMonths(1));
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(ZoneId.of("Asia/Kolkata")).plusMonths(1));
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
@@ -118,5 +121,21 @@ class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenAllValidPastLeaveDatesAreWeekends() {
+        LocalDate lastMonthSaturday = LocalDate.now(ZoneId.of("Asia/Kolkata"))
+                .minusMonths(1)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        CreateRequestPayload payload = createPastLeavePayload(lastMonthSaturday);
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(payload, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply for leave on weekends.", ex.getMessage());
     }
 }
