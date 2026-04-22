@@ -182,5 +182,21 @@ class RequestServiceTest {
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         assertEquals("A request already exists for this date", ex.getMessage());
     }
+    @Test
+    void shouldNotThrowConflictWhenPastLeaveRequestExistsWithRejectedStatus() {
+        LocalDate lastMonthWeekday = LocalDate.now(ZoneId.of("Asia/Kolkata"))
+                .minusMonths(1)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
 
+        CreateRequestPayload payload = createPastLeavePayload(lastMonthWeekday);
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, lastMonthWeekday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(false);
+
+        assertDoesNotThrow(() -> requestService.raiseRequest(payload, userId));
+    }
 }
