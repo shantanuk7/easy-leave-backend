@@ -96,7 +96,7 @@ public class UserService {
 
         for (LeaveCategory category : leaveCategories) {
             long leavesTaken = leaveRepository.
-                    countByUserIdAndLeaveCategoryIdAndDateBetween(userId, category.getId(), startDate, endDate);
+                    countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(userId, category.getId(), startDate, endDate);
 
             if (leavesTaken > 0) {
                 leavesRecord.add(EmployeeLeavesRecordResponse

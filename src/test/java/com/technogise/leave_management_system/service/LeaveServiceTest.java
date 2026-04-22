@@ -311,7 +311,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDateBetween(
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 employee.getId(), startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(leave));
@@ -339,7 +339,7 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         assertEquals("Not allowed to access this resource", exception.getMessage());
 
-        verify(leaveRepository, never()).findAllByUserIdAndDateBetween(any(), any(), any(), any());
+        verify(leaveRepository, never()).findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any());
     }
 
     @Test
@@ -355,7 +355,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDateBetween(
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 employee.getId(), startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(leave));
@@ -364,7 +364,7 @@ class LeaveServiceTest {
                 manager.getId(), "ORGANIZATION", null, employee.getId(), null);
 
         assertEquals(1, result.size());
-        verify(leaveRepository).findAllByUserIdAndDateBetween(
+        verify(leaveRepository).findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 employee.getId(), startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date"));
     }

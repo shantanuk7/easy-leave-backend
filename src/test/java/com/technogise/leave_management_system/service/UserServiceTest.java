@@ -219,11 +219,11 @@ class UserServiceTest {
         when(leaveCategoryRepository.findAll())
                 .thenReturn(categories);
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
                 eq(userId), eq(categories.getFirst().getId()), any(), any()))
                 .thenReturn(4L);
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
                 eq(userId), eq(categories.get(1).getId()), any(), any()))
                 .thenReturn(10L);
 
@@ -261,7 +261,7 @@ class UserServiceTest {
         when(leaveCategoryRepository.findAll())
                 .thenReturn(List.of(category));
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
                 any(), any(), any(), any()))
                 .thenReturn(0L);
 

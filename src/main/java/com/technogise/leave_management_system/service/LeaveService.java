@@ -116,7 +116,7 @@ public class LeaveService {
         LocalDate startDate = LocalDate.of(targetYear, 1, 1);
         LocalDate endDate = LocalDate.of(targetYear, 12, 31);
 
-        return leaveRepository.findAllByUserIdAndDateBetween(
+        return leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 empId, startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date"));
     }
