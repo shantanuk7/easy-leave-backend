@@ -1,6 +1,7 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.CreateRequestPayload;
+import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.RequestType;
@@ -89,5 +90,33 @@ class RequestServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Leave category is required for Past Leave requests", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenPastLeaveRequestHasDateInCurrentMonth() {
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now());
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(payload, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenPastLeaveRequestHasDateInFutureMonth() {
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now().plusMonths(1));
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(payload, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
 }
