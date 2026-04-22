@@ -3,10 +3,12 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
+import com.technogise.leave_management_system.entity.AnnualLeave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
 import com.technogise.leave_management_system.repository.LeaveCategoryRepository;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
@@ -44,6 +46,9 @@ class UserServiceTest {
 
     @Mock
     private LeaveCategoryRepository leaveCategoryRepository;
+
+    @Mock
+    private AnnualLeaveRepository annualLeaveRepository;
 
     @InjectMocks
     private UserService userService;
@@ -219,11 +224,11 @@ class UserServiceTest {
         when(leaveCategoryRepository.findAll())
                 .thenReturn(categories);
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
                 eq(userId), eq(categories.getFirst().getId()), any(), any()))
                 .thenReturn(4L);
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
                 eq(userId), eq(categories.get(1).getId()), any(), any()))
                 .thenReturn(10L);
 
@@ -261,7 +266,7 @@ class UserServiceTest {
         when(leaveCategoryRepository.findAll())
                 .thenReturn(List.of(category));
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetween(
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
                 any(), any(), any(), any()))
                 .thenReturn(0L);
 
@@ -299,5 +304,42 @@ class UserServiceTest {
                 userService.getEmployeeLeavesRecordByYear(userId, null);
 
         assertNotNull(result);
+    }
+
+    @Test
+    void shouldUseAnnualLeaveTotalWhenCategoryIsAnnualAndDataExists() {
+        int year = 2026;
+
+        UUID categoryId = UUID.randomUUID();
+
+        LeaveCategory category = new LeaveCategory(
+                categoryId,
+                "Annual Leave",
+                24,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        AnnualLeave annualLeave = new AnnualLeave();
+        annualLeave.setTotal(30.0);
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(new User()));
+
+        when(leaveCategoryRepository.findAll())
+                .thenReturn(List.of(category));
+
+        when(annualLeaveRepository.findByUserIdAndYear(eq(userId), any()))
+                .thenReturn(Optional.of(annualLeave));
+
+        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
+                any(), any(), any(), any()))
+                .thenReturn(5L);
+
+        List<EmployeeLeavesRecordResponse> result =
+                userService.getEmployeeLeavesRecordByYear(userId, year);
+
+        assertEquals(1, result.size());
+        assertEquals(30.0, result.getFirst().getTotalLeavesAvailable());
     }
 }

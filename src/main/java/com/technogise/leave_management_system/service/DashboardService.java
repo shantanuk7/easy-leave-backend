@@ -24,8 +24,8 @@ public class DashboardService {
         LocalDate tomorrow = today.plusDays(1);
 
         long totalEmployees = userRepository.count();
-        long onLeaveToday = leaveRepository.countByDate(today);
-        long onLeaveTomorrow = leaveRepository.countByDate(tomorrow);
+        long onLeaveToday = leaveRepository.countByDateAndDeletedAtIsNull(today);
+        long onLeaveTomorrow = leaveRepository.countByDateAndDeletedAtIsNull(tomorrow);
         return new EmployeeMetricsResponse(totalEmployees, onLeaveToday, onLeaveTomorrow);
     }
 }

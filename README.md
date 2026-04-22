@@ -582,3 +582,36 @@ Success Response (201)
   }
 }
 ```
+
+---
+
+### Cancel Leave — `DELETE /api/leaves/{id}`
+
+Allows a user to cancel an upcoming leave. The leave is soft deleted — the record is retained in the database with a `deleted_at` timestamp. Cancelled leaves are excluded from all GET responses.
+
+---
+
+#### Validation Rules
+
+| Rule | Description | Error |
+|------|-------------|-------|
+| Ownership | Only the owner of the leave can cancel it | 403 Forbidden |
+| Already cancelled | Cannot cancel a leave that is already cancelled | 409 Conflict |
+| Past leave | Cannot cancel a leave with a past date | 400 Bad Request |
+
+---
+
+#### Response
+
+**204 No Content** — Leave cancelled successfully.
+
+#### Error Responses
+
+| HTTP Status | Scenario |
+|-------------|----------|
+| `400` | Leave date is in the past |
+| `403` | User is not the owner of the leave |
+| `404` | Leave not found |
+| `409` | Leave is already cancelled |
+
+---

@@ -157,7 +157,7 @@ class LeaveServiceTest {
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<Leave> result = leaveService.filterLeavesByScope("self", employee);
@@ -179,7 +179,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         User manager = createManager();
-        when(leaveRepository.findAll(Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<Leave> result = leaveService.filterLeavesByScope("organization", manager);
@@ -260,7 +260,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null,null ,null);
@@ -274,7 +274,7 @@ class LeaveServiceTest {
         User employee = createEmployee();
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "", null ,null);
@@ -289,7 +289,7 @@ class LeaveServiceTest {
         Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         employeeLeave.setDate(LocalDate.now().plusDays(1));
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserId(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(employeeLeave));
 
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming", null,null);
@@ -311,7 +311,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDateBetween(
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 employee.getId(), startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(leave));
@@ -339,7 +339,7 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         assertEquals("Not allowed to access this resource", exception.getMessage());
 
-        verify(leaveRepository, never()).findAllByUserIdAndDateBetween(any(), any(), any(), any());
+        verify(leaveRepository, never()).findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any());
     }
 
     @Test
@@ -355,7 +355,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDateBetween(
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 employee.getId(), startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date")))
                 .thenReturn(List.of(leave));
@@ -364,7 +364,7 @@ class LeaveServiceTest {
                 manager.getId(), "ORGANIZATION", null, employee.getId(), null);
 
         assertEquals(1, result.size());
-        verify(leaveRepository).findAllByUserIdAndDateBetween(
+        verify(leaveRepository).findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 employee.getId(), startDate, endDate,
                 Sort.by(Sort.Direction.DESC, "date"));
     }
@@ -445,7 +445,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(user);
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -471,7 +471,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
@@ -488,7 +488,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
@@ -526,7 +526,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class)))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
                 .thenReturn(List.of(existingLeaveOnDayTwo));
         when(leaveRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
 
@@ -621,7 +621,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
 
         assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
     }
@@ -820,7 +820,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
@@ -847,7 +847,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, sameDate, leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, sameDate, leaveBeingUpdated.getId()))
                 .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(createValidLeaveCategory());
@@ -879,7 +879,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, newDate, leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
                 .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(any()))
                 .thenReturn(category);
@@ -927,7 +927,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leaveBeingUpdated.getId()))
                 .thenReturn(Optional.of(leaveBeingUpdated));
-        when(leaveRepository.existsByUserIdAndDateAndIdNot(userId, request.getDate(), leaveBeingUpdated.getId()))
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, request.getDate(), leaveBeingUpdated.getId()))
                 .thenReturn(false);
         when(leaveCategoryService.getLeaveCategoryById(newCategoryId))
                 .thenReturn(newCategory);
@@ -966,7 +966,7 @@ class LeaveServiceTest {
         assertEquals("Updated description", response.getDescription());
         assertEquals(category.getName(), response.getLeaveCategoryName());
         assertEquals(DurationType.FULL_DAY, response.getDuration());
-        verify(leaveRepository, never()).existsByUserIdAndDateAndIdNot(any(), any(), any());
+        verify(leaveRepository, never()).existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any());
     }
 
     @Test
@@ -1073,7 +1073,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -1090,11 +1090,187 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserId(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
 
         verify(annualLeaveService, never()).syncOnLeaveCreated(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void shouldDeleteLeaveSuccessfullyWhenLeaveExists() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        Leave existingLeave = createEmployeeLeave(user, leaveCategory);
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+
+        leaveService.deleteLeave(existingLeave.getId(), user.getId());
+        assertNotNull(existingLeave.getDeletedAt());
+    }
+
+    @Test
+    void shouldThrowForbiddenErrorWhenUserTriesToDeleteLeaveThatDoesNotBelongToThem() {
+        User user = createValidUser();
+        User differentUser = createEmployee();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+
+        Leave existingLeave = createEmployeeLeave(differentUser, leaveCategory);
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.deleteLeave(existingLeave.getId(), user.getId()));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowConflictErrorWhenTryingToCancelAlreadyCancelledLeave() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+
+        Leave existingLeave = createEmployeeLeave(user, leaveCategory);
+        existingLeave.setDeletedAt(existingLeave.getCreatedAt().plusDays(1));
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.deleteLeave(existingLeave.getId(), user.getId()));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldReturn400WhenCancellingLeaveWithPastDate() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        Leave existingLeave = createEmployeeLeave(user, leaveCategory);
+        existingLeave.setDate(existingLeave.getDate().minusDays(1));
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+        assertThrows(HttpException.class, () -> leaveService.deleteLeave(existingLeave.getId(), userId));
+    }
+
+    @Test
+    void shouldReactivateCancelledLeaveWhenSameDateLeaveIsAppliedAgain() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        LocalDate weekday = nextWeekday();
+
+        Leave cancelledLeave = new Leave();
+        cancelledLeave.setId(UUID.randomUUID());
+        cancelledLeave.setDate(weekday);
+        cancelledLeave.setUser(user);
+        cancelledLeave.setDeletedAt(LocalDateTime.now().minusDays(1));
+
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(weekday),
+                DurationType.FULL_DAY,
+                LocalTime.of(9, 0),
+                "Reapplying cancelled leave"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+                .thenReturn(List.of());
+        when(leaveRepository.findByUserIdAndDate(userId, weekday))
+                .thenReturn(Optional.of(cancelledLeave));
+        when(leaveRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
+
+        List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
+
+        assertEquals(1, responses.size());
+
+        ArgumentCaptor<List<Leave>> captor = ArgumentCaptor.forClass(List.class);
+        verify(leaveRepository).saveAll(captor.capture());
+
+        Leave saved = captor.getValue().getFirst();
+        assertNull(saved.getDeletedAt());
+        assertEquals(cancelledLeave.getId(), saved.getId());
+    }
+
+    @Test
+    void shouldNotThrowConflictWhenUpdatingToADateThatHasACancelledLeave() {
+        User user = createValidUser();
+        LocalDate newDate = nextWeekday();
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(newDate);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
+                .thenReturn(false);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(createValidLeaveCategory());
+        when(leaveRepository.save(any(Leave.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() ->
+                leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+    }
+
+    @Test
+    void shouldThrowErrorWhenLeaveToDeleteIsNotFound() {
+        UUID unknownLeaveId = UUID.randomUUID();
+        when(leaveRepository.findById(unknownLeaveId)).thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.deleteLeave(unknownLeaveId, userId));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals("Leave not found", ex.getMessage());
+    }
+
+    @Test
+    void shouldSyncAnnualLeaveBalanceWhenCancelledLeaveIsAnnualLeave() {
+        User user = createValidUser();
+        LeaveCategory annualLeaveCategory = new LeaveCategory();
+        annualLeaveCategory.setId(UUID.randomUUID());
+        annualLeaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setLeaveCategory(annualLeaveCategory);
+        leave.setDate(LocalDate.now().plusDays(1));
+        leave.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        leaveService.deleteLeave(leave.getId(), user.getId());
+
+        verify(annualLeaveService).syncOnLeaveDeleted(user, DurationType.FULL_DAY, leave.getDate().getYear());
+    }
+
+    @Test
+    void shouldNotSyncAnnualLeaveBalanceWhenCancelledLeaveIsNotAnnualLeave() {
+        User user = createValidUser();
+        LeaveCategory sickLeaveCategory = new LeaveCategory();
+        sickLeaveCategory.setId(UUID.randomUUID());
+        sickLeaveCategory.setName("Sick Leave");
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setLeaveCategory(sickLeaveCategory);
+        leave.setDate(LocalDate.now().plusDays(1));
+        leave.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        leaveService.deleteLeave(leave.getId(), user.getId());
+
+        verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
     }
 }

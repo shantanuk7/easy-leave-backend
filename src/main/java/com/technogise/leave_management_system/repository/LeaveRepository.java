@@ -8,25 +8,29 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     @EntityGraph(attributePaths = {"user","leaveCategory"})
-    List<Leave> findAllByUserId(UUID userId, Sort sort);
+    List<Leave> findAllByUserIdAndDeletedAtNull(UUID userId, Sort sort);
 
-    boolean existsByUserIdAndDateAndIdNot(UUID userId, LocalDate date, UUID excludeLeaveId);
+    List<Leave> findAllByDeletedAtIsNull(Sort sort);
 
-    long countByDate(LocalDate date);
+    long countByDateAndDeletedAtIsNull(LocalDate date);
 
     @EntityGraph(attributePaths = {"user", "leaveCategory"})
-    List<Leave> findAllByUserIdAndDateBetween(UUID userId, LocalDate startDate, LocalDate endDate, Sort sort);
+    List<Leave> findAllByUserIdAndDateBetweenAndDeletedAtIsNull(UUID userId, LocalDate startDate, LocalDate endDate, Sort sort);
 
-
-    long countByUserIdAndLeaveCategoryIdAndDateBetween(
+    long countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
             UUID userId,
             UUID leaveCategoryId,
             LocalDate startDate,
             LocalDate endDate
     );
+
+    Optional<Leave> findByUserIdAndDate(UUID userId, LocalDate date);
+
+    boolean existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(UUID userId, LocalDate date, UUID id);
 }
