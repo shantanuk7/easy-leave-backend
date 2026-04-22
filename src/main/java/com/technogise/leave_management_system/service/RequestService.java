@@ -2,6 +2,9 @@ package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.CreateRequestPayload;
 import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.entity.LeaveCategory;
+import com.technogise.leave_management_system.entity.Request;
+import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.WeekendDay;
@@ -40,17 +43,49 @@ public class RequestService {
 
     @Transactional
     public List<CreateRequestResponse> raiseRequest(CreateRequestPayload payload, UUID userId) {
-        userService.getUserByUserId(userId);
+        User user = userService.getUserByUserId(userId);
         validatePastLeaveCategoryPresent(payload);
 
         if (payload.getRequestType() == RequestType.PAST_LEAVE) {
-            leaveCategoryService.getLeaveCategoryById(payload.getLeaveCategoryId());
+            LeaveCategory leaveCategory = leaveCategoryService
+                    .getLeaveCategoryById(payload.getLeaveCategoryId());
             List<LocalDate> validDates = filterValidPastLeaveDates(payload.getDates());
             List<LocalDate> workingDays = filterWeekendDates(validDates);
             validateNoDuplicateRequests(workingDays, userId);
+            return savePastLeaveRequests(workingDays, payload, user, leaveCategory);
         }
 
         return null;
+    }
+
+    private List<CreateRequestResponse> savePastLeaveRequests(
+            List<LocalDate> dates, CreateRequestPayload payload, User user, LeaveCategory leaveCategory) {
+
+        List<Request> requests = dates.stream().map(date -> {
+            Request request = new Request();
+            request.setRequestedByUser(user);
+            request.setRequestType(payload.getRequestType());
+            request.setLeaveCategory(leaveCategory);
+            request.setDate(date);
+            request.setStartTime(payload.getStartTime());
+            request.setDuration(payload.getDuration());
+            request.setDescription(payload.getDescription());
+            request.setStatus(RequestStatus.PENDING);
+            return request;
+        }).toList();
+
+        List<Request> savedRequests = requestRepository.saveAll(requests);
+
+        return savedRequests.stream().map(request -> new CreateRequestResponse(
+                request.getId(),
+                request.getRequestType(),
+                request.getLeaveCategory() != null ? request.getLeaveCategory().getName() : null,
+                request.getDate(),
+                request.getStartTime(),
+                request.getDuration(),
+                request.getDescription(),
+                request.getStatus()
+        )).toList();
     }
 
     private void validateNoDuplicateRequests(List<LocalDate> dates, UUID userId) {
