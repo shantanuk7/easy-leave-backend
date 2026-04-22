@@ -76,7 +76,19 @@ public class AnnualLeaveService {
             annualLeaveRepository.save(annualLeave);
         } else if (!wasAnnual && isAnnual) {
             syncOnLeaveCreated(user, newDuration, 1, year);
+        } else if (wasAnnual) {
+            syncOnLeaveDeleted(user, oldDuration, year);
         }
+    }
+
+    public void syncOnLeaveDeleted(User user, DurationType duration, int year) {
+        AnnualLeave annualLeave = getAnnualLeave(user.getId(), year);
+
+        double daysToRestore = duration == DurationType.FULL_DAY ? FULL_DAY_VALUE : HALF_DAY_VALUE;
+        annualLeave.setTaken(annualLeave.getTaken() - daysToRestore);
+        annualLeave.setBalance(annualLeave.getBalance() + daysToRestore);
+
+        annualLeaveRepository.save(annualLeave);
     }
 
     private AnnualLeave getAnnualLeave(UUID userId, int year) {

@@ -220,13 +220,45 @@ class AnnualLeaveServiceTest {
     }
 
     @Test
-    void shouldNotSyncWhenCategoryChangesFromAnnualLeaveToAnyOtherLeaveCategory() {
+    void shouldDecreaseTakenWhenCategoryChangesFromAnnualLeaveToAnyOtherLeaveCategory() {
         User user = createUser(1);
+        when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR))
+                .thenReturn(Optional.of(createAnnualLeave(user, 24.0, 3.0, 21.0)));
 
-        annualLeaveService.syncOnLeaveUpdated(user, LeaveConstants.ANNUAL_LEAVE, "Sick Leave", DurationType.FULL_DAY,
-                DurationType.FULL_DAY, CURRENT_YEAR);
-        verify(annualLeaveRepository, never()).findByUserIdAndYear(any(), any());
-        verify(annualLeaveRepository, never()).save(any());
+        annualLeaveService.syncOnLeaveUpdated(user, LeaveConstants.ANNUAL_LEAVE, "Sick Leave",
+                DurationType.FULL_DAY, DurationType.FULL_DAY, CURRENT_YEAR);
+
+        verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 2.0 && al.getBalance() == 22.0));
     }
 
+    @Test
+    void shouldDecreaseTakenAndIncreaseBalanceWhenFullDayLeaveDeleted() {
+        User user = createUser(1);
+        when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR)).thenReturn(Optional.of(createAnnualLeave(user, 24.0, 5.0, 19.0)));
+        annualLeaveService.syncOnLeaveDeleted(user, DurationType.FULL_DAY, CURRENT_YEAR);
+        verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 4.0 && al.getBalance() == 20.0));
+    }
+
+    @Test
+    void shouldDecreaseTakenByHalfWhenHalfDayLeaveDeleted() {
+        User user = createUser(1);
+        when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR)).thenReturn(Optional.of(createAnnualLeave(user, 24.0, 0.5, 23.5)));
+        annualLeaveService.syncOnLeaveDeleted(user, DurationType.HALF_DAY, CURRENT_YEAR);
+        verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 0.0 && al.getBalance() == 24.0));
+    }
+
+    @Test
+    void shouldResetTakenToZeroWhenOnlyLeaveIsDeleted() {
+        User user = createUser(1);
+        when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR)).thenReturn(Optional.of(createAnnualLeave(user, 24.0, 1.0, 23.0)));
+        annualLeaveService.syncOnLeaveDeleted(user, DurationType.FULL_DAY, CURRENT_YEAR);
+        verify(annualLeaveRepository).save(argThat(al -> al.getTaken() == 0.0 && al.getBalance() == 24.0));
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenAnnualLeaveRecordMissingOnLeaveDeleted() {
+        User user = createUser(1);
+        when(annualLeaveRepository.findByUserIdAndYear(user.getId(), CURRENT_YEAR_STR)).thenReturn(Optional.empty());
+        assertThrows(HttpException.class, () -> annualLeaveService.syncOnLeaveDeleted(user, DurationType.FULL_DAY, CURRENT_YEAR));
+    }
 }

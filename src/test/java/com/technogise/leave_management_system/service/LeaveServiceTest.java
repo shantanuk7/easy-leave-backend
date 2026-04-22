@@ -1219,4 +1219,58 @@ class LeaveServiceTest {
         assertDoesNotThrow(() ->
                 leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
     }
+
+    @Test
+    void shouldThrowErrorWhenLeaveToDeleteIsNotFound() {
+        UUID unknownLeaveId = UUID.randomUUID();
+        when(leaveRepository.findById(unknownLeaveId)).thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.deleteLeave(unknownLeaveId, userId));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals("Leave not found", ex.getMessage());
+    }
+
+    @Test
+    void shouldSyncAnnualLeaveBalanceWhenCancelledLeaveIsAnnualLeave() {
+        User user = createValidUser();
+        LeaveCategory annualLeaveCategory = new LeaveCategory();
+        annualLeaveCategory.setId(UUID.randomUUID());
+        annualLeaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setLeaveCategory(annualLeaveCategory);
+        leave.setDate(LocalDate.now().plusDays(1));
+        leave.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        leaveService.deleteLeave(leave.getId(), user.getId());
+
+        verify(annualLeaveService).syncOnLeaveDeleted(user, DurationType.FULL_DAY, leave.getDate().getYear());
+    }
+
+    @Test
+    void shouldNotSyncAnnualLeaveBalanceWhenCancelledLeaveIsNotAnnualLeave() {
+        User user = createValidUser();
+        LeaveCategory sickLeaveCategory = new LeaveCategory();
+        sickLeaveCategory.setId(UUID.randomUUID());
+        sickLeaveCategory.setName("Sick Leave");
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setLeaveCategory(sickLeaveCategory);
+        leave.setDate(LocalDate.now().plusDays(1));
+        leave.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        leaveService.deleteLeave(leave.getId(), user.getId());
+
+        verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
+    }
 }

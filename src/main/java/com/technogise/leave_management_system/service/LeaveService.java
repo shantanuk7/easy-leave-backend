@@ -385,5 +385,9 @@ public class LeaveService {
 
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);
+
+        if (leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+            annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
+        }
     }
 }
