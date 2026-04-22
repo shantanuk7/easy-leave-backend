@@ -2,6 +2,7 @@ package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.CreateRequestPayload;
 import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -45,10 +46,21 @@ public class RequestService {
         if (payload.getRequestType() == RequestType.PAST_LEAVE) {
             leaveCategoryService.getLeaveCategoryById(payload.getLeaveCategoryId());
             List<LocalDate> validDates = filterValidPastLeaveDates(payload.getDates());
-            filterWeekendDates(validDates);
+            List<LocalDate> workingDays = filterWeekendDates(validDates);
+            validateNoDuplicateRequests(workingDays, userId);
         }
 
         return null;
+    }
+
+    private void validateNoDuplicateRequests(List<LocalDate> dates, UUID userId) {
+        List<RequestStatus> activeStatuses = List.of(RequestStatus.PENDING, RequestStatus.APPROVED);
+        dates.forEach(date -> {
+            if (requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(userId, date, activeStatuses)) {
+                throw new HttpException(HttpStatus.CONFLICT,
+                        "A request already exists for this date");
+            }
+        });
     }
 
     private List<LocalDate> filterValidPastLeaveDates(List<LocalDate> dates) {

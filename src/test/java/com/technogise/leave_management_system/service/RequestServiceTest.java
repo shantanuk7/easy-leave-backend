@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.dto.CreateRequestPayload;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveRepository;
@@ -138,4 +139,48 @@ class RequestServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Cannot apply for leave on weekends.", ex.getMessage());
     }
+    @Test
+    void shouldThrowConflictWhenPastLeaveRequestAlreadyExistsWithPendingStatus() {
+        LocalDate lastMonthWeekday = LocalDate.now(ZoneId.of("Asia/Kolkata"))
+                .minusMonths(1)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+
+        CreateRequestPayload payload = createPastLeavePayload(lastMonthWeekday);
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, lastMonthWeekday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(true);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(payload, userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("A request already exists for this date", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowConflictWhenPastLeaveRequestAlreadyExistsWithApprovedStatus() {
+        LocalDate lastMonthWeekday = LocalDate.now(ZoneId.of("Asia/Kolkata"))
+                .minusMonths(1)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.TUESDAY));
+
+        CreateRequestPayload payload = createPastLeavePayload(lastMonthWeekday);
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, lastMonthWeekday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(true);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(payload, userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("A request already exists for this date", ex.getMessage());
+    }
+
 }
