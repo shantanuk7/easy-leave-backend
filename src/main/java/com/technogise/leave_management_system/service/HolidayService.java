@@ -60,7 +60,9 @@ public class HolidayService {
         if (type == null || type.isBlank()) {
             return;
         }
-        if (!type.equalsIgnoreCase(HolidayType.FIXED.toString()) || !(type.equalsIgnoreCase(HolidayType.OPTIONAL.toString()))) {
+        try {
+            HolidayType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException ex) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid holiday type parameter");
         }
     }
