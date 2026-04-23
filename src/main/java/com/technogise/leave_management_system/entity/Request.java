@@ -66,7 +66,7 @@ public class Request {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actioned_by_user_id", nullable = true)
-    private User actionedByUser;
+    private User actionedByManager;
 
     @Column(name = "manager_remark", nullable = true)
     private String managerRemark;
