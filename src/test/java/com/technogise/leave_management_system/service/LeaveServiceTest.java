@@ -525,6 +525,7 @@ class LeaveServiceTest {
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
+                null,
                 Arrays.asList(dayOne, dayTwo, dayThree),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
@@ -558,6 +559,7 @@ class LeaveServiceTest {
     void shouldThrowBadRequestWhenAllDatesAreFromPreviousMonth() {
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
+                null,
                 List.of(LocalDate.now().minusMonths(1)),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
@@ -574,6 +576,7 @@ class LeaveServiceTest {
     void shouldThrowBadRequestWhenAllDatesAreFromNextYear() {
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
+                null,
                 List.of(LocalDate.now().plusYears(1)),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
@@ -596,6 +599,7 @@ class LeaveServiceTest {
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
+                null,
                 weekends,
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
@@ -620,6 +624,7 @@ class LeaveServiceTest {
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
+                null,
                 List.of(weekday),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
@@ -1174,6 +1179,7 @@ class LeaveServiceTest {
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
+                null,
                 List.of(weekday),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),

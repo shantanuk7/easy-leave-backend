@@ -20,8 +20,9 @@ import java.util.UUID;
 @Setter
 public class CreateLeaveRequest {
 
-    @NotNull(message = "Leave category must not be null")
     private UUID leaveCategoryId;
+
+    private UUID holidayId;
 
     @NotNull(message = "Dates must not be null")
     @NotEmpty(message = "At least one date must be provided")
