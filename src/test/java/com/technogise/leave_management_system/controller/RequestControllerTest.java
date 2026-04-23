@@ -1,5 +1,5 @@
 package com.technogise.leave_management_system.controller;
-import com.technogise.leave_management_system.dto.GetAllRequestResponse;
+import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.RequestStatus;
@@ -79,7 +79,7 @@ class RequestControllerTest {
 
     @Test
     void shouldReturn200AndListOfRequestsForSelfScope() throws Exception {
-        List<GetAllRequestResponse> mockResponse = List.of( new GetAllRequestResponse(
+        List<RequestResponse> mockResponse = List.of( new RequestResponse(
                 UUID.randomUUID(),
                 employee.getName(),
                 null,
@@ -90,7 +90,7 @@ class RequestControllerTest {
                 RequestStatus.PENDING,
                 LocalDate.now()
         ));
-        Page<GetAllRequestResponse> mockPage = new PageImpl<>(mockResponse);
+        Page<RequestResponse> mockPage = new PageImpl<>(mockResponse);
         when(requestService.getAllRequests( any(Pageable.class), eq(employee.getId()), eq(ScopeType.SELF), eq(null))).thenReturn(mockPage);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/requests")
                         .param("scope", "SELF")

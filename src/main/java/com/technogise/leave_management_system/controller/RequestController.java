@@ -1,6 +1,6 @@
 package com.technogise.leave_management_system.controller;
 
-import com.technogise.leave_management_system.dto.GetAllRequestResponse;
+import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.ScopeType;
@@ -24,13 +24,13 @@ public class RequestController {
         this.requestService = requestService;
     }
     @GetMapping
-    public ResponseEntity<SuccessResponse<Page<GetAllRequestResponse>>> getAllRequests(
+    public ResponseEntity<SuccessResponse<Page<RequestResponse>>> getAllRequests(
             Pageable pageable,
             @RequestParam(defaultValue = "SELF") ScopeType scope,
             @RequestParam(required = false) RequestStatus status,
             @AuthenticationPrincipal User user
     ) {
-        Page<GetAllRequestResponse> response =
+        Page<RequestResponse> response =
                 requestService.getAllRequests(pageable, user.getId(), scope, status);
         return ResponseEntity.status(HttpStatus.OK).body(
                 SuccessResponse.success("Requests fetch Successfully", response));

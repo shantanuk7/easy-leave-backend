@@ -1,6 +1,6 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.GetAllRequestResponse;
+import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
@@ -75,7 +75,7 @@ public class RequestServiceTest {
         when(requestRepository.findAllByRequestedByUserId(eq(employee.getId()), any(Pageable.class)))
                 .thenReturn(mockPage);
 
-        Page<GetAllRequestResponse> result = requestService.getAllRequests(pageable, employee.getId(), ScopeType.SELF, null);
+        Page<RequestResponse> result = requestService.getAllRequests(pageable, employee.getId(), ScopeType.SELF, null);
         assertEquals(1, result.getContent().size());
         assertEquals("Priyansh", result.getContent().getFirst().getEmployeeName());
         assertEquals("Sick", result.getContent().getFirst().getDescription());
@@ -94,7 +94,7 @@ public class RequestServiceTest {
                 eq(employee.getId()), eq(RequestStatus.PENDING), any(Pageable.class)))
                 .thenReturn(mockPage);
 
-        Page<GetAllRequestResponse> result = requestService.getAllRequests(
+        Page<RequestResponse> result = requestService.getAllRequests(
                 pageable, employee.getId(), ScopeType.SELF, RequestStatus.PENDING);
 
         assertEquals(1, result.getContent().size());

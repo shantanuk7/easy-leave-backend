@@ -1,6 +1,6 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.GetAllRequestResponse;
+import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
@@ -40,8 +40,8 @@ public class RequestService {
         }
     }
 
-    private GetAllRequestResponse mapToResponse(Request request) {
-        return new GetAllRequestResponse(
+    private RequestResponse mapToResponse(Request request) {
+        return new RequestResponse(
                 request.getId(),
                 request.getRequestedByUser().getName(),
                 request.getRequestType(),
@@ -56,7 +56,7 @@ public class RequestService {
         );
     }
 
-    public Page<GetAllRequestResponse> getAllRequests(
+    public Page<RequestResponse> getAllRequests(
             Pageable pageable,
             UUID userId,
             ScopeType scope,

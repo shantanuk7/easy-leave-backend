@@ -15,7 +15,7 @@ import java.util.UUID;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class GetAllRequestResponse {
+public class RequestResponse {
     public UUID id;
     public String employeeName;
     public RequestType type;
