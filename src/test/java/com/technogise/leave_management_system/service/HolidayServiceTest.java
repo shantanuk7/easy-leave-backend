@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -103,5 +104,68 @@ class HolidayServiceTest {
         // Then
         HttpException exception = assertThrows(HttpException.class, () -> holidayService.createHoliday(request));
         assertEquals("Holiday cannot be created on a weekend day", exception.getMessage());
+    }
+
+    @Test
+    void shouldFetchAllHolidaysSuccessfully() {
+        // When
+        when(holidayRepository.findAll()).thenReturn(List.of(mockHoliday));
+        List<HolidayResponse> responses = holidayService.getHolidays(null);
+
+        // Then
+        assertEquals(1, responses.size());
+        assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenInvalidHolidayTypeIsProvided() {
+        assertThrows(HttpException.class, () -> holidayService.getHolidays("RANDOM"));
+    }
+
+    @Test
+    void shouldFetchHolidaysByTypeSuccessfully() {
+        when(holidayRepository.findAllByType(HolidayType.FIXED)).thenReturn(List.of(mockHoliday));
+        List<HolidayResponse> responses = holidayService.getHolidays("FIXED");
+
+        assertEquals(1, responses.size());
+        assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
+
+    @Test
+    void shouldReturnAllHolidaysWhenHolidayTypeIsBlank() {
+        when(holidayRepository.findAll()).thenReturn(List.of(mockHoliday));
+        List<HolidayResponse> responses = holidayService.getHolidays("");
+        assertEquals(1, responses.size());
+        assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
+
+    @Test
+    void shouldReturnOnlyCurrentYearListOfHolidays() {
+        Holiday currentYearHoliday = Holiday.builder()
+                .id(UUID.randomUUID())
+                .name("Diwali")
+                .type(HolidayType.FIXED)
+                .date(LocalDate.of(2026, 11, 9))
+                .build();
+        Holiday previousYearHoliday = Holiday.builder()
+                .id(UUID.randomUUID())
+                .name("Christmas")
+                .type(HolidayType.FIXED)
+                .date(LocalDate.of(2025, 12, 25))
+                .build();
+
+        List<HolidayResponse> mockHolidaysResponse = List.of(
+                new HolidayResponse(
+                        currentYearHoliday.getId(),
+                        currentYearHoliday.getName(),
+                        currentYearHoliday.getType(),
+                        currentYearHoliday.getDate()
+                )
+        );
+
+        when(holidayRepository.findAll()).thenReturn(List.of(currentYearHoliday, previousYearHoliday));
+        List <HolidayResponse> actualResponse = holidayService.getHolidays(null);
+
+        assertEquals(mockHolidaysResponse, actualResponse);
     }
 }

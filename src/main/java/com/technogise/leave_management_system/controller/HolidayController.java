@@ -12,7 +12,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -34,5 +38,15 @@ public class HolidayController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(SuccessResponse.success("Holiday created successfully", response));
+    }
+
+    @GetMapping
+    public ResponseEntity<SuccessResponse<List<HolidayResponse>>> getHolidays(
+            @RequestParam(name = "type", required = false) String type
+    ) {
+        List<HolidayResponse> response = holidayService.getHolidays(type);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(SuccessResponse.success("Holidays retrieved successfully", response));
     }
 }
