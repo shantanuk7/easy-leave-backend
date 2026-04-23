@@ -108,7 +108,7 @@ class HolidayControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "EMPLOYEE")
     void shouldReturn200WithListOfAllHolidays() throws Exception {
         when(holidayService.getHolidays(null)).thenReturn(List.of(response));
 
@@ -122,7 +122,7 @@ class HolidayControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "EMPLOYEE")
     void shouldThrow400BadRequestWhenHolidayTypeIsInvalid() throws Exception {
         when(holidayService.getHolidays("RANDOM")).thenThrow(new HttpException(HttpStatus.BAD_REQUEST, "Invalid holiday type parameter"));
 
@@ -132,7 +132,7 @@ class HolidayControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "EMPLOYEE")
     void shouldReturn200WithListOfFixedHolidaysWhenHolidayTypeIsValid() throws Exception {
         when(holidayService.getHolidays("FIXED")).thenReturn(List.of(response));
 
