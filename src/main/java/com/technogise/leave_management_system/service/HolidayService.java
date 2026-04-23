@@ -56,19 +56,22 @@ public class HolidayService {
         }
     }
 
-    private HolidayType validateHolidayType(String type) {
+    private void validateHolidayType(String type) {
+        if (type == null || type.isBlank()) {
+            return;
+        }
+        try {
+            HolidayType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid holiday type parameter");
+        }
+    }
+
+    private HolidayType getHolidayTypeFromString(String type) {
         if (type == null || type.isBlank()) {
             return null;
         }
-
-        try {
-            return HolidayType.valueOf(type.toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new HttpException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid holiday type parameter"
-            );
-        }
+        return HolidayType.valueOf(type.toUpperCase());
     }
 
     public HolidayResponse createHoliday(HolidayRequest request) {
@@ -93,8 +96,9 @@ public class HolidayService {
     }
 
     public List<HolidayResponse> getHolidays(String type) {
+        validateHolidayType(type);
+        HolidayType holidayType = getHolidayTypeFromString(type);
 
-        HolidayType holidayType = validateHolidayType(type);
         List<Holiday> holidays =
                 holidayType == null
                         ? holidayRepository.findAll()
