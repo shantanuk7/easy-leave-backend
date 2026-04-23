@@ -40,7 +40,7 @@ public class RequestService {
         }
     }
 
-    private RequestResponse mapToResponse(Request request) {
+    private RequestResponse mapToRequestResponse(Request request) {
         return new RequestResponse(
                 request.getId(),
                 request.getRequestedByUser().getName(),
@@ -69,7 +69,7 @@ public class RequestService {
         } else {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope");
         }
-        return requests.map(this::mapToResponse);
+        return requests.map(this::mapToRequestResponse);
     }
 }
 
