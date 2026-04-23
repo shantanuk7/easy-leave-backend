@@ -60,14 +60,12 @@ public class HolidayService {
         if (type == null || type.isBlank()) {
             return;
         }
-        try {
-            HolidayType.valueOf(type.toUpperCase());
-        } catch (IllegalArgumentException ex) {
+        if (!type.equalsIgnoreCase(HolidayType.FIXED.toString()) || !(type.equalsIgnoreCase(HolidayType.OPTIONAL.toString()))) {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid holiday type parameter");
         }
     }
 
-    private HolidayType getHolidayTypeFromString(String type) {
+    private HolidayType convertStringToHolidayType(String type) {
         if (type == null || type.isBlank()) {
             return null;
         }
@@ -97,7 +95,7 @@ public class HolidayService {
 
     public List<HolidayResponse> getHolidays(String type) {
         validateHolidayType(type);
-        HolidayType holidayType = getHolidayTypeFromString(type);
+        HolidayType holidayType = convertStringToHolidayType(type);
 
         List<Holiday> holidays =
                 holidayType == null
