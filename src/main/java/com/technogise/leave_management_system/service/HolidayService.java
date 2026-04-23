@@ -105,6 +105,7 @@ public class HolidayService {
                         : holidayRepository.findAllByType(holidayType);
 
         return holidays.stream()
+                .filter(holiday -> holiday.getDate().getYear() == LocalDate.now().getYear())
                 .map(holiday -> new HolidayResponse(
                         holiday.getId(),
                         holiday.getName(),

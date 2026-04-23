@@ -124,11 +124,9 @@ class HolidayServiceTest {
 
     @Test
     void shouldFetchHolidaysByTypeSuccessfully() {
-        // When
         when(holidayRepository.findAllByType(HolidayType.FIXED)).thenReturn(List.of(mockHoliday));
         List<HolidayResponse> responses = holidayService.getHolidays("FIXED");
 
-        // Then
         assertEquals(1, responses.size());
         assertEquals(mockHoliday.getId(), responses.getFirst().getId());
     }
@@ -139,5 +137,35 @@ class HolidayServiceTest {
         List<HolidayResponse> responses = holidayService.getHolidays("");
         assertEquals(1, responses.size());
         assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
+
+    @Test
+    void shouldReturnOnlyCurrentYearListOfHolidays() {
+        Holiday currentYearHoliday = Holiday.builder()
+                .id(UUID.randomUUID())
+                .name("Diwali")
+                .type(HolidayType.FIXED)
+                .date(LocalDate.of(2026, 11, 9))
+                .build();
+        Holiday previousYearHoliday = Holiday.builder()
+                .id(UUID.randomUUID())
+                .name("Christmas")
+                .type(HolidayType.FIXED)
+                .date(LocalDate.of(2025, 12, 25))
+                .build();
+
+        List<HolidayResponse> mockHolidaysResponse = List.of(
+                new HolidayResponse(
+                        currentYearHoliday.getId(),
+                        currentYearHoliday.getName(),
+                        currentYearHoliday.getType(),
+                        currentYearHoliday.getDate()
+                )
+        );
+
+        when(holidayRepository.findAll()).thenReturn(List.of(currentYearHoliday, previousYearHoliday));
+        List <HolidayResponse> actualResponse = holidayService.getHolidays(null);
+
+        assertEquals(mockHolidaysResponse, actualResponse);
     }
 }
