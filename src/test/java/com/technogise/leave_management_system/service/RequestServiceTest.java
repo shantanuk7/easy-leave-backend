@@ -149,7 +149,9 @@ class RequestServiceTest {
         while (validDate.getDayOfWeek() == DayOfWeek.SATURDAY
                 || validDate.getDayOfWeek() == DayOfWeek.SUNDAY) {
             validDate = validDate.plusDays(1);
-            if (!validDate.isBefore(LocalDate.now(IST))) return; // skip if pushed out of range
+            if (!validDate.isBefore(LocalDate.now(IST))) {
+                return;
+            }
         }
 
         LeaveCategory leaveCategory = new LeaveCategory();
@@ -173,7 +175,9 @@ class RequestServiceTest {
         LocalDate yesterday = LocalDate.now(IST).minusDays(1);
 
         if (yesterday.getDayOfWeek() == DayOfWeek.SATURDAY
-                || yesterday.getDayOfWeek() == DayOfWeek.SUNDAY) return;
+                || yesterday.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return;
+        }
 
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(leaveCategoryId);

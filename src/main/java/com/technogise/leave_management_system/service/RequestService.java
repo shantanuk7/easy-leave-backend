@@ -6,10 +6,8 @@ import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
-import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
-import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.RequestRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
@@ -25,18 +23,15 @@ import java.util.UUID;
 public class RequestService {
 
     private final RequestRepository requestRepository;
-    private final LeaveRepository leaveRepository;
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
     public RequestService(RequestRepository requestRepository,
-                          LeaveRepository leaveRepository,
                           UserService userService,
                           LeaveCategoryService leaveCategoryService) {
         this.requestRepository = requestRepository;
-        this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
     }
@@ -58,8 +53,7 @@ public class RequestService {
 
 
     private void validatePastLeaveCategoryPresent(CreateRequestPayload payload) {
-        if (payload.getRequestType() == RequestType.PAST_LEAVE
-                && payload.getLeaveCategoryId() == null) {
+        if (payload.getLeaveCategoryId() == null) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "Leave category is required for Past Leave requests");
         }
@@ -107,7 +101,6 @@ public class RequestService {
             CreateRequestPayload payload,
             User user,
             LeaveCategory leaveCategory) {
-
         List<Request> requests = dates.stream().map(date -> {
             Request request = new Request();
             request.setRequestedByUser(user);
@@ -127,9 +120,7 @@ public class RequestService {
                 .map(request -> new CreateRequestResponse(
                         request.getId(),
                         request.getRequestType(),
-                        request.getLeaveCategory() != null
-                                ? request.getLeaveCategory().getName()
-                                : null,
+                        request.getLeaveCategory().getName(),
                         request.getDate(),
                         request.getStartTime(),
                         request.getDuration(),
@@ -138,7 +129,6 @@ public class RequestService {
                 ))
                 .toList();
     }
-
 
     private boolean isValidPastLeaveDate(LocalDate date) {
         LocalDate today = LocalDate.now(IST);
