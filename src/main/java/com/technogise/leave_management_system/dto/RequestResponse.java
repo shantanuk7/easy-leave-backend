@@ -16,13 +16,13 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class RequestResponse {
-    public UUID id;
-    public String employeeName;
-    public RequestType type;
-    public String leaveCategory;
-    public LocalDate date;
-    public DurationType duration;
-    public String description;
-    public RequestStatus status;
-    public LocalDate appliedDate;
+    private UUID id;
+    private String employeeName;
+    private RequestType type;
+    private String leaveCategory;
+    private LocalDate date;
+    private DurationType duration;
+    private String description;
+    private RequestStatus status;
+    private LocalDate appliedDate;
 }
