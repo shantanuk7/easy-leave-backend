@@ -80,19 +80,10 @@ class RequestServiceTest {
         return payload;
     }
 
-    private CreateRequestPayload createCompOffPayload(LocalDate date) {
-        CreateRequestPayload payload = new CreateRequestPayload();
-        payload.setRequestType(RequestType.COMPENSATORY_OFF);
-        payload.setDates(List.of(date));
-        payload.setStartTime(LocalTime.of(9, 0));
-        payload.setDuration(DurationType.FULL_DAY);
-        payload.setDescription("Worked on weekend");
-        return payload;
-    }
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasNullLeaveCategoryId() {
-        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST).minusMonths(1));
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST).minusDays(3));
         payload.setLeaveCategoryId(null);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
@@ -104,8 +95,9 @@ class RequestServiceTest {
         assertEquals("Leave category is required for Past Leave requests", ex.getMessage());
     }
 
+
     @Test
-    void shouldThrowBadRequestWhenPastLeaveRequestHasDateInCurrentMonth() {
+    void shouldThrowBadRequestWhenPastLeaveRequestHasDateOfToday() {
         CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST));
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
@@ -116,11 +108,12 @@ class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Past leave dates must be within the last 30 days", ex.getMessage());
     }
 
     @Test
-    void shouldThrowBadRequestWhenPastLeaveRequestHasDateInFutureMonth() {
-        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST).plusMonths(1));
+    void shouldThrowBadRequestWhenPastLeaveRequestHasDateInFuture() {
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST).plusDays(1));
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
@@ -130,15 +123,81 @@ class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Past leave dates must be within the last 30 days", ex.getMessage());
     }
 
     @Test
-    void shouldThrowBadRequestWhenAllValidPastLeaveDatesAreWeekends() {
-        LocalDate lastMonthSaturday = LocalDate.now(IST)
-                .minusMonths(1)
-                .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+    void shouldThrowBadRequestWhenPastLeaveRequestHasDateOlderThan30Days() {
+        CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST).minusDays(31));
 
-        CreateRequestPayload payload = createPastLeavePayload(lastMonthSaturday);
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
+                .thenReturn(new LeaveCategory());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(payload, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Past leave dates must be within the last 30 days", ex.getMessage());
+    }
+
+    @Test
+    void shouldAcceptDateExactly30DaysAgo() {
+        LocalDate thirtyDaysAgo = LocalDate.now(IST).minusDays(30);
+
+        LocalDate validDate = thirtyDaysAgo;
+        while (validDate.getDayOfWeek() == DayOfWeek.SATURDAY
+                || validDate.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            validDate = validDate.plusDays(1);
+            if (!validDate.isBefore(LocalDate.now(IST))) return; // skip if pushed out of range
+        }
+
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setId(leaveCategoryId);
+        leaveCategory.setName("Sick Leave");
+
+        CreateRequestPayload payload = createPastLeavePayload(validDate);
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, validDate, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(false);
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> requestService.raiseRequest(payload, userId));
+    }
+
+    @Test
+    void shouldAcceptDateYesterday() {
+        LocalDate yesterday = LocalDate.now(IST).minusDays(1);
+
+        if (yesterday.getDayOfWeek() == DayOfWeek.SATURDAY
+                || yesterday.getDayOfWeek() == DayOfWeek.SUNDAY) return;
+
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setId(leaveCategoryId);
+        leaveCategory.setName("Sick Leave");
+
+        CreateRequestPayload payload = createPastLeavePayload(yesterday);
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, yesterday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(false);
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> requestService.raiseRequest(payload, userId));
+    }
+
+
+    @Test
+    void shouldThrowBadRequestWhenAllValidPastLeaveDatesAreWeekends() {
+        LocalDate saturday = LocalDate.now(IST).minusDays(1)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY));
+
+        CreateRequestPayload payload = createPastLeavePayload(saturday);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
@@ -153,17 +212,17 @@ class RequestServiceTest {
 
     @Test
     void shouldThrowConflictWhenPastLeaveRequestAlreadyExistsWithPendingStatus() {
-        LocalDate lastMonthWeekday = LocalDate.now(IST)
-                .minusMonths(1)
+        LocalDate lastWeekMonday = LocalDate.now(IST)
+                .minusDays(7)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
 
-        CreateRequestPayload payload = createPastLeavePayload(lastMonthWeekday);
+        CreateRequestPayload payload = createPastLeavePayload(lastWeekMonday);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(new LeaveCategory());
         when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastMonthWeekday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
@@ -175,17 +234,17 @@ class RequestServiceTest {
 
     @Test
     void shouldThrowConflictWhenPastLeaveRequestAlreadyExistsWithApprovedStatus() {
-        LocalDate lastMonthWeekday = LocalDate.now(IST)
-                .minusMonths(1)
+        LocalDate lastWeekTuesday = LocalDate.now(IST)
+                .minusDays(7)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.TUESDAY));
 
-        CreateRequestPayload payload = createPastLeavePayload(lastMonthWeekday);
+        CreateRequestPayload payload = createPastLeavePayload(lastWeekTuesday);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(new LeaveCategory());
         when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastMonthWeekday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                userId, lastWeekTuesday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
@@ -197,30 +256,36 @@ class RequestServiceTest {
 
     @Test
     void shouldNotThrowConflictWhenPastLeaveRequestExistsWithRejectedStatus() {
-        LocalDate lastMonthWeekday = LocalDate.now(IST)
-                .minusMonths(1)
+        LocalDate lastWeekMonday = LocalDate.now(IST)
+                .minusDays(7)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
 
-        CreateRequestPayload payload = createPastLeavePayload(lastMonthWeekday);
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setId(leaveCategoryId);
+        leaveCategory.setName("Sick Leave");
+
+        CreateRequestPayload payload = createPastLeavePayload(lastWeekMonday);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
-                .thenReturn(new LeaveCategory());
+                .thenReturn(leaveCategory);
         when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastMonthWeekday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         assertDoesNotThrow(() -> requestService.raiseRequest(payload, userId));
     }
 
+
     @Test
     void shouldSaveOneRequestPerValidDateAndReturnResponsesForPastLeave() {
-        LocalDate lastMonthMonday = LocalDate.now(IST)
-                .minusMonths(1)
+        LocalDate lastWeekMonday = LocalDate.now(IST)
+                .minusDays(7)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
-        LocalDate lastMonthTuesday = lastMonthMonday.plusDays(1);
+        LocalDate lastWeekTuesday = lastWeekMonday.plusDays(1);
 
-        CreateRequestPayload payload = createPastLeavePayload(List.of(lastMonthMonday, lastMonthTuesday));
+        CreateRequestPayload payload = createPastLeavePayload(List.of(lastWeekMonday, lastWeekTuesday));
 
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(leaveCategoryId);
@@ -229,18 +294,18 @@ class RequestServiceTest {
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastMonthMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastMonthTuesday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                userId, lastWeekTuesday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
-        when(requestRepository.saveAll(anyList())).thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         List<CreateRequestResponse> responses = requestService.raiseRequest(payload, userId);
 
         assertEquals(2, responses.size());
-        assertEquals(lastMonthMonday, responses.get(0).getDate());
-        assertEquals(lastMonthTuesday, responses.get(1).getDate());
+        assertEquals(lastWeekMonday, responses.get(0).getDate());
+        assertEquals(lastWeekTuesday, responses.get(1).getDate());
         assertEquals(RequestType.PAST_LEAVE, responses.get(0).getRequestType());
         assertEquals(RequestStatus.PENDING, responses.get(0).getStatus());
         assertEquals("Sick Leave", responses.get(0).getLeaveCategoryName());
@@ -248,14 +313,14 @@ class RequestServiceTest {
 
     @Test
     void shouldSkipWeekendDatesAndSaveOnlyWorkingDaysForPastLeave() {
-        LocalDate lastMonthMonday = LocalDate.now(IST)
-                .minusMonths(1)
+        LocalDate lastWeekMonday = LocalDate.now(IST)
+                .minusDays(7)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
-        LocalDate lastMonthSaturday = lastMonthMonday
+        LocalDate lastWeekSaturday = lastWeekMonday
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
 
         CreateRequestPayload payload = createPastLeavePayload(
-                List.of(lastMonthMonday, lastMonthSaturday));
+                List.of(lastWeekMonday, lastWeekSaturday));
 
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(leaveCategoryId);
@@ -264,13 +329,38 @@ class RequestServiceTest {
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastMonthMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         List<CreateRequestResponse> responses = requestService.raiseRequest(payload, userId);
 
         assertEquals(1, responses.size());
-        assertEquals(lastMonthMonday, responses.get(0).getDate());
+        assertEquals(lastWeekMonday, responses.get(0).getDate());
+    }
+
+    @Test
+    void shouldSaveRequestWithPendingStatusByDefault() {
+        LocalDate lastWeekMonday = LocalDate.now(IST)
+                .minusDays(7)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setId(leaveCategoryId);
+        leaveCategory.setName("Sick Leave");
+
+        CreateRequestPayload payload = createPastLeavePayload(lastWeekMonday);
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(false);
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<CreateRequestResponse> responses = requestService.raiseRequest(payload, userId);
+
+        assertEquals(1, responses.size());
+        assertEquals(RequestStatus.PENDING, responses.get(0).getStatus());
     }
 }
