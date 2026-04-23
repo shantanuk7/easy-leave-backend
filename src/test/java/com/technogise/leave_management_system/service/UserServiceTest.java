@@ -62,10 +62,6 @@ class UserServiceTest {
         userId = UUID.randomUUID();
     }
 
-    User createValidUser() {
-        return new User();
-    }
-
     @Test
     void shouldReturnExistingUserWhenUserExists() {
 
@@ -341,5 +337,20 @@ class UserServiceTest {
 
         assertEquals(1, result.size());
         assertEquals(30.0, result.getFirst().getTotalLeavesAvailable());
+    }
+
+    @Test
+    void shouldReturnUserNameAndEmailForValidUserId() {
+        User user = new User();
+        user.setId(userId);
+        user.setName("Raj");
+        user.setEmail("raj@technogise.com");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UserResponse result = userService.getUserDetails(userId);
+
+        assertEquals(result.getEmail(), user.getEmail());
+        assertEquals(result.getName(), user.getName());
     }
 }

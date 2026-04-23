@@ -62,6 +62,7 @@ public class UserService {
         newUser.setRole(UserRole.EMPLOYEE);
         return userRepository.save(newUser);
     }
+
     public Page<UserResponse> getAllUsers(Pageable pageable) {
         return userRepository.findAllByOrderByNameAsc(pageable)
                 .map(u -> new UserResponse(
@@ -123,5 +124,13 @@ public class UserService {
         }
 
         return leavesRecord;
+    }
+
+    public UserResponse getUserDetails(UUID id) {
+        User user = getUserByUserId(id);
+        return new UserResponse(
+                user.getEmail(),
+                user.getName()
+        );
     }
 }
