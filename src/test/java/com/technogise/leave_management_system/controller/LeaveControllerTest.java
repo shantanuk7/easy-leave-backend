@@ -543,4 +543,77 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.statusCode").value("400"))
                 .andExpect(jsonPath("$.message").value("Cannot cancel a past leave"));
     }
+
+    @Test
+    void shouldReturn201WhenOptionalHolidayLeaveRequestIsValid() throws Exception {
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setHolidayId(UUID.randomUUID());
+        request.setDates(List.of(LocalDate.now()));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(10, 0));
+        request.setDescription("Diwali");
+
+        CreateLeaveResponse response = new CreateLeaveResponse();
+        response.setType("Diwali");
+        response.setDescription("Diwali");
+        response.setDuration(DurationType.FULL_DAY);
+        response.setDate(LocalDate.now());
+
+        when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(employee.getId())))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(post("/api/leaves")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].type").value("Diwali"))
+                .andExpect(jsonPath("$.data[0].duration").value("FULL_DAY"));
+    }
+
+    @Test
+    void shouldReturn400WhenBothHolidayIdAndLeaveCategoryIdAreProvided() throws Exception {
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setHolidayId(UUID.randomUUID());
+        request.setLeaveCategoryId(UUID.randomUUID());
+        request.setDates(List.of(LocalDate.now()));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(10, 0));
+        request.setDescription("Diwali");
+
+        when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(employee.getId())))
+                .thenThrow(new HttpException(HttpStatus.BAD_REQUEST,
+                        "Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id."));
+
+        mockMvc.perform(post("/api/leaves")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value("400"))
+                .andExpect(jsonPath("$.message").value("Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id."));
+    }
+
+    @Test
+    void shouldReturn400WhenOptionalHolidayLimitExceeded() throws Exception {
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setHolidayId(UUID.randomUUID());
+        request.setDates(List.of(LocalDate.now()));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(10, 0));
+        request.setDescription("Diwali");
+
+        when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(employee.getId())))
+                .thenThrow(new HttpException(HttpStatus.BAD_REQUEST,
+                        "Cannot apply more than allocated days for optional holidays"));
+
+        mockMvc.perform(post("/api/leaves")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value("400"))
+                .andExpect(jsonPath("$.message").value("Cannot apply more than allocated days for optional holidays"));
+    }
 }
