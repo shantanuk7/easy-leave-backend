@@ -110,7 +110,8 @@ public class RequestService {
         List<LocalDate> validRangeDates = filterValidCompOffDates(payload.getDates());
         List<LocalDate> weekendDates = filterNonWeekendDates(validRangeDates);
         validateNoDuplicateRequests(weekendDates, user.getId());
-        return List.of();
+        return saveCompOffRequests(weekendDates, payload, user);
+
     }
 
     private List<LocalDate> filterNonWeekendDates(List<LocalDate> dates) {
@@ -179,6 +180,38 @@ public class RequestService {
             throw new HttpException(HttpStatus.CONFLICT,
                     "A request already exists for one of the selected dates");
         }
+    }
+
+    private List<CreateRequestResponse> saveCompOffRequests(
+            List<LocalDate> dates, CreateRequestPayload payload, User user) {
+
+        List<Request> requests = dates.stream().map(date -> {
+            Request request = new Request();
+            request.setRequestedByUser(user);
+            request.setRequestType(payload.getRequestType());
+            request.setLeaveCategory(null);
+            request.setDate(date);
+            request.setStartTime(payload.getStartTime());
+            request.setDuration(payload.getDuration());
+            request.setDescription(payload.getDescription());
+            request.setStatus(RequestStatus.PENDING);
+            return request;
+        }).toList();
+
+        List<Request> saved = requestRepository.saveAll(requests);
+
+        return saved.stream()
+                .map(r -> new CreateRequestResponse(
+                        r.getId(),
+                        r.getRequestType(),
+                        null,
+                        r.getDate(),
+                        r.getStartTime(),
+                        r.getDuration(),
+                        r.getDescription(),
+                        r.getStatus()
+                ))
+                .toList();
     }
 
     private List<CreateRequestResponse> savePastLeaveRequests(

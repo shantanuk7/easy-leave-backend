@@ -35,7 +35,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class RequestServiceTest {
@@ -519,6 +519,27 @@ public class RequestServiceTest {
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         assertEquals("A request already exists for this date", ex.getMessage());
+    }
+
+    @Test
+    void shouldSaveCompOffRequestWithNullLeaveCategoryAndPendingStatus() {
+        LocalDate weekend = lastWeekendDay();
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, weekend, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(false);
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<CreateRequestResponse> responses =
+                requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId);
+
+        assertEquals(1, responses.size());
+        assertEquals(RequestType.COMPENSATORY_OFF, responses.get(0).getRequestType());
+        assertEquals(RequestStatus.PENDING, responses.get(0).getStatus());
+        assertNull(responses.get(0).getLeaveCategoryName());
+        assertEquals(weekend, responses.get(0).getDate());
+        verify(leaveCategoryService, never()).getLeaveCategoryById(any());
     }
 
 }
