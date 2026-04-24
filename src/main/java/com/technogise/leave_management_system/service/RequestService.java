@@ -107,8 +107,21 @@ public class RequestService {
     }
 
     private List<CreateRequestResponse> raiseCompOffRequest(CreateRequestPayload payload, User user) {
-        List<LocalDate> validDates = filterValidCompOffDates(payload.getDates());
+        List<LocalDate> validRangeDates = filterValidCompOffDates(payload.getDates());
+        List<LocalDate> weekendDates = filterNonWeekendDates(validRangeDates);
         return List.of();
+    }
+
+    private List<LocalDate> filterNonWeekendDates(List<LocalDate> dates) {
+        List<LocalDate> weekendDates = dates.stream()
+                .filter(this::isWeekendDay)
+                .toList();
+
+        if (weekendDates.isEmpty()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Compensatory off dates must fall on a weekend (Saturday or Sunday)");
+        }
+        return weekendDates;
     }
 
     private List<LocalDate> filterValidCompOffDates(List<LocalDate> dates) {
