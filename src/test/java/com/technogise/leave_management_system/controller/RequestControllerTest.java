@@ -39,8 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(value = RequestController.class, excludeAutoConfiguration = {
-     OAuth2ClientAutoConfiguration.class,
-     OAuth2ClientWebSecurityAutoConfiguration.class
+    OAuth2ClientAutoConfiguration.class,
+    OAuth2ClientWebSecurityAutoConfiguration.class
 })
 class RequestControllerTest {
 
@@ -134,5 +134,4 @@ class RequestControllerTest {
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isBadRequest());
     }
-
 }

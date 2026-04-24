@@ -650,3 +650,96 @@ Success Response (200)
 | HTTP Status | Scenario                        |
 |-------------|---------------------------------|
 | `400`       | Invalid `type` parameter value  |
+
+### Raise Request — `POST /api/requests`
+
+Allows an employee to raise a retroactive leave request for a weekday within the last 30 days. The request is saved with `status = PENDING` and requires manager approval.
+
+**Endpoint:** `POST /api/requests`
+
+**Authorization:** Any authenticated user
+
+#### Request Body
+
+| Field             | Type               | Required | Description                                              |
+|-------------------|--------------------|----------|----------------------------------------------------------|
+| `requestType`     | String (enum)      | Yes      | `PAST_LEAVE`                                             |
+| `leaveCategoryId` | UUID               | Yes      | ID of the leave category (e.g. Sick Leave, Annual Leave) |
+| `dates`           | Array of dates     | Yes      | One or more dates in `YYYY-MM-DD` format                 |
+| `startTime`       | String (LocalTime) | Yes      | Start time in `HH:mm:ss` format                          |
+| `duration`        | String (enum)      | Yes      | `FULL_DAY` or `HALF_DAY`                                 |
+| `description`     | String             | Yes      | Reason for the request (max 1000 characters)             |
+
+#### Date Validation Rules
+
+| Rule                              | Allowed?                                                         |
+|-----------------------------------|------------------------------------------------------------------|
+| Today or future dates             | Rejected — only past dates are accepted                          |
+| Dates older than 30 days          | Rejected — must be within the last 30 days                       |
+| Dates within last 30 days         | Allowed                                                          |
+| Weekends (Saturday/Sunday)        | Skipped automatically                                            |
+
+#### Example Request
+
+```bash
+POST /api/requests
+Content-Type: application/json
+```
+
+```json
+{
+  "requestType": "PAST_LEAVE",
+  "leaveCategoryId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "dates": ["2026-03-10", "2026-03-11"],
+  "startTime": "09:00:00",
+  "duration": "FULL_DAY",
+  "description": "Was sick but forgot to apply"
+}
+```
+
+#### Response
+
+**201 Created** — Request(s) raised successfully.
+
+```json
+{
+  "success": true,
+  "message": "Request(s) raised successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "requestType": "PAST_LEAVE",
+      "leaveCategoryName": "Sick Leave",
+      "date": "2026-03-10",
+      "startTime": "09:00:00",
+      "duration": "FULL_DAY",
+      "description": "Was sick but forgot to apply",
+      "status": "PENDING"
+    },
+    {
+      "id": "uuid",
+      "requestType": "PAST_LEAVE",
+      "leaveCategoryName": "Sick Leave",
+      "date": "2026-03-11",
+      "startTime": "09:00:00",
+      "duration": "FULL_DAY",
+      "description": "Was sick but forgot to apply",
+      "status": "PENDING"
+    }
+  ]
+}
+```
+
+* Note: Weekend dates in the request are skipped silently. Only valid working days within the last 30 days are saved.
+
+#### Error Responses
+
+| HTTP Status | Scenario                                                       |
+|-------------|----------------------------------------------------------------|
+| `400`       | `leaveCategoryId` is missing                                   |
+| `400`       | All dates are outside the last 30 days or are today/future     |
+| `400`       | All valid dates fall on weekends                               |
+| `400`       | Request body is missing required fields or has validation errors |
+| `404`       | Provided `leaveCategoryId` does not exist                      |
+| `404`       | Authenticated user not found                                   |
+| `409`       | A request already exists for the same date with `PENDING` or `APPROVED` status |
