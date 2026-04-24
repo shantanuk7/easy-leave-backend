@@ -39,8 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(value = RequestController.class, excludeAutoConfiguration = {
-        OAuth2ClientAutoConfiguration.class,
-        OAuth2ClientWebSecurityAutoConfiguration.class
+     OAuth2ClientAutoConfiguration.class,
+     OAuth2ClientWebSecurityAutoConfiguration.class
 })
 class RequestControllerTest {
 
@@ -121,6 +121,18 @@ class RequestControllerTest {
                 .andExpect(jsonPath("$.data[0].duration").value("FULL_DAY"))
                 .andExpect(jsonPath("$.data[0].description").value("Was sick but forgot to apply"))
                 .andExpect(jsonPath("$.data[0].status").value("PENDING"));
+    }
+
+    @Test
+    void shouldReturn400WhenDatesListIsEmpty() throws Exception {
+        CreateRequestPayload payload = buildValidPayload();
+        payload.setDates(List.of());
+
+        mockMvc.perform(post("/api/requests")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest());
     }
 
 }
