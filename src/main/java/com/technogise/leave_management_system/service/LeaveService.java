@@ -6,6 +6,7 @@ import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
+import com.technogise.leave_management_system.entity.Holiday;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -45,18 +46,21 @@ public class LeaveService {
     private final LeaveCategoryService leaveCategoryService;
     private final AnnualLeaveService annualLeaveService;
     private final LeaveIntegrationHandler leaveIntegrationHandler;
+    private final HolidayService holidayService;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
                         LeaveCategoryService leaveCategoryService,
                         AnnualLeaveService annualLeaveService,
-                        LeaveIntegrationHandler leaveIntegrationHandler
+                        LeaveIntegrationHandler leaveIntegrationHandler,
+                        HolidayService holidayService
     ) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
         this.annualLeaveService = annualLeaveService;
         this.leaveIntegrationHandler = leaveIntegrationHandler;
+        this.holidayService = holidayService;
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -164,9 +168,17 @@ public class LeaveService {
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
+        boolean hasHoliday = request.getHolidayId() != null;
+        boolean hasCategory = request.getLeaveCategoryId() != null;
+
         User user = userService.getUserByUserId(userId);
-        LeaveCategory category =
-                leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
+        LeaveCategory category = hasCategory
+                ? leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId())
+                : null;
+
+        Holiday holiday = hasHoliday
+                ? holidayService.getHolidayById(request.getHolidayId())
+                : null;
 
         List<LocalDate> workingDates =
                 filterValidWorkingDates(request.getDates());
@@ -181,22 +193,28 @@ public class LeaveService {
                     leave.setDate(date);
                     leave.setUser(user);
                     leave.setLeaveCategory(category);
+                    leave.setHoliday(holiday);
                     leave.setDescription(request.getDescription());
                     leave.setStartTime(request.getStartTime());
                     leave.setDuration(request.getDuration());
                     leave.setDeletedAt(null);
                     return leave;
                 }).toList();
+
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
-        if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+
+        if (category != null && category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
         leaveIntegrationHandler.handleLeaves(savedLeaves);
+
+        String leaveTypeName = hasCategory ? category.getName() : holiday.getName();
+
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),
                         leave.getDate(),
-                        category.getName(),
+                        leaveTypeName,
                         leave.getDuration(),
                         leave.getStartTime(),
                         leave.getDescription()

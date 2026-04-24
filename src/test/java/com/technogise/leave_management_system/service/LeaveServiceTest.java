@@ -6,13 +6,16 @@ import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.entity.Holiday;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
+import com.technogise.leave_management_system.repository.HolidayRepository;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
@@ -43,6 +47,9 @@ class LeaveServiceTest {
     private LeaveRepository leaveRepository;
 
     @Mock
+    private HolidayRepository holidayRepository;
+
+    @Mock
     private UserService userService;
 
     @Mock
@@ -54,6 +61,9 @@ class LeaveServiceTest {
     @Mock
     private LeaveIntegrationHandler leaveIntegrationHandler;
 
+    @Mock
+    private HolidayService holidayService;
+
     @InjectMocks
     private LeaveService leaveService;
 
@@ -62,11 +72,13 @@ class LeaveServiceTest {
 
     private UUID userId;
     private UUID leaveCategoryId;
+    private UUID holidayId;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
         leaveCategoryId = UUID.randomUUID();
+        holidayId = UUID.randomUUID();
     }
 
     private LocalDate nextWeekday() {
@@ -114,6 +126,17 @@ class LeaveServiceTest {
         return leaveCategory;
     }
 
+    private Holiday createOptionalHoliday() {
+        Holiday holiday = new Holiday();
+        holiday.setId(UUID.randomUUID());
+        holiday.setName("Diwali");
+        holiday.setType(HolidayType.OPTIONAL);
+        holiday.setDate(LocalDate.of(2026, 11, 9));
+        holiday.setCreatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 0, 0, 0));
+        holiday.setUpdatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 0, 0, 0));
+        return holiday;
+    }
+
     private Leave createEmployeeLeave(User employee, LeaveCategory leaveCategory) {
         Leave leave = new Leave();
         leave.setId(UUID.randomUUID());
@@ -135,6 +158,18 @@ class LeaveServiceTest {
         request.setDuration(DurationType.FULL_DAY);
         request.setStartTime(LocalTime.of(9, 0, 0));
         request.setDescription("Dummy Leave Request description");
+        return request;
+    }
+
+    private CreateLeaveRequest createValidOptionalHolidayLeaveRequest() {
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        Holiday optionalHoliday = createOptionalHoliday();
+        request.setHolidayId(holidayId);
+        request.setDates(List.of(optionalHoliday.getDate()));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(10, 0, 0));
+        request.setDescription(optionalHoliday.getName());
+
         return request;
     }
 
@@ -1285,5 +1320,33 @@ class LeaveServiceTest {
         leaveService.deleteLeave(leave.getId(), user.getId());
 
         verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
+    }
+
+    @Test
+    void shouldApplyOptionalHolidayLeaveWhenValidHolidayIdIsProvided(){
+        CreateLeaveRequest request = createValidOptionalHolidayLeaveRequest();
+        Holiday optionalHoliday = createOptionalHoliday();
+        User user = createValidUser();
+
+        when(holidayService.getHolidayById(holidayId)).thenReturn(optionalHoliday);
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList()) ).thenAnswer(invocation -> invocation.getArgument(0));
+
+        leaveService.applyLeave(request, userId);
+
+        ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.forClass(List.class );
+        verify(leaveRepository).saveAll(listCaptor.capture());
+
+        List<Leave> savedLeaves = listCaptor.getValue();
+        assertEquals(1, savedLeaves.size());
+
+        Leave savedLeave = savedLeaves.getFirst();
+        assertEquals(request.getDates().getFirst(), savedLeave.getDate());
+        assertEquals(optionalHoliday, savedLeave.getHoliday());
+        assertEquals(user, savedLeave.getUser());
+        assertEquals(request.getDescription(), savedLeave.getDescription());
+        assertEquals(request.getStartTime(), savedLeave.getStartTime());
+        assertEquals(request.getDuration(), savedLeave.getDuration());
     }
 }
