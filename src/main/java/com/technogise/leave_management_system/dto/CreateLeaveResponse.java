@@ -17,7 +17,7 @@ public class CreateLeaveResponse {
 
     private LocalDate date;
 
-    private String leaveCategoryName;
+    private String type;
 
     private DurationType duration;
 
