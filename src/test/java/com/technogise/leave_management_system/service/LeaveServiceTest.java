@@ -49,9 +49,6 @@ class LeaveServiceTest {
     private LeaveRepository leaveRepository;
 
     @Mock
-    private HolidayRepository holidayRepository;
-
-    @Mock
     private UserService userService;
 
     @Mock
