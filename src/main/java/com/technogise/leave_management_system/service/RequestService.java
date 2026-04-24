@@ -109,6 +109,7 @@ public class RequestService {
     private List<CreateRequestResponse> raiseCompOffRequest(CreateRequestPayload payload, User user) {
         List<LocalDate> validRangeDates = filterValidCompOffDates(payload.getDates());
         List<LocalDate> weekendDates = filterNonWeekendDates(validRangeDates);
+        validateNoDuplicateRequests(weekendDates, user.getId());
         return List.of();
     }
 

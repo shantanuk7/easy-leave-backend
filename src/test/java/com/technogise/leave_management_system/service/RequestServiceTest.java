@@ -105,6 +105,14 @@ public class RequestServiceTest {
         return payload;
     }
 
+    private LocalDate lastWeekendDay() {
+        LocalDate date = LocalDate.now(IST).minusDays(1);
+        while (date.getDayOfWeek() != DayOfWeek.SATURDAY
+                && date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            date = date.minusDays(1);
+        }
+        return date;
+    }
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasNullLeaveCategoryId() {
@@ -495,6 +503,22 @@ public class RequestServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Compensatory off dates must fall on a weekend (Saturday or Sunday)", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowConflictWhenCompOffRequestAlreadyExistsForDate() {
+        LocalDate weekend = lastWeekendDay();
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
+                userId, weekend, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(true);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("A request already exists for this date", ex.getMessage());
     }
 
 }
