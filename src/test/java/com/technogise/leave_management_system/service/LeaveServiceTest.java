@@ -15,7 +15,6 @@ import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
-import com.technogise.leave_management_system.repository.HolidayRepository;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,9 +46,6 @@ class LeaveServiceTest {
 
     @Mock
     private LeaveRepository leaveRepository;
-
-    @Mock
-    private HolidayRepository holidayRepository;
 
     @Mock
     private UserService userService;
@@ -167,7 +163,7 @@ class LeaveServiceTest {
         CreateLeaveRequest request = new CreateLeaveRequest();
         Holiday optionalHoliday = createOptionalHoliday();
         request.setHolidayId(holidayId);
-        request.setDates(List.of(optionalHoliday.getDate()));
+        request.setDates(List.of(nextWeekday()));
         request.setDuration(DurationType.FULL_DAY);
         request.setStartTime(LocalTime.of(10, 0, 0));
         request.setDescription(optionalHoliday.getName());
@@ -1325,19 +1321,23 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldApplyOptionalHolidayLeaveWhenValidHolidayIdIsProvided(){
+    void shouldApplyOptionalHolidayLeaveWhenValidHolidayIdIsProvided() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
         CreateLeaveRequest request = createValidOptionalHolidayLeaveRequest();
         Holiday optionalHoliday = createOptionalHoliday();
         User user = createValidUser();
 
         when(holidayService.getHolidayById(holidayId)).thenReturn(optionalHoliday);
         when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(LocalDate.class), any(LocalDate.class))).thenReturn(1L);
         when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
-        when(leaveRepository.saveAll(anyList()) ).thenAnswer(invocation -> invocation.getArgument(0));
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
 
-        ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.forClass(List.class );
+        ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.captor();
         verify(leaveRepository).saveAll(listCaptor.capture());
 
         List<Leave> savedLeaves = listCaptor.getValue();
