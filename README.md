@@ -233,7 +233,7 @@ Content-Type: application/json
     {
       "id": "uuid",
       "date": "2026-04-10",
-      "leaveCategoryName": "Annual Leave",
+      "type": "Annual Leave",
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "description": "Dummy Description"
@@ -241,7 +241,7 @@ Content-Type: application/json
     {
       "id": "uuid",
       "date": "2026-04-13",
-      "leaveCategoryName": "Annual Leave",
+      "type": "Annual Leave",
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "description": "Dummy Description"
