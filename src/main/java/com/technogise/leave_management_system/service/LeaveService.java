@@ -97,11 +97,12 @@ public class LeaveService {
     }
 
     private LeaveResponse mapToLeaveResponse(Leave leave) {
+        String type = getLeaveType(leave);
         return new LeaveResponse(
                 leave.getId(),
                 leave.getDate(),
                 leave.getUser().getName(),
-                leave.getLeaveCategory().getName(),
+                type,
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
@@ -184,7 +185,7 @@ public class LeaveService {
         }
     }
 
-    void validateOptionalHolidaysCount(User user) {
+    private void validateOptionalHolidaysCount(User user) {
         int currentYear = LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
         LocalDate startDate = LocalDate.of(currentYear, 1, 1);
         LocalDate endDate = LocalDate.of(currentYear, 12, 31);
@@ -200,6 +201,14 @@ public class LeaveService {
                     HttpStatus.BAD_REQUEST,
                     "Cannot apply more than allocated days for optional holidays"
             );
+        }
+    }
+
+    private String getLeaveType(Leave leave) {
+        if (leave.getLeaveCategory() != null) {
+            return leave.getLeaveCategory().getName();
+        } else {
+            return leave.getHoliday().getType().toString() + " HOLIDAY";
         }
     }
 
@@ -273,7 +282,9 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
 
-        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), leave.getLeaveCategory().getName(),
+        String type = getLeaveType(leave);
+
+        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), type,
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
@@ -457,7 +468,9 @@ public class LeaveService {
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);
 
-        if (leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+        String type = getLeaveType(leave);
+
+        if (type.equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
     }

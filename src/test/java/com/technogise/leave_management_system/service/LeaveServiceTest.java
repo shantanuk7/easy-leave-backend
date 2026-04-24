@@ -1398,4 +1398,50 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Cannot apply more than allocated days for optional holidays", ex.getMessage());
     }
+
+    @Test
+    void shouldReturnHolidayTypeWhenLeaveHasHolidayInsteadOfCategory() {
+        User employee = createEmployee();
+        Holiday holiday = createOptionalHoliday();
+
+        Leave holidayLeave = new Leave();
+        holidayLeave.setId(UUID.randomUUID());
+        holidayLeave.setUser(employee);
+        holidayLeave.setLeaveCategory(null);
+        holidayLeave.setHoliday(holiday);
+        holidayLeave.setDate(LocalDate.now().plusDays(1));
+        holidayLeave.setDuration(DurationType.FULL_DAY);
+        holidayLeave.setStartTime(LocalTime.of(10, 0));
+        holidayLeave.setUpdatedAt(LocalDateTime.now());
+
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
+                .thenReturn(List.of(holidayLeave));
+
+        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null, null, null);
+
+        assertEquals(1, result.size());
+        assertEquals(holiday.getType().toString() + " HOLIDAY", result.getFirst().type);
+    }
+
+    @Test
+    void shouldNotSyncAnnualLeaveBalanceWhenCancelledLeaveIsOptionalHoliday() {
+        User user = createValidUser();
+        Holiday holiday = createOptionalHoliday();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setLeaveCategory(null);
+        leave.setHoliday(holiday);
+        leave.setDate(LocalDate.now().plusDays(1));
+        leave.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        leaveService.deleteLeave(leave.getId(), user.getId());
+
+        assertNotNull(leave.getDeletedAt());
+        verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
+    }
 }
