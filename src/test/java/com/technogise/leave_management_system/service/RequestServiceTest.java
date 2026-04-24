@@ -470,4 +470,16 @@ public class RequestServiceTest {
         assertEquals("Compensatory off dates must be within the last 30 days", ex.getMessage());
     }
 
+    @Test
+    void shouldThrowBadRequestWhenCompOffDateIsTodayOrInFuture() {
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(
+                        createCompOffPayload(List.of(LocalDate.now(IST))), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Compensatory off dates must be within the last 30 days", ex.getMessage());
+    }
+
 }
