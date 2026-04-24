@@ -94,6 +94,17 @@ public class RequestServiceTest {
         return payload;
     }
 
+    private CreateRequestPayload createCompOffPayload(List<LocalDate> dates) {
+        CreateRequestPayload payload = new CreateRequestPayload();
+        payload.setRequestType(RequestType.COMPENSATORY_OFF);
+        payload.setLeaveCategoryId(null);
+        payload.setDates(dates);
+        payload.setStartTime(LocalTime.of(10, 0));
+        payload.setDuration(DurationType.FULL_DAY);
+        payload.setDescription("Worked on Saturday for release");
+        return payload;
+    }
+
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasNullLeaveCategoryId() {
@@ -446,4 +457,17 @@ public class RequestServiceTest {
         assertEquals(1, responses.size());
         assertEquals(RequestStatus.PENDING, responses.get(0).getStatus());
     }
+
+    @Test
+    void shouldThrowBadRequestWhenCompOffDateIsOlderThan30Days() {
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(
+                        createCompOffPayload(List.of(LocalDate.now(IST).minusDays(31))), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Compensatory off dates must be within the last 30 days", ex.getMessage());
+    }
+
 }

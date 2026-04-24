@@ -1,12 +1,13 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.dto.CreateRequestPayload;
 import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
+import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -91,16 +92,35 @@ public class RequestService {
     @Transactional
     public List<CreateRequestResponse> raiseRequest(CreateRequestPayload payload, UUID userId) {
         User user = userService.getUserByUserId(userId);
-        validatePastLeaveCategoryPresent(payload);
 
+        if (payload.getRequestType() == RequestType.COMPENSATORY_OFF) {
+            return raiseCompOffRequest(payload, user);
+        }
+
+        validatePastLeaveCategoryPresent(payload);
         LeaveCategory leaveCategory = leaveCategoryService
                 .getLeaveCategoryById(payload.getLeaveCategoryId());
-
         List<LocalDate> validDates = filterValidPastLeaveDates(payload.getDates());
         List<LocalDate> workingDays = filterWeekendDates(validDates);
         validateNoDuplicateRequests(workingDays, userId);
-
         return savePastLeaveRequests(workingDays, payload, user, leaveCategory);
+    }
+
+    private List<CreateRequestResponse> raiseCompOffRequest(CreateRequestPayload payload, User user) {
+        List<LocalDate> validDates = filterValidCompOffDates(payload.getDates());
+        return List.of();
+    }
+
+    private List<LocalDate> filterValidCompOffDates(List<LocalDate> dates) {
+        List<LocalDate> validDates = dates.stream()
+                .filter(this::isValidPastLeaveDate)
+                .toList();
+
+        if (validDates.isEmpty()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Compensatory off dates must be within the last 30 days");
+        }
+        return validDates;
     }
 
 
