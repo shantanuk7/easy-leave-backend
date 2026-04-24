@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -113,5 +114,11 @@ public class HolidayService {
                         holiday.getDate()
                 ))
                 .toList();
+    }
+
+    public Holiday getHolidayById(UUID id) {
+        return holidayRepository.findById(id).orElseThrow(
+                () -> new HttpException(HttpStatus.NOT_FOUND, "Holiday id not found")
+        );
     }
 }
