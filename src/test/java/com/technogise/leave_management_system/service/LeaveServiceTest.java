@@ -26,12 +26,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
+import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
@@ -1370,5 +1372,30 @@ class LeaveServiceTest {
                 () -> leaveService.applyLeave(request, userId));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("At least one of the two fields must be provided holiday_id or category_id.", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrow400ErrorIfNumberOfOptionalHolidayForCurrentYearExceedsAllocatedNumber() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
+        CreateLeaveRequest request = createValidOptionalHolidayLeaveRequest();
+        User user = createValidUser();
+        long optionalHolidaysCount = 3L;
+
+        int currentYear = LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
+        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
+        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                user.getId(),
+                startDate,
+                endDate
+        )).thenReturn(optionalHolidaysCount);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.applyLeave(request, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply more than allocated days for optional holidays", ex.getMessage());
     }
 }

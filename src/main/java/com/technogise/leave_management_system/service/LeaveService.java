@@ -17,6 +17,7 @@ import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,9 @@ public class LeaveService {
     private final AnnualLeaveService annualLeaveService;
     private final LeaveIntegrationHandler leaveIntegrationHandler;
     private final HolidayService holidayService;
+
+    @Value("${leave.optional-holiday.max-days}")
+    private int maxOptionalHolidayDays;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
@@ -180,6 +184,25 @@ public class LeaveService {
         }
     }
 
+    void validateOptionalHolidaysCount(User user) {
+        int currentYear = LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
+        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
+        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+
+        long optionalHolidaysCount = leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                user.getId(),
+                startDate,
+                endDate
+        );
+
+        if (optionalHolidaysCount >= maxOptionalHolidayDays) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot apply more than allocated days for optional holidays"
+            );
+        }
+    }
+
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
@@ -195,6 +218,10 @@ public class LeaveService {
         Holiday holiday = hasHoliday
                 ? holidayService.getHolidayById(request.getHolidayId())
                 : null;
+
+        if (hasHoliday) {
+            validateOptionalHolidaysCount(user);
+        }
 
         List<LocalDate> workingDates =
                 filterValidWorkingDates(request.getDates());
