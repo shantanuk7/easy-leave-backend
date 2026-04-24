@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -167,5 +168,13 @@ class HolidayServiceTest {
         List <HolidayResponse> actualResponse = holidayService.getHolidays(null);
 
         assertEquals(mockHolidaysResponse, actualResponse);
+    }
+
+    @Test
+    void shouldReturnHolidayByIdWhenHolidayExists() {
+        when(holidayRepository.findById(mockHoliday.getId())).thenReturn(Optional.of(mockHoliday));
+        Holiday actualHoliday = holidayService.getHolidayById(mockHoliday.getId());
+        assertEquals(mockHoliday.getId(), actualHoliday.getId());
+        assertEquals(mockHoliday.getName(), actualHoliday.getName());
     }
 }
