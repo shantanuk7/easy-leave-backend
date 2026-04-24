@@ -1349,4 +1349,26 @@ class LeaveServiceTest {
         assertEquals(request.getStartTime(), savedLeave.getStartTime());
         assertEquals(request.getDuration(), savedLeave.getDuration());
     }
+
+    @Test
+    void shouldThrowErrorIfBothLeaveCategoryIdAndHolidayIdExistInLeaveRequest() {
+        CreateLeaveRequest request = createValidOptionalHolidayLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.applyLeave(request, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id.", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowErrorIfBothLeaveCategoryIdAndHolidayIdAreNullInLeaveRequest() {
+        CreateLeaveRequest request = createValidOptionalHolidayLeaveRequest();
+        request.setHolidayId(null);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.applyLeave(request, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("At least one of the two fields must be provided holiday_id or category_id.", ex.getMessage());
+    }
 }

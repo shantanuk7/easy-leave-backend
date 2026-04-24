@@ -165,11 +165,27 @@ public class LeaveService {
                 .anyMatch(weekend -> weekend.getDayOfWeek() == date.getDayOfWeek());
     }
 
+    private void validateMutualExclusiveness(boolean hasHoliday, boolean hasCategory) {
+        if (hasHoliday && hasCategory) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id."
+            );
+        }
+        if (!hasHoliday && !hasCategory) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "At least one of the two fields must be provided holiday_id or category_id."
+            );
+        }
+    }
+
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
         boolean hasHoliday = request.getHolidayId() != null;
         boolean hasCategory = request.getLeaveCategoryId() != null;
+        validateMutualExclusiveness(hasHoliday, hasCategory);
 
         User user = userService.getUserByUserId(userId);
         LeaveCategory category = hasCategory
