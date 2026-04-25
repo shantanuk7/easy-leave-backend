@@ -177,4 +177,12 @@ class HolidayServiceTest {
         assertEquals(mockHoliday.getId(), actualHoliday.getId());
         assertEquals(mockHoliday.getName(), actualHoliday.getName());
     }
+
+    @Test
+    void shouldThrowNotFoundErrorWhenHolidayWithIdDoesNotExist() {
+        UUID nonExistentId = UUID.randomUUID();
+        when(holidayRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+        HttpException exception = assertThrows(HttpException.class, () -> holidayService.getHolidayById(nonExistentId));
+        assertEquals("Holiday not found", exception.getMessage());
+    }
 }
