@@ -118,7 +118,7 @@ public class HolidayService {
 
     public Holiday getHolidayById(UUID id) {
         return holidayRepository.findById(id).orElseThrow(
-                () -> new HttpException(HttpStatus.NOT_FOUND, "Holiday id not found")
+                () -> new HttpException(HttpStatus.NOT_FOUND, "Holiday not found")
         );
     }
 }
