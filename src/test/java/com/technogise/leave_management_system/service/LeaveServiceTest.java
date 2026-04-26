@@ -948,7 +948,7 @@ class LeaveServiceTest {
 
         assertNotNull(response);
         assertEquals(newDate, response.getDate());
-        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(category.getName(), response.getType());
         assertEquals(request.getDuration(), response.getDuration());
         assertEquals(request.getStartTime(), response.getStartTime());
         assertEquals(request.getDescription(), response.getDescription());
@@ -994,7 +994,7 @@ class LeaveServiceTest {
         UpdateLeaveResponse response = leaveService.updateLeave(
                 leaveBeingUpdated.getId(), request, userId);
 
-        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        assertEquals("Casual Leave", response.getType());
         verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
     }
 
@@ -1021,7 +1021,7 @@ class LeaveServiceTest {
         UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
 
         assertEquals("Updated description", response.getDescription());
-        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(category.getName(), response.getType());
         assertEquals(DurationType.FULL_DAY, response.getDuration());
         verify(leaveRepository, never()).existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any());
     }
@@ -1106,7 +1106,7 @@ class LeaveServiceTest {
 
         UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
 
-        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        assertEquals("Casual Leave", response.getType());
         assertEquals("Original description", response.getDescription());
     }
 

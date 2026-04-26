@@ -416,7 +416,7 @@ PATCH /api/leaves/{id}
   "data": {
     "id": "8496840a-c0b2-4e03-bc54-0a9d47e00a2c",
     "date": "2026-04-22",
-    "leaveCategoryName": "ANNUAL",
+    "type": "ANNUAL",
     "duration": "HALF_DAY",
     "startTime": "10:00:00",
     "description": "Updated reason for leave"
