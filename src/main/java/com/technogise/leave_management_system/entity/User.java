@@ -46,6 +46,15 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "google_access_token", length = 2048)
+    private String googleAccessToken;
+
+    @Column(name = "google_token_expiry")
+    private LocalDateTime googleTokenExpiry;
+
+    @Column(name = "google_refresh_token", length = 512)
+    private String googleRefreshToken;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
