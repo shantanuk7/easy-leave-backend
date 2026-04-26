@@ -218,6 +218,27 @@ public class LeaveService {
         return leave.getHoliday().getType().getDisplayName();
     }
 
+    private void applyTypeChange(Leave leave, UpdateLeaveRequest request, UUID userId) {
+        boolean requestHasHoliday = request.getHolidayId() != null;
+        boolean requestHasCategory = request.getLeaveCategoryId() != null;
+
+        if (!requestHasHoliday && !requestHasCategory) {
+            return;
+        }
+
+        if (requestHasHoliday) {
+            Holiday holiday = holidayService.getHolidayById(request.getHolidayId());
+            leave.setHoliday(holiday);
+            leave.setLeaveCategory(null);
+        }
+
+        if (requestHasCategory) {
+            leave.setLeaveCategory(
+                    leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
+            leave.setHoliday(null);
+        }
+    }
+
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
@@ -362,7 +383,9 @@ public class LeaveService {
         validateExistingLeaveDate(leave.getDate());
 
         DurationType oldDuration = leave.getDuration();
-        String oldCategoryName = leave.getLeaveCategory().getName();
+        String oldCategoryName = leave.getLeaveCategory() != null
+                ? leave.getLeaveCategory().getName()
+                : null;
 
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
@@ -371,20 +394,22 @@ public class LeaveService {
             leave.setDate(request.getDate());
         }
 
-        if (request.getLeaveCategoryId() != null) {
-            leave.setLeaveCategory(leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
-        }
+        applyTypeChange(leave, request, userId);
+
         Optional.ofNullable(request.getDuration()).ifPresent(leave::setDuration);
         Optional.ofNullable(request.getStartTime()).ifPresent(leave::setStartTime);
         Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
 
-        boolean categoryChanged = request.getLeaveCategoryId() != null;
+        boolean typeChanged = request.getHolidayId() != null || request.getLeaveCategoryId() != null;
         boolean durationChanged = request.getDuration() != null;
-
-        if (categoryChanged || durationChanged) {
-            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldCategoryName, savedLeave.getLeaveCategory().getName(),
+        if (typeChanged || durationChanged) {
+            String newCategoryName = savedLeave.getLeaveCategory() != null
+                    ? savedLeave.getLeaveCategory().getName()
+                    : null;
+            annualLeaveService.syncOnLeaveUpdated(
+                    savedLeave.getUser(), oldCategoryName, newCategoryName,
                     oldDuration, savedLeave.getDuration(), savedLeave.getDate().getYear());
         }
 

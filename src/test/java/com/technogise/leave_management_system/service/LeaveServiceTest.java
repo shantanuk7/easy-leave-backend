@@ -1481,4 +1481,63 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Cannot apply leave on weekends or fixed holidays", ex.getMessage());
     }
+
+    @Test
+    void shouldUpdateRegularLeaveToOptionalHolidaySuccessfully() {
+        User user = createValidUser();
+        Holiday holiday = createOptionalHoliday();
+        LocalDate mockDate = LocalDate.of(2026, 4,27);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(mockDate);
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(10, 0));
+        leave.setDescription("Regular leave");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(holidayId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(holidayService.getHolidayById(holidayId)).thenReturn(holiday);
+        when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals("OPTIONAL HOLIDAY", response.getType());
+        assertNull(leave.getLeaveCategory());
+        assertEquals(holiday, leave.getHoliday());
+    }
+
+    @Test
+    void shouldUpdateOptionalHolidayToRegularLeaveSuccessfully() {
+        User user = createValidUser();
+        Holiday holiday = createOptionalHoliday();
+        LeaveCategory newCategory = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(holiday.getDate());
+        leave.setLeaveCategory(null);
+        leave.setHoliday(holiday);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(10, 0));
+        leave.setDescription(holiday.getName());
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(newCategory);
+        when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals(newCategory.getName(), response.getType());
+        assertNull(leave.getHoliday());
+        assertEquals(newCategory, leave.getLeaveCategory());
+    }
 }
