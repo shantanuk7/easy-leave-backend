@@ -18,7 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,9 +47,19 @@ public class UserService {
         this.annualLeaveRepository = annualLeaveRepository;
     }
 
-    public User findOrCreateUser(String email, String name) {
-        return userRepository.findByEmail(email)
+    public User findOrCreateUser(String email, String name, String accessToken, Instant expiresAt, String refreshTokenValue) {
+        User user = userRepository.findByEmail(email)
                 .orElseGet(() -> createUser(email, name));
+        user.setGoogleAccessToken(accessToken);
+        user.setGoogleTokenExpiry(
+                expiresAt != null
+                        ? LocalDateTime.ofInstant(expiresAt, ZoneId.of("Asia/Kolkata"))
+                        : LocalDateTime.now().plusHours(1)
+        );
+        if (refreshTokenValue != null) {
+            user.setGoogleRefreshToken(refreshTokenValue);
+        }
+        return userRepository.save(user);
     }
 
     public User getUserByUserId(UUID id) {
