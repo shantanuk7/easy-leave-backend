@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.PlateformType;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,7 +122,7 @@ class GoogleCalendarServiceTest {
 
         verify(leaveIntegrationEventRepository).save(argThat(event ->
                 event.getExternalEventId().equals("event-xyz")
-                        && event.getPlatform().equals("GOOGLE_CALENDAR")
+                        && event.getPlatform().equals(PlateformType.GOOGLE_CALENDAR)
         ));
     }
 
@@ -159,7 +160,7 @@ class GoogleCalendarServiceTest {
 
         verify(leaveIntegrationEventRepository).save(argThat(event ->
                 event.getExternalEventId().equals("event-sync-1")
-                        && event.getPlatform().equals("GOOGLE_CALENDAR")
+                        && event.getPlatform().equals(PlateformType.GOOGLE_CALENDAR)
         ));
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         verify(httpClient).send(requestCaptor.capture(), any());

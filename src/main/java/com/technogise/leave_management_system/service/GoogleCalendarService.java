@@ -115,7 +115,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
 
                 LeaveIntegrationEvent integrationEvent = new LeaveIntegrationEvent();
                 integrationEvent.setLeave(leave);
-                integrationEvent.setPlatform(PLATFORM);
+                integrationEvent.setPlatform(PlateformType.GOOGLE_CALENDAR);
                 integrationEvent.setExternalEventId(eventId);
                 leaveIntegrationEventRepository.save(integrationEvent);
             } else {
