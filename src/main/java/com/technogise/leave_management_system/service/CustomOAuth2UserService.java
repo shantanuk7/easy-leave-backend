@@ -5,8 +5,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
 
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
@@ -24,20 +27,26 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-
         OAuth2User oauthUser = super.loadUser(userRequest);
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
 
-        if (!isAllowedEmail(email))
-        {
+        if (!isAllowedEmail(email)) {
             throw new OAuth2AuthenticationException("Unauthorized email domain");
         }
 
-        User user = userService.findOrCreateUser(email, name);
+        String accessToken = userRequest.getAccessToken().getTokenValue();
+        Instant expiresAt = userRequest.getAccessToken().getExpiresAt();
+        OAuth2RefreshToken refreshToken = userRequest.getAdditionalParameters().containsKey("refresh_token")
+                ? new OAuth2RefreshToken(
+                userRequest.getAdditionalParameters().get("refresh_token").toString(),
+                null)
+                : null;
 
+        String refreshTokenValue = (refreshToken != null) ? refreshToken.getTokenValue() : null;
+
+        User user = userService.findOrCreateUser(email, name, accessToken, expiresAt, refreshTokenValue);
         annualLeaveService.createAnnualLeaveForNewEmployee(user);
-
         return oauthUser;
     }
 
