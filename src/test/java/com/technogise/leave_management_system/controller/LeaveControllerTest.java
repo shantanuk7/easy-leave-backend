@@ -584,7 +584,7 @@ public class LeaveControllerTest {
 
         when(leaveService.applyLeave(any(CreateLeaveRequest.class), eq(employee.getId())))
                 .thenThrow(new HttpException(HttpStatus.BAD_REQUEST,
-                        "Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id."));
+                        "Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId."));
 
         mockMvc.perform(post("/api/leaves")
                         .with(mockUser(employee))
@@ -592,7 +592,7 @@ public class LeaveControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.statusCode").value("400"))
-                .andExpect(jsonPath("$.message").value("Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id."));
+                .andExpect(jsonPath("$.message").value("Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId."));
     }
 
     @Test
