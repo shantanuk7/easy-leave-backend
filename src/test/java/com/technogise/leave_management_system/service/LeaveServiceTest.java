@@ -1484,6 +1484,8 @@ class LeaveServiceTest {
 
     @Test
     void shouldUpdateRegularLeaveToOptionalHolidaySuccessfully() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
         User user = createValidUser();
         Holiday holiday = createOptionalHoliday();
         LocalDate mockDate = LocalDate.of(2026, 4,27);
@@ -1500,6 +1502,9 @@ class LeaveServiceTest {
         UpdateLeaveRequest request = new UpdateLeaveRequest();
         request.setHolidayId(holidayId);
 
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any())).thenReturn(0L);
         when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
         when(holidayService.getHolidayById(holidayId)).thenReturn(holiday);
         when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
