@@ -145,33 +145,35 @@ class GoogleCalendarServiceTest {
 
         assertTrue(ex.getMessage().contains("Failed to add leave"));
     }
+
     @Test
-    void shouldSyncLeaveWithTitleBuiltFromUserNameAndCategoryName() throws Exception {
-        when(httpResponse.statusCode()).thenReturn(200);
+    void shouldSyncLeaveWithCorrectTitleAndDescription() throws Exception {
+        when(httpResponse.statusCode()).thenReturn(201);
         when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-1\"}");
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
         googleCalendarService.syncLeave(leave);
 
-        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         verify(leaveIntegrationEventRepository).save(argThat(event ->
                 event.getExternalEventId().equals("event-sync-1")
+                        && event.getPlatform().equals("GOOGLE_CALENDAR")
         ));
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).send(requestCaptor.capture(), any());
     }
+
     @Test
-    void shouldSyncLeaveWithEmptyDescriptionWhenDescriptionIsNull() throws Exception {
+    void shouldSyncLeaveWithEmptyDescriptionWhenNull() throws Exception {
         leave.setDescription(null);
 
-        when(httpResponse.statusCode()).thenReturn(200);
-        when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-3\"}");
+        when(httpResponse.statusCode()).thenReturn(201);
+        when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-2\"}");
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
-        googleCalendarService.syncLeave(leave);
-
+        assertDoesNotThrow(() -> googleCalendarService.syncLeave(leave));
         verify(leaveIntegrationEventRepository).save(any(LeaveIntegrationEvent.class));
     }
-
 }
+
