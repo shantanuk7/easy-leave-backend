@@ -1,6 +1,7 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.entity.Leave;
+import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
@@ -45,12 +46,20 @@ class GoogleCalendarServiceTest {
     @BeforeEach
     void setUp() {
         user = new User();
+        user.setName("Priyansh");
         user.setEmail("priyansh@technogise.com");
         user.setGoogleAccessToken("valid-token");
         user.setGoogleTokenExpiry(LocalDateTime.now().plusHours(1));
 
+        LeaveCategory category = new LeaveCategory();
+        category.setName("Annual Leave");
+
         leave = new Leave();
         leave.setDate(LocalDate.now());
+        leave.setUser(user);
+        leave.setLeaveCategory(category);
+        leave.setDescription("Personal Work");
+
         ReflectionTestUtils.setField(googleCalendarService, "calendarId", "test-calendar");
         ReflectionTestUtils.setField(googleCalendarService, "clientId", "client-id");
         ReflectionTestUtils.setField(googleCalendarService, "clientSecret", "client-secret");
@@ -61,7 +70,6 @@ class GoogleCalendarServiceTest {
     void shouldUseExistingTokenWhenNotExpired() throws Exception {
         when(httpResponse.statusCode()).thenReturn(200);
         when(httpResponse.body()).thenReturn("{\"id\":\"event-123\"}");
-
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
@@ -79,9 +87,7 @@ class GoogleCalendarServiceTest {
         when(httpResponse.body())
                 .thenReturn("{\"access_token\":\"new-token\"}")
                 .thenReturn("{\"id\":\"event-123\"}");
-
         when(httpResponse.statusCode()).thenReturn(200);
-
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
@@ -106,7 +112,6 @@ class GoogleCalendarServiceTest {
     void shouldSaveIntegrationEventOnSuccess() throws Exception {
         when(httpResponse.statusCode()).thenReturn(201);
         when(httpResponse.body()).thenReturn("{\"id\":\"event-xyz\"}");
-
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
@@ -132,7 +137,6 @@ class GoogleCalendarServiceTest {
     @Test
     void shouldThrowWhenApiFails() throws Exception {
         when(httpResponse.statusCode()).thenReturn(500);
-
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
@@ -141,4 +145,33 @@ class GoogleCalendarServiceTest {
 
         assertTrue(ex.getMessage().contains("Failed to add leave"));
     }
+    @Test
+    void shouldSyncLeaveWithTitleBuiltFromUserNameAndCategoryName() throws Exception {
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-1\"}");
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+
+        googleCalendarService.syncLeave(leave);
+
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).send(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
+        verify(leaveIntegrationEventRepository).save(argThat(event ->
+                event.getExternalEventId().equals("event-sync-1")
+        ));
+    }
+    @Test
+    void shouldSyncLeaveWithEmptyDescriptionWhenDescriptionIsNull() throws Exception {
+        leave.setDescription(null);
+
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-3\"}");
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+
+        googleCalendarService.syncLeave(leave);
+
+        verify(leaveIntegrationEventRepository).save(any(LeaveIntegrationEvent.class));
+    }
+
 }

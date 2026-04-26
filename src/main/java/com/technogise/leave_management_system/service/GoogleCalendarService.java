@@ -18,7 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @Service
-public class GoogleCalendarService {
+public class GoogleCalendarService implements LeaveIntegrationService {
 
     private final UserRepository userRepository;
     private final LeaveIntegrationEventRepository leaveIntegrationEventRepository;
@@ -121,5 +121,13 @@ public class GoogleCalendarService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to add leave to calendar", e);
         }
+    }
+
+    @Override
+    public void syncLeave(Leave leave) {
+        User user = leave.getUser();
+        String title = user.getName() + " - " + leave.getLeaveCategory().getName();
+        String description = leave.getDescription() != null ? leave.getDescription() : "";
+        addLeaveEvent(user, leave, title, description);
     }
 }
