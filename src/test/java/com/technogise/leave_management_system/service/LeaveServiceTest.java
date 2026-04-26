@@ -51,7 +51,7 @@ class LeaveServiceTest {
     private AnnualLeaveService annualLeaveService;
 
     @Mock
-    private GoogleCalendarService googleCalendarService;
+    private LeaveIntegrationHandler leaveIntegrationHandler;
 
     @InjectMocks
     private LeaveService leaveService;

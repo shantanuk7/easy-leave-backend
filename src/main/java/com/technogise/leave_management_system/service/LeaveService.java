@@ -43,18 +43,18 @@ public class LeaveService {
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
     private final AnnualLeaveService annualLeaveService;
-    private final GoogleCalendarService googleCalendarService;
+    private final LeaveIntegrationHandler leaveIntegrationHandler;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
                         LeaveCategoryService leaveCategoryService,
                         AnnualLeaveService annualLeaveService,
-                        GoogleCalendarService googleCalendarService) {
+                        LeaveIntegrationHandler leaveIntegrationHandler) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
         this.annualLeaveService = annualLeaveService;
-        this.googleCalendarService = googleCalendarService;
+        this.leaveIntegrationHandler = leaveIntegrationHandler;
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -159,16 +159,6 @@ public class LeaveService {
                 .anyMatch(weekend -> weekend.getDayOfWeek() == date.getDayOfWeek());
     }
 
-    private void syncToExternalCalendar(User user, LeaveCategory category,
-                                        String requestDescription, List<Leave> savedLeaves) {
-        String eventTitle = user.getName() + " - " + category.getName();
-        String description = Optional.ofNullable(requestDescription).orElse("");
-
-        for (Leave leave : savedLeaves) {
-            googleCalendarService.addLeaveEvent(user, leave, eventTitle, description);
-        }
-    }
-
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
@@ -199,7 +189,7 @@ public class LeaveService {
         if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
-        syncToExternalCalendar(user, category, request.getDescription(), savedLeaves);
+        leaveIntegrationHandler.handleLeaves(savedLeaves);
         leaveRepository.saveAll(savedLeaves);
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
