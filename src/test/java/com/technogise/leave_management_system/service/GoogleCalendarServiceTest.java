@@ -64,6 +64,8 @@ class GoogleCalendarServiceTest {
         ReflectionTestUtils.setField(googleCalendarService, "clientId", "client-id");
         ReflectionTestUtils.setField(googleCalendarService, "clientSecret", "client-secret");
         ReflectionTestUtils.setField(googleCalendarService, "httpClient", httpClient);
+        ReflectionTestUtils.setField(googleCalendarService, "calendarApiBase", "https://www.googleapis.com/calendar/v3/calendars/");
+        ReflectionTestUtils.setField(googleCalendarService, "timezone", "Asia/Kolkata");
     }
 
     @Test

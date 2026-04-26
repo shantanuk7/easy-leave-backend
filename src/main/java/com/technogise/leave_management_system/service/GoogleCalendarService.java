@@ -3,6 +3,7 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.PlateformType;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,9 +26,12 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3/calendars/";
-    private static final String PLATFORM = "GOOGLE_CALENDAR";
-    private static final String TIMEZONE = "Asia/Kolkata";
+    private static final String PLATFORM = PlateformType.GOOGLE_CALENDAR.toString();
+    @Value("${google.calendar.api-base}")
+    private String calendarApiBase;
+
+    @Value("${google.calendar.timezone}")
+    private String timezone;
 
     @Value("${google.calendar.id}")
     private String calendarId;
@@ -82,8 +86,8 @@ public class GoogleCalendarService implements LeaveIntegrationService {
         Map<String, Object> event = Map.of(
                 "summary", title,
                 "description", description,
-                "start", Map.of("date", start, "timeZone", TIMEZONE),
-                "end",   Map.of("date", end,   "timeZone", TIMEZONE)
+                "start", Map.of("date", start, "timeZone", timezone),
+                "end",   Map.of("date", end,   "timeZone", timezone)
         );
         return objectMapper.writeValueAsString(event);
     }
@@ -91,7 +95,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     public void addLeaveEvent(User user, Leave leave, String title, String description) {
         try {
             String encodedCalendarId = java.net.URLEncoder.encode(calendarId, "UTF-8");
-            String url = CALENDAR_API_BASE + encodedCalendarId + "/events";
+            String url = calendarApiBase + encodedCalendarId + "/events";
 
             String start = leave.getDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
             String end = leave.getDate().plusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
