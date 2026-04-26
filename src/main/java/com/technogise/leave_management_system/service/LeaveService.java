@@ -397,7 +397,8 @@ public class LeaveService {
                 request.getStartTime(),
                 request.getDescription(),
                 request.getDuration(),
-                request.getLeaveCategoryId()
+                request.getLeaveCategoryId(),
+                request.getHolidayId()
         ).anyMatch(Objects::nonNull);
 
         if (!hasField) {
@@ -409,7 +410,7 @@ public class LeaveService {
         return new UpdateLeaveResponse(
                 leave.getId(),
                 leave.getDate(),
-                leave.getLeaveCategory().getName(),
+                getLeaveType(leave),
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getDescription()
