@@ -1564,4 +1564,32 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId.", ex.getMessage());
     }
+
+    @Test
+    void shouldThrow400ErrorWhenUpdatingRegularLeaveToOptionalHolidayExceedsAllocatedQuota() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(nextWeekday());
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(holidayId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any())).thenReturn(2L);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply more than allocated days for optional holidays", ex.getMessage());
+    }
 }

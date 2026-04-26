@@ -229,7 +229,9 @@ public class LeaveService {
         validateMutualExclusiveness(requestHasHoliday, requestHasCategory);
 
         if (requestHasHoliday) {
+            User user = userService.getUserByUserId(userId);
             Holiday holiday = holidayService.getHolidayById(request.getHolidayId());
+            validateOptionalHolidaysCount(user);
             leave.setHoliday(holiday);
             leave.setLeaveCategory(null);
         }
