@@ -1360,7 +1360,7 @@ class LeaveServiceTest {
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.applyLeave(request, userId));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id.", ex.getMessage());
+        assertEquals("Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId.", ex.getMessage());
     }
 
     @Test

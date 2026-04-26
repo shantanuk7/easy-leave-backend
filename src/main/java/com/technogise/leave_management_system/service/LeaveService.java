@@ -174,7 +174,7 @@ public class LeaveService {
         if (hasHoliday && hasCategory) {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
-                    "Cannot apply for a leave with both fields provide. Provide either holiday_id or category_id."
+                    "Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId."
             );
         }
         if (!hasHoliday && !hasCategory) {
