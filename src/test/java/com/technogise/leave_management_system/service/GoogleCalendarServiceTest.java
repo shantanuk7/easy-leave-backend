@@ -1,0 +1,144 @@
+package com.technogise.leave_management_system.service;
+
+import com.technogise.leave_management_system.entity.Leave;
+import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
+import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
+import com.technogise.leave_management_system.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+class GoogleCalendarServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private LeaveIntegrationEventRepository leaveIntegrationEventRepository;
+
+    @Mock
+    private HttpClient httpClient;
+
+    @Mock
+    private HttpResponse<String> httpResponse;
+
+    @InjectMocks
+    private GoogleCalendarService googleCalendarService;
+
+    private User user;
+    private Leave leave;
+
+    @BeforeEach
+    void setUp() {
+        user = new User();
+        user.setEmail("priyansh@technogise.com");
+        user.setGoogleAccessToken("valid-token");
+        user.setGoogleTokenExpiry(LocalDateTime.now().plusHours(1));
+
+        leave = new Leave();
+        leave.setDate(LocalDate.now());
+        ReflectionTestUtils.setField(googleCalendarService, "calendarId", "test-calendar");
+        ReflectionTestUtils.setField(googleCalendarService, "clientId", "client-id");
+        ReflectionTestUtils.setField(googleCalendarService, "clientSecret", "client-secret");
+        ReflectionTestUtils.setField(googleCalendarService, "httpClient", httpClient);
+    }
+
+    @Test
+    void shouldUseExistingTokenWhenNotExpired() throws Exception {
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpResponse.body()).thenReturn("{\"id\":\"event-123\"}");
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+
+        googleCalendarService.addLeaveEvent(user, leave, "title", "desc");
+
+        verify(leaveIntegrationEventRepository).save(any(LeaveIntegrationEvent.class));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRefreshTokenWhenExpired() throws Exception {
+        user.setGoogleTokenExpiry(LocalDateTime.now().minusMinutes(10));
+        user.setGoogleRefreshToken("refresh-token");
+
+        when(httpResponse.body())
+                .thenReturn("{\"access_token\":\"new-token\"}")
+                .thenReturn("{\"id\":\"event-123\"}");
+
+        when(httpResponse.statusCode()).thenReturn(200);
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+
+        googleCalendarService.addLeaveEvent(user, leave, "title", "desc");
+
+        verify(userRepository).save(user);
+        assertEquals("new-token", user.getGoogleAccessToken());
+    }
+
+    @Test
+    void shouldThrowWhenRefreshTokenMissing() {
+        user.setGoogleTokenExpiry(LocalDateTime.now().minusMinutes(10));
+        user.setGoogleRefreshToken(null);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> googleCalendarService.addLeaveEvent(user, leave, "title", "desc"));
+
+        assertTrue(ex.getMessage().contains("Failed to add leave"));
+    }
+
+    @Test
+    void shouldSaveIntegrationEventOnSuccess() throws Exception {
+        when(httpResponse.statusCode()).thenReturn(201);
+        when(httpResponse.body()).thenReturn("{\"id\":\"event-xyz\"}");
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+
+        googleCalendarService.addLeaveEvent(user, leave, "title", "desc");
+
+        verify(leaveIntegrationEventRepository).save(argThat(event ->
+                event.getExternalEventId().equals("event-xyz")
+                        && event.getPlatform().equals("GOOGLE_CALENDAR")
+        ));
+    }
+
+    @Test
+    void shouldRefreshTokenWhenExpiryIsNull() {
+        user.setGoogleTokenExpiry(null);
+        user.setGoogleRefreshToken(null);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> googleCalendarService.addLeaveEvent(user, leave, "title", "desc"));
+
+        assertTrue(ex.getMessage().contains("Failed to add leave"));
+    }
+
+    @Test
+    void shouldThrowWhenApiFails() throws Exception {
+        when(httpResponse.statusCode()).thenReturn(500);
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> googleCalendarService.addLeaveEvent(user, leave, "title", "desc"));
+
+        assertTrue(ex.getMessage().contains("Failed to add leave"));
+    }
+}

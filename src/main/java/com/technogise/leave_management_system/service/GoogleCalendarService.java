@@ -106,7 +106,6 @@ public class GoogleCalendarService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200 || response.statusCode() == 201) {
-                @SuppressWarnings("unchecked")
                 Map<String, Object> eventResponse = objectMapper.readValue(response.body(), Map.class);
                 String eventId = (String) eventResponse.get("id");
 
