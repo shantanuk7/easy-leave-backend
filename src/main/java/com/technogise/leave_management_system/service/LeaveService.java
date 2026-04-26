@@ -231,7 +231,9 @@ public class LeaveService {
         if (requestHasHoliday) {
             User user = userService.getUserByUserId(userId);
             Holiday holiday = holidayService.getHolidayById(request.getHolidayId());
-            validateOptionalHolidaysCount(user);
+            if (leave.getHoliday() == null) {
+                validateOptionalHolidaysCount(user);
+            }
             leave.setHoliday(holiday);
             leave.setLeaveCategory(null);
         }

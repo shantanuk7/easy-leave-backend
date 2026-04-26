@@ -1592,4 +1592,32 @@ class LeaveServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Cannot apply more than allocated days for optional holidays", ex.getMessage());
     }
+
+    @Test
+    void shouldNotValidateQuotaWhenSwitchingFromOptionalHolidayToAnotherOptionalHoliday() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
+        User user = createValidUser();
+        Holiday newHoliday = createOptionalHoliday();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(nextWeekday());
+        leave.setHoliday(createOptionalHoliday());
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(newHoliday.getId());
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(holidayService.getHolidayById(newHoliday.getId())).thenReturn(newHoliday);
+        when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        leaveService.updateLeave(leave.getId(), request, userId);
+
+        verify(leaveRepository, never())
+                .countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(any(), any(), any());
+    }
 }
