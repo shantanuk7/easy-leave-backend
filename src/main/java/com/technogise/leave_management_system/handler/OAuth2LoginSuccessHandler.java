@@ -12,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -23,6 +26,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
     @Value("${app.cookie.expiration}")
     private int cookieExpiration;
@@ -38,10 +42,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     OAuth2LoginSuccessHandler(
             UserRepository userRepository,
-            JwtService jwtService
+            JwtService jwtService,
+            OAuth2AuthorizedClientService authorizedClientService
     ) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.authorizedClientService = authorizedClientService;
     }
 
     @Override
@@ -52,16 +58,21 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
 
-        log.info("OAuth2 login:  for email={}", email);
+        OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
+        OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
+                oauthToken.getAuthorizedClientRegistrationId(),
+                oauthToken.getName()
+        );
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    log.error("OAuth2 login failed — user not found for email={}", email);
-                    return new HttpException(HttpStatus.NOT_FOUND, "User not found");
-                });
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (authorizedClient != null && authorizedClient.getRefreshToken() != null) {
+            user.setGoogleRefreshToken(authorizedClient.getRefreshToken().getTokenValue());
+            userRepository.save(user);
+        }
 
         String token = jwtService.generateToken(user);
-        log.debug("JWT generated for userId={}, email={}", user.getId(), email);
 
         Cookie cookie = new Cookie("token", token);
         cookie.setHttpOnly(true);
@@ -71,9 +82,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         cookie.setAttribute("SameSite", cookieSameSite);
 
         response.addCookie(cookie);
-
-        log.info("OAuth2 login successful for userId={}, email={}, redirecting to {}",
-                user.getId(), email, redirectFrontendUrl);
         response.sendRedirect(redirectFrontendUrl);
     }
 }

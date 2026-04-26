@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +16,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserService userService;
     private final AnnualLeaveService annualLeaveService;
 
-    public CustomOAuth2UserService(@Value("${app.allowed-email-domain}") String allowedDomain, UserService userService,
-                                   AnnualLeaveService annualLeaveService)
-    {
+    public CustomOAuth2UserService(
+            @Value("${app.allowed-email-domain}") String allowedDomain,
+            UserService userService,
+            AnnualLeaveService annualLeaveService) {
         this.allowedDomain = allowedDomain;
         this.userService = userService;
         this.annualLeaveService = annualLeaveService;
@@ -37,15 +37,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         String accessToken = userRequest.getAccessToken().getTokenValue();
         Instant expiresAt = userRequest.getAccessToken().getExpiresAt();
-        OAuth2RefreshToken refreshToken = userRequest.getAdditionalParameters().containsKey("refresh_token")
-                ? new OAuth2RefreshToken(
-                userRequest.getAdditionalParameters().get("refresh_token").toString(),
-                null)
-                : null;
-
-        String refreshTokenValue = (refreshToken != null) ? refreshToken.getTokenValue() : null;
-
-        User user = userService.findOrCreateUser(email, name, accessToken, expiresAt, refreshTokenValue);
+        User user = userService.findOrCreateUser(email, name, accessToken, expiresAt, null);
         annualLeaveService.createAnnualLeaveForNewEmployee(user);
         return oauthUser;
     }
