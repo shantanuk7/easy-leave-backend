@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,8 +71,9 @@ class UserServiceTest {
         existingUser.setName(name);
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser); // ✅ add this
 
-        User result = userService.findOrCreateUser(email, name);
+        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600), null);
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
@@ -87,11 +89,66 @@ class UserServiceTest {
         savedUser.setRole(UserRole.EMPLOYEE);
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        User result = userService.findOrCreateUser(email, name);
+        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600), null);
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
         assertEquals(UserRole.EMPLOYEE, result.getRole());
+    }
+
+    @Test
+    void shouldStoreAccessTokenAndExpiry() {
+        Instant expiry = Instant.now().plusSeconds(3600);
+
+        User user = new User();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.findOrCreateUser(email, name, "access-token", expiry, null);
+
+        assertEquals("access-token", result.getGoogleAccessToken());
+        assertNotNull(result.getGoogleTokenExpiry());
+    }
+
+    @Test
+    void shouldStoreRefreshTokenWhenProvided() {
+        User user = new User();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.findOrCreateUser(
+                email, name, "access-token", Instant.now(), "refresh-token"
+        );
+
+        assertEquals("refresh-token", result.getGoogleRefreshToken());
+    }
+
+    @Test
+    void shouldNotOverwriteExistingRefreshTokenWhenNullPassed() {
+        User user = new User();
+        user.setGoogleRefreshToken("existing-refresh-token");
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.findOrCreateUser(
+                email, name, "access-token", Instant.now(), null
+        );
+
+        assertEquals("existing-refresh-token", result.getGoogleRefreshToken());
+    }
+
+    @Test
+    void shouldSetDefaultExpiryWhenExpiresAtIsNull() {
+        User user = new User();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.findOrCreateUser(
+                email, name, "access-token", null, null);
+
+        assertNotNull(result.getGoogleTokenExpiry());
     }
 
     @Test
