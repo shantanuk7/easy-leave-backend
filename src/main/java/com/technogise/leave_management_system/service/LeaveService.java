@@ -464,7 +464,8 @@ public class LeaveService {
                 request.getStartTime(),
                 request.getDescription(),
                 request.getDuration(),
-                request.getLeaveCategoryId()
+                request.getLeaveCategoryId(),
+                request.getHolidayId()
         ).anyMatch(Objects::nonNull);
 
         if (!hasField) {

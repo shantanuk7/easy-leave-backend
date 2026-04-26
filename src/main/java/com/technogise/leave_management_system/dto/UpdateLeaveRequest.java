@@ -29,4 +29,6 @@ public class UpdateLeaveRequest {
     private UUID leaveCategoryId;
 
     private String type;
+
+    private UUID holidayId;
 }
