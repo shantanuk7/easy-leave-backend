@@ -226,6 +226,8 @@ public class LeaveService {
             return;
         }
 
+        validateMutualExclusiveness(requestHasHoliday, requestHasCategory);
+
         if (requestHasHoliday) {
             Holiday holiday = holidayService.getHolidayById(request.getHolidayId());
             leave.setHoliday(holiday);

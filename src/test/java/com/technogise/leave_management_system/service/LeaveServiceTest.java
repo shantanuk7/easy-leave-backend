@@ -1540,4 +1540,28 @@ class LeaveServiceTest {
         assertNull(leave.getHoliday());
         assertEquals(newCategory, leave.getLeaveCategory());
     }
+
+    @Test
+    void shouldThrowBadRequestWhenBothHolidayIdAndCategoryIdProvidedInUpdateRequest() {
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(nextWeekday());
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(holidayId);
+        request.setLeaveCategoryId(leaveCategoryId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId.", ex.getMessage());
+    }
 }
