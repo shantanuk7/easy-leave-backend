@@ -48,7 +48,10 @@ public class LeaveService {
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
-                        LeaveCategoryService leaveCategoryService, AnnualLeaveService annualLeaveService, LeaveIntegrationHandler leaveIntegrationHandler) {
+                        LeaveCategoryService leaveCategoryService,
+                        AnnualLeaveService annualLeaveService,
+                        LeaveIntegrationHandler leaveIntegrationHandler
+    ) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;

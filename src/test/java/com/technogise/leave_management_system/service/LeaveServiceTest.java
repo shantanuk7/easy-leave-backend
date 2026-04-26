@@ -57,6 +57,9 @@ class LeaveServiceTest {
     @InjectMocks
     private LeaveService leaveService;
 
+    @Mock
+    private LeaveIntegrationHandler integrationHandler;
+
     private UUID userId;
     private UUID leaveCategoryId;
 
