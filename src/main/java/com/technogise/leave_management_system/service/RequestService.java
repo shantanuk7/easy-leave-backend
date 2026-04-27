@@ -87,13 +87,12 @@ public class RequestService {
 
     private void validateNoDuplicateRequests(List<LocalDate> dates, UUID userId) {
         List<RequestStatus> activeStatuses = List.of(RequestStatus.PENDING, RequestStatus.APPROVED);
-        dates.forEach(date -> {
-            if (requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                    userId, date, activeStatuses)) {
-                throw new HttpException(HttpStatus.CONFLICT,
-                        "A request already exists for this date");
-            }
-        });
+
+        if (requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, dates, activeStatuses)) {
+            throw new HttpException(HttpStatus.CONFLICT,
+                    "A request already exists for one of the selected dates");
+        }
     }
 
     private List<CreateRequestResponse> savePastLeaveRequests(

@@ -12,6 +12,9 @@ import java.util.UUID;
 
 @Repository
 public interface RequestRepository extends JpaRepository<Request, UUID> {
-    boolean existsByRequestedByUserIdAndDateAndStatusIn(
-            UUID requestedByUserId, LocalDate date, List<RequestStatus> statuses);
+    boolean existsByRequestedByUserIdAndDateInAndStatusIn(
+            UUID userId,
+            List<LocalDate> dates,
+            List<RequestStatus> statuses
+    );
 }

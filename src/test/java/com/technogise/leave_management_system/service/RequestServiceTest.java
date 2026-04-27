@@ -95,7 +95,6 @@ class RequestServiceTest {
         assertEquals("Leave category is required for Past Leave requests", ex.getMessage());
     }
 
-
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasDateOfToday() {
         CreateRequestPayload payload = createPastLeavePayload(LocalDate.now(IST));
@@ -162,8 +161,9 @@ class RequestServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, validDate, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(validDate), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -187,14 +187,14 @@ class RequestServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, yesterday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(yesterday), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         assertDoesNotThrow(() -> requestService.raiseRequest(payload, userId));
     }
-
 
     @Test
     void shouldThrowBadRequestWhenAllValidPastLeaveDatesAreWeekends() {
@@ -211,7 +211,7 @@ class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("Cannot apply for leave on weekends.", ex.getMessage());
+        assertEquals("Cannot raise the request for weekend leave.", ex.getMessage());
     }
 
     @Test
@@ -225,15 +225,16 @@ class RequestServiceTest {
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(new LeaveCategory());
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(lastWeekMonday), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for this date", ex.getMessage());
+        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
     }
 
     @Test
@@ -247,15 +248,16 @@ class RequestServiceTest {
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
                 .thenReturn(new LeaveCategory());
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekTuesday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(lastWeekTuesday), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for this date", ex.getMessage());
+        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
     }
 
     @Test
@@ -271,16 +273,15 @@ class RequestServiceTest {
         CreateRequestPayload payload = createPastLeavePayload(lastWeekMonday);
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId))
-                .thenReturn(leaveCategory);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(lastWeekMonday), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         assertDoesNotThrow(() -> requestService.raiseRequest(payload, userId));
     }
-
 
     @Test
     void shouldSaveOneRequestPerValidDateAndReturnResponsesForPastLeave() {
@@ -297,11 +298,10 @@ class RequestServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
-                .thenReturn(false);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekTuesday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(lastWeekMonday, lastWeekTuesday),
+                List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -332,8 +332,10 @@ class RequestServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(lastWeekMonday),
+                List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -357,8 +359,10 @@ class RequestServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, lastWeekMonday, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(lastWeekMonday),
+                List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
