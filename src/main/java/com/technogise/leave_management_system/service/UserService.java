@@ -47,7 +47,7 @@ public class UserService {
         this.annualLeaveRepository = annualLeaveRepository;
     }
 
-    public User findOrCreateUser(String email, String name, String accessToken, Instant expiresAt, String refreshTokenValue) {
+    public User findOrCreateUser(String email, String name, String accessToken, Instant expiresAt) {
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> createUser(email, name));
         user.setGoogleAccessToken(accessToken);
@@ -56,9 +56,6 @@ public class UserService {
                         ? LocalDateTime.ofInstant(expiresAt, ZoneId.of("Asia/Kolkata"))
                         : LocalDateTime.now().plusHours(1)
         );
-        if (refreshTokenValue != null) {
-            user.setGoogleRefreshToken(refreshTokenValue);
-        }
         return userRepository.save(user);
     }
 

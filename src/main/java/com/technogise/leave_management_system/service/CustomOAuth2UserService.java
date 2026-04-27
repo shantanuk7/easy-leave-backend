@@ -38,7 +38,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         String accessToken = userRequest.getAccessToken().getTokenValue();
         Instant expiresAt = userRequest.getAccessToken().getExpiresAt();
-        User user = userService.findOrCreateUser(email, name, accessToken, expiresAt, null);
+        User user = userService.findOrCreateUser(email, name, accessToken, expiresAt);
         annualLeaveService.createAnnualLeaveForNewEmployee(user);
 
         return oauthUser;

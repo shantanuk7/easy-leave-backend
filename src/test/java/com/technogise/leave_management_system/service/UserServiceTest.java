@@ -73,7 +73,7 @@ class UserServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
-        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600), null);
+        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600));
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
@@ -89,7 +89,7 @@ class UserServiceTest {
         savedUser.setRole(UserRole.EMPLOYEE);
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600), null);
+        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600));
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
@@ -104,25 +104,12 @@ class UserServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        User result = userService.findOrCreateUser(email, name, "access-token", expiry, null);
+        User result = userService.findOrCreateUser(email, name, "access-token", expiry);
 
         assertEquals("access-token", result.getGoogleAccessToken());
         assertNotNull(result.getGoogleTokenExpiry());
     }
 
-    @Test
-    void shouldStoreRefreshTokenWhenProvided() {
-        User user = new User();
-
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
-
-        User result = userService.findOrCreateUser(
-                email, name, "access-token", Instant.now(), "refresh-token"
-        );
-
-        assertEquals("refresh-token", result.getGoogleRefreshToken());
-    }
 
     @Test
     void shouldNotOverwriteExistingRefreshTokenWhenNullPassed() {
@@ -133,8 +120,7 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.findOrCreateUser(
-                email, name, "access-token", Instant.now(), null
-        );
+                email, name, "access-token", Instant.now());
 
         assertEquals("existing-refresh-token", result.getGoogleRefreshToken());
     }
@@ -146,7 +132,7 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.findOrCreateUser(
-                email, name, "access-token", null, null);
+                email, name, "access-token", null);
 
         assertNotNull(result.getGoogleTokenExpiry());
     }
