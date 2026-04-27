@@ -85,13 +85,14 @@ class GoogleCalendarServiceTest {
         user.setGoogleRefreshToken("refresh-token");
 
         when(httpResponse.body())
-                .thenReturn("{\"access_token\":\"new-token\"}")
+                .thenReturn("{\"access_token\":\"new-token\",\"expires_in\":3599}")
                 .thenReturn("{\"id\":\"event-123\"}");
         when(httpResponse.statusCode()).thenReturn(200);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
 
         googleCalendarService.addLeaveEvent(user, leave, "title", "desc");
+        verify(userRepository).save(user);
         assertEquals("new-token", user.getGoogleAccessToken());
     }
 

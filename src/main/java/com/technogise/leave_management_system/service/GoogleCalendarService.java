@@ -9,6 +9,7 @@ import com.technogise.leave_management_system.repository.LeaveIntegrationEventRe
 import com.technogise.leave_management_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -74,9 +75,11 @@ public class GoogleCalendarService implements LeaveIntegrationService {
 
         Map<String, Object> tokenResponse = objectMapper.readValue(response.body(), Map.class);
         String newAccessToken = (String) tokenResponse.get("access_token");
+        int expiresIn = (int) tokenResponse.get("expires_in");
+
 
         user.setGoogleAccessToken(newAccessToken);
-        user.setGoogleTokenExpiry(LocalDateTime.now().plusHours(1));
+        user.setGoogleTokenExpiry(LocalDateTime.now().plusSeconds(expiresIn));
         userRepository.save(user);
 
         return newAccessToken;
@@ -119,7 +122,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
                 integrationEvent.setExternalEventId(eventId);
                 leaveIntegrationEventRepository.save(integrationEvent);
             } else {
-                throw new HttpException(HttpStatus.BAD_REQUEST,"Google Calendar API error: ");
+                throw new HttpException(HttpStatus.BAD_REQUEST, "Google Calendar API error: " + response.statusCode());
             }
 
         } catch (Exception e) {
@@ -127,6 +130,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
         }
     }
 
+    @Async
     @Override
     public void syncLeave(Leave leave) {
         User user = leave.getUser();
