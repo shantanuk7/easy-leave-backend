@@ -131,7 +131,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     public void syncLeave(Leave leave) {
         User user = leave.getUser();
         String title = user.getName() + " - " + leave.getLeaveCategory().getName();
-        String description = leave.getDescription() != null ? leave.getDescription() : "";
+        String description = leave.getDescription();
         addLeaveEvent(user, leave, title, description);
     }
 }

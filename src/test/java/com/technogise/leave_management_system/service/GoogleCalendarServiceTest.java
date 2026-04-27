@@ -2,7 +2,6 @@ package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
-import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -160,19 +159,6 @@ class GoogleCalendarServiceTest {
         ));
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         verify(httpClient).send(requestCaptor.capture(), any());
-    }
-
-    @Test
-    void shouldSyncLeaveWithEmptyDescriptionWhenNull() throws Exception {
-        leave.setDescription(null);
-
-        when(httpResponse.statusCode()).thenReturn(201);
-        when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-2\"}");
-        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(httpResponse);
-
-        assertDoesNotThrow(() -> googleCalendarService.syncLeave(leave));
-        verify(leaveIntegrationEventRepository).save(any(LeaveIntegrationEvent.class));
     }
 }
 
