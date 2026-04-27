@@ -79,7 +79,7 @@ public class RequestService {
 
         if (workingDays.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "Cannot apply for leave on weekends.");
+                    "Cannot raise the request for weekend leave.");
         }
 
         return workingDays;
