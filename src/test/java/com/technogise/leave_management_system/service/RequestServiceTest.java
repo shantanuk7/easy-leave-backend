@@ -70,6 +70,7 @@ public class RequestServiceTest {
         employee.setRole(UserRole.EMPLOYEE);
         userId = UUID.randomUUID();
         leaveCategoryId = UUID.randomUUID();
+        pageable = PageRequest.of(0, 10);
     }
 
     private User createValidUser() {
