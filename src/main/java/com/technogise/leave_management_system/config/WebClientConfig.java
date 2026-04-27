@@ -11,11 +11,13 @@ public class WebClientConfig {
     @Bean
     public WebClient kimaiWebClient(
             @Value("${kimai.base-url}") String baseUrl,
-            @Value("${kimai.api-token}") String apiToken
+            @Value("${kimai.username}") String username,
+            @Value("${kimai.token}") String token
     ) {
         return WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader("Authorization", "Bearer " + apiToken)
+                .defaultHeader("X-AUTH-USER", username)
+                .defaultHeader("X-AUTH-TOKEN", token)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }
