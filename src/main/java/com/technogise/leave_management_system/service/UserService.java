@@ -4,8 +4,10 @@ import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.AnnualLeave;
+import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
@@ -16,6 +18,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -23,10 +26,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -109,33 +114,37 @@ public class UserService {
         Optional<AnnualLeave> annualLeave =
                 annualLeaveRepository.findByUserIdAndYear(userId, String.valueOf(requestedYear));
 
-        List<LeaveCategory> leaveCategories = leaveCategoryRepository.findAll();
-        List<EmployeeLeavesRecordResponse> leavesRecord = new ArrayList<>();
-
         LocalDate startDate = LocalDate.of(requestedYear, 1, 1);
         LocalDate endDate = LocalDate.of(requestedYear, 12, 31);
 
-        for (LeaveCategory category : leaveCategories) {
-            long leavesTaken = leaveRepository.
-                    countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(userId, category.getId(), startDate, endDate);
+        List<Leave> allLeaves = leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                userId, startDate, endDate, Sort.unsorted());
 
-            double totalLeaves = category.getName().equalsIgnoreCase("Annual Leave")
-                    ? annualLeave.map(AnnualLeave::getTotal).orElse(0.0) : category.getAllocatedDays();
+        Map<UUID, Double> leavesTakenByCategory = allLeaves.stream()
+                .collect(Collectors.groupingBy(
+                        leave -> leave.getLeaveCategory().getId(),
+                        Collectors.summingDouble(leave ->
+                                leave.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5)
+                ));
 
-            if (leavesTaken > 0) {
-                leavesRecord.add(EmployeeLeavesRecordResponse
-                        .builder()
-                        .leaveId(category.getId())
-                        .leaveType(category.getName())
-                        .leavesTaken(leavesTaken)
-                        .totalLeavesAvailable(totalLeaves)
-                        .leavesRemaining(totalLeaves - leavesTaken)
-                        .build()
-                );
-            }
-        }
+        List<LeaveCategory> leaveCategories = leaveCategoryRepository.findAll();
 
-        return leavesRecord;
+        return leaveCategories.stream()
+                .filter(category -> leavesTakenByCategory.containsKey(category.getId()))
+                .map(category -> {
+                    double leavesTaken = leavesTakenByCategory.get(category.getId());
+                    double totalLeaves = category.getName().equalsIgnoreCase("Annual Leave")
+                            ? annualLeave.map(AnnualLeave::getTotal).orElse(0.0)
+                            : category.getAllocatedDays();
+                    return EmployeeLeavesRecordResponse.builder()
+                            .leaveId(category.getId())
+                            .leaveType(category.getName())
+                            .leavesTaken(leavesTaken)
+                            .totalLeavesAvailable(totalLeaves)
+                            .leavesRemaining(totalLeaves - leavesTaken)
+                            .build();
+                })
+                .toList();
     }
 
     public UserResponse getUserDetails(UUID id) {
