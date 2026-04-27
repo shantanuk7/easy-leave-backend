@@ -128,7 +128,7 @@ public class RequestService {
 
     private List<LocalDate> filterValidCompOffDates(List<LocalDate> dates) {
         List<LocalDate> validDates = dates.stream()
-                .filter(this::isValidPastLeaveDate)
+                .filter(this::isValidRequestDateRange)
                 .toList();
 
         if (validDates.isEmpty()) {
@@ -148,7 +148,7 @@ public class RequestService {
 
     private List<LocalDate> filterValidPastLeaveDates(List<LocalDate> dates) {
         List<LocalDate> validDates = dates.stream()
-                .filter(this::isValidPastLeaveDate)
+                .filter(this::isValidRequestDateRange)
                 .toList();
 
         if (validDates.isEmpty()) {
@@ -248,7 +248,7 @@ public class RequestService {
                 .toList();
     }
 
-    private boolean isValidPastLeaveDate(LocalDate date) {
+    private boolean isValidRequestDateRange(LocalDate date) {
         LocalDate today = LocalDate.now(IST);
         LocalDate thirtyDaysAgo = today.minusDays(30);
         return !date.isBefore(thirtyDaysAgo) && date.isBefore(today);
