@@ -651,6 +651,77 @@ Success Response (200)
 |-------------|---------------------------------|
 | `400`       | Invalid `type` parameter value  |
 
+---
+
+### Get All Requests — `GET /api/requests`
+
+Allows an authenticated user to retrieve **leave requests** with pagination support. Currently, users can fetch **their own requests (SELF scope)** with optional status filtering.
+
+---
+
+#### Query Parameters
+
+| Parameter | Required | Default | Accepted Values | Description |
+|----------|----------|---------|----------------|-------------|
+| `scope`  | No       | `SELF`  | `SELF`         | Determines request visibility |
+| `status` | No       | —       | `PENDING`, `APPROVED`, `REJECTED` | Filters requests by status |
+| `page`   | No       | `0`     | Integer        | Page number (0-based) |
+| `size`   | No       | `20`    | Integer        | Number of records per page |
+
+---
+
+#### Scope Behavior
+
+| Scope | Who can use it | Behavior |
+|------|---------------|----------|
+| `SELF` | Any authenticated user | Returns only the logged-in user’s requests |
+
+---
+
+#### Example Requests
+
+1. Fetch all requests (default SELF scope):
+```
+GET /api/requests
+```
+2. Fetch only pending requests:
+```
+GET /api/requests?status=PENDING
+```
+3. With pagination:
+```
+GET /api/requests?page=0&size=10
+```
+
+---
+
+#### Response Format
+
+**200 OK**
+```json
+{
+  "success": true,
+  "message": "Requests fetch Successfully",
+  "data": {
+    "content": [
+      {
+        "id": "uuid",
+        "employeeName": "Priyansh",
+        "type": "PAST_LEAVE",
+        "leaveCategory": "Sick Leave",
+        "date": "2026-04-20",
+        "duration": "FULL_DAY",
+        "description": "Fever",
+        "status": "PENDING",
+        "appliedDate": "2026-04-18"
+      }
+    ],
+    "pageable": {},
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+
 ### Raise Request — `POST /api/requests`
 
 Allows an employee to raise a retroactive leave request for a weekday within the last 30 days. The request is saved with `status = PENDING` and requires manager approval.
