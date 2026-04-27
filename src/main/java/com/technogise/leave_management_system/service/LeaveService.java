@@ -11,6 +11,7 @@ import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -170,6 +171,12 @@ public class LeaveService {
                 .anyMatch(weekend -> weekend.getDayOfWeek() == date.getDayOfWeek());
     }
 
+    private boolean isFixedHoliday(LocalDate date) {
+        List<Holiday> fixedHolidays = holidayService.getHolidaysByType(HolidayType.FIXED);
+
+        return fixedHolidays.stream().anyMatch(holiday -> holiday.getDate().equals(date));
+    }
+
     private void validateMutualExclusiveness(boolean hasHoliday, boolean hasCategory) {
         if (hasHoliday && hasCategory) {
             throw new HttpException(
@@ -307,12 +314,13 @@ public class LeaveService {
 
         List<LocalDate> workingDays = validDates.stream()
                 .filter(date -> !isWeekendDay(date))
+                .filter(date -> !isFixedHoliday(date))
                 .toList();
 
         if (workingDays.isEmpty()) {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
-                    "Cannot apply leave on weekends"
+                    "Cannot apply leave on weekends or fixed holidays"
             );
         }
 
