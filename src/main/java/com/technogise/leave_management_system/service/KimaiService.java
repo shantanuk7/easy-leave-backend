@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.constants.KimaiConstants;
 import com.technogise.leave_management_system.dto.KimaiCreateLeaveRequest;
 import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
@@ -25,6 +26,9 @@ public class KimaiService implements LeaveIntegrationService {
     public void syncLeave(Leave leave) {
         try {
             Integer userId = getUserIdByEmail(leave.getUser().getEmail(), leave.getUser().getName());
+            Integer activityId = KimaiConstants.ACTIVITY_MAPPING
+                    .get(leave.getLeaveCategory().getName());
+
             LocalDateTime begin = LocalDateTime.of(
                     leave.getDate(),
                     leave.getStartTime()
@@ -36,8 +40,8 @@ public class KimaiService implements LeaveIntegrationService {
             KimaiCreateLeaveRequest request = KimaiCreateLeaveRequest.builder()
                     .begin(begin.toString())
                     .end(end.toString())
-                    .project(2)
-                    .activity(4)
+                    .project(KimaiConstants.LEAVE_PROJECT_ID)
+                    .activity(activityId)
                     .description(leave.getDescription())
                     .user(userId)
                     .build();
