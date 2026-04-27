@@ -92,6 +92,7 @@ jacocoTestReport {
 						'**/repository/**',
 						'**/response/**',
 						'**/config/**',
+						'**/constants/**',
 						'**/filter/**',
 						'**/handler/**'
 				])
@@ -110,6 +111,7 @@ jacocoTestCoverageVerification {
 					'**/repository/**',
 					'**/response/**',
 					'**/config/**',
+					'**/constants/**',
 					'**/filter/**',
 					'**/handler/**'
 			])
