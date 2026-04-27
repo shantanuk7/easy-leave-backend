@@ -58,6 +58,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
 
+        log.info("OAuth2 login:  for email={}", email);
         OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
         OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
                 oauthToken.getAuthorizedClientRegistrationId(),
@@ -65,7 +66,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         );
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> {
+                    log.error("OAuth2 login failed — user not found for email={}", email);
+                    return new HttpException(HttpStatus.NOT_FOUND, "User not found");
+                });
 
         if (authorizedClient != null && authorizedClient.getRefreshToken() != null) {
             user.setGoogleRefreshToken(authorizedClient.getRefreshToken().getTokenValue());
@@ -73,6 +77,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
 
         String token = jwtService.generateToken(user);
+        log.debug("JWT generated for userId={}, email={}", user.getId(), email);
 
         Cookie cookie = new Cookie("token", token);
         cookie.setHttpOnly(true);
@@ -82,6 +87,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         cookie.setAttribute("SameSite", cookieSameSite);
 
         response.addCookie(cookie);
+
+        log.info("OAuth2 login successful for userId={}, email={}, redirecting to {}",
+                user.getId(), email, redirectFrontendUrl);
         response.sendRedirect(redirectFrontendUrl);
     }
 }
