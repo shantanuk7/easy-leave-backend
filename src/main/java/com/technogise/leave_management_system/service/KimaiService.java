@@ -1,6 +1,7 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.KimaiCreateLeaveRequest;
+import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.enums.DurationType;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class KimaiService implements LeaveIntegrationService {
     @Async
     public void syncLeave(Leave leave) {
         try {
+            Integer userId = getUserIdByEmail(leave.getUser().getEmail(), leave.getUser().getName());
             LocalDateTime begin = LocalDateTime.of(
                     leave.getDate(),
                     leave.getStartTime()
@@ -37,7 +39,7 @@ public class KimaiService implements LeaveIntegrationService {
                     .project(2)
                     .activity(4)
                     .description(leave.getDescription())
-                    .user(4)
+                    .user(userId)
                     .build();
 
             webClient.post()
@@ -50,6 +52,23 @@ public class KimaiService implements LeaveIntegrationService {
             log.info("Successfully synced leave with Kimai for user {}", leave.getUser().getName());
         } catch (Exception e) {
             log.error("Error syncing leave with Kimai: {}", e.getMessage());
+        }
+    }
+
+    public Integer getUserIdByEmail(String email, String name) {
+        try {
+            String uri = "/api/users?term=" + email;
+            return webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToFlux(KimaiUserResponse.class)
+                    .filter(user -> user.getUsername().equalsIgnoreCase(name))
+                    .map(KimaiUserResponse::getId)
+                    .next()
+                    .block();
+        } catch (Exception e) {
+            log.error("Error fetching user from Kimai: {}", e.getMessage());
+            throw e;
         }
     }
 }
