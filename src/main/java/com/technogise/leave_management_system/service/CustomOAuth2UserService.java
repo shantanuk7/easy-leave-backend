@@ -16,10 +16,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserService userService;
     private final AnnualLeaveService annualLeaveService;
 
-    public CustomOAuth2UserService(
-            @Value("${app.allowed-email-domain}") String allowedDomain,
-            UserService userService,
-            AnnualLeaveService annualLeaveService) {
+    public CustomOAuth2UserService(@Value("${app.allowed-email-domain}") String allowedDomain, UserService userService,
+                                   AnnualLeaveService annualLeaveService)
+    {
         this.allowedDomain = allowedDomain;
         this.userService = userService;
         this.annualLeaveService = annualLeaveService;
@@ -27,11 +26,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+
         OAuth2User oauthUser = super.loadUser(userRequest);
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
 
-        if (!isAllowedEmail(email)) {
+        if (!isAllowedEmail(email))
+        {
             throw new OAuth2AuthenticationException("Unauthorized email domain");
         }
 
@@ -39,6 +40,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         Instant expiresAt = userRequest.getAccessToken().getExpiresAt();
         User user = userService.findOrCreateUser(email, name, accessToken, expiresAt, null);
         annualLeaveService.createAnnualLeaveForNewEmployee(user);
+
         return oauthUser;
     }
 

@@ -47,9 +47,7 @@ public class LeaveService {
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
-                        LeaveCategoryService leaveCategoryService,
-                        AnnualLeaveService annualLeaveService,
-                        LeaveIntegrationHandler leaveIntegrationHandler) {
+                        LeaveCategoryService leaveCategoryService, AnnualLeaveService annualLeaveService, LeaveIntegrationHandler leaveIntegrationHandler) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
@@ -190,7 +188,6 @@ public class LeaveService {
             annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
         leaveIntegrationHandler.handleLeaves(savedLeaves);
-        leaveRepository.saveAll(savedLeaves);
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),

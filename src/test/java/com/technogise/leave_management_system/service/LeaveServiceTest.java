@@ -454,7 +454,7 @@ class LeaveServiceTest {
         leaveService.applyLeave(request, userId);
 
         ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.forClass(List.class);
-        verify(leaveRepository, times(2)).saveAll(listCaptor.capture());
+        verify(leaveRepository).saveAll(listCaptor.capture());
 
         List<Leave> savedLeaves = listCaptor.getValue();
         assertEquals(1, savedLeaves.size());
@@ -497,7 +497,7 @@ class LeaveServiceTest {
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
         assertEquals(dates.size(), responses.size());
-        verify(leaveRepository, times(2)).saveAll(anyList());
+        verify(leaveRepository, times(1)).saveAll(anyList());
     }
 
     @Test
@@ -541,7 +541,7 @@ class LeaveServiceTest {
         assertFalse(responseDates.contains(dayTwo));
 
         ArgumentCaptor<List<Leave>> listCaptor = ArgumentCaptor.forClass(List.class);
-        verify(leaveRepository, times(2)).saveAll(listCaptor.capture());
+        verify(leaveRepository).saveAll(listCaptor.capture());
 
         List<Leave> savedList = listCaptor.getValue();
         assertEquals(2, savedList.size());
@@ -1189,7 +1189,7 @@ class LeaveServiceTest {
         assertEquals(1, responses.size());
 
         ArgumentCaptor<List<Leave>> captor = ArgumentCaptor.forClass(List.class);
-        verify(leaveRepository, times(2)).saveAll(captor.capture());
+        verify(leaveRepository).saveAll(captor.capture());
 
         Leave saved = captor.getValue().getFirst();
         assertNull(saved.getDeletedAt());

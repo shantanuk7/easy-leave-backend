@@ -71,7 +71,7 @@ class UserServiceTest {
         existingUser.setName(name);
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser); // ✅ add this
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
         User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600), null);
 
