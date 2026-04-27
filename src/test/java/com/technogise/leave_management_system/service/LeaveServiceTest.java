@@ -135,6 +135,17 @@ class LeaveServiceTest {
         return holiday;
     }
 
+    private Holiday createFixedHoliday() {
+        Holiday holiday = new Holiday();
+        holiday.setId(holidayId);
+        holiday.setName("Independence Day");
+        holiday.setType(HolidayType.FIXED);
+        holiday.setDate(LocalDate.of(2026, 8, 15));
+        holiday.setCreatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 0, 0, 0));
+        holiday.setUpdatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 0, 0, 0));
+        return holiday;
+    }
+
     private Leave createEmployeeLeave(User employee, LeaveCategory leaveCategory) {
         Leave leave = new Leave();
         leave.setId(UUID.randomUUID());
@@ -1443,5 +1454,30 @@ class LeaveServiceTest {
 
         assertNotNull(leave.getDeletedAt());
         verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenApplyingLeaveOnADateThatIsAFixedHoliday() {
+        LocalDate holidayDate = nextWeekday();
+        User user = createValidUser();
+
+        Holiday fixedHoliday = new Holiday();
+        fixedHoliday.setId(UUID.randomUUID());
+        fixedHoliday.setDate(holidayDate);
+        fixedHoliday.setType(HolidayType.FIXED);
+
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(holidayDate));
+        request.setDuration(DurationType.FULL_DAY);
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(holidayService.getHolidaysByType(HolidayType.FIXED)).thenReturn(List.of(fixedHoliday));
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.applyLeave(request, userId)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply leave on weekends or fixed holidays", ex.getMessage());
     }
 }
