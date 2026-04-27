@@ -529,4 +529,18 @@ public class RequestServiceTest {
         verify(leaveCategoryService, never()).getLeaveCategoryById(any());
     }
 
+    @Test
+    void shouldThrowBadRequestWhenAllValidCompOffDatesAreWeekdays() {
+        LocalDate weekday = LocalDate.now(IST)
+                .minusDays(7)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(createCompOffPayload(List.of(weekday)), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Compensatory off dates must fall on a weekend (Saturday or Sunday)", ex.getMessage());
+    }
 }
