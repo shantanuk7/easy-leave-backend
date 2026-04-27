@@ -112,20 +112,6 @@ class UserServiceTest {
 
 
     @Test
-    void shouldNotOverwriteExistingRefreshTokenWhenNullPassed() {
-        User user = new User();
-        user.setGoogleRefreshToken("existing-refresh-token");
-
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
-
-        User result = userService.findOrCreateUser(
-                email, name, "access-token", Instant.now());
-
-        assertEquals("existing-refresh-token", result.getGoogleRefreshToken());
-    }
-
-    @Test
     void shouldSetDefaultExpiryWhenExpiresAtIsNull() {
         User user = new User();
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));

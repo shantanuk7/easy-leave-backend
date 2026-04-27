@@ -13,6 +13,7 @@ import com.technogise.leave_management_system.repository.LeaveCategoryRepository
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,8 @@ public class UserService {
     private final LeaveCategoryRepository leaveCategoryRepository;
     private final LeaveRepository leaveRepository;
     private final AnnualLeaveRepository annualLeaveRepository;
+    @Value("${google.calendar.timezone}")
+    private String timezone;
 
     public UserService(
             UserRepository userRepository,
@@ -53,7 +56,7 @@ public class UserService {
         user.setGoogleAccessToken(accessToken);
         user.setGoogleTokenExpiry(
                 expiresAt != null
-                        ? LocalDateTime.ofInstant(expiresAt, ZoneId.of("Asia/Kolkata"))
+                        ? LocalDateTime.ofInstant(expiresAt, ZoneId.of(timezone))
                         : LocalDateTime.now().plusHours(1)
         );
         return userRepository.save(user);
