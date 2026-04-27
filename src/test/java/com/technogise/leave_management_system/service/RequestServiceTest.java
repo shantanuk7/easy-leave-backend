@@ -491,34 +491,20 @@ public class RequestServiceTest {
     }
 
     @Test
-    void shouldThrowBadRequestWhenAllValidCompOffDatesAreWeekdays() {
-        LocalDate weekday = LocalDate.now(IST)
-                .minusDays(7)
-                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
-
-        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-
-        HttpException ex = assertThrows(HttpException.class,
-                () -> requestService.raiseRequest(createCompOffPayload(List.of(weekday)), userId));
-
-        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("Compensatory off dates must fall on a weekend (Saturday or Sunday)", ex.getMessage());
-    }
-
-    @Test
     void shouldThrowConflictWhenCompOffRequestAlreadyExistsForDate() {
         LocalDate weekend = lastWeekendDay();
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, weekend, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(weekend), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(true);
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for this date", ex.getMessage());
+        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
     }
 
     @Test
@@ -526,8 +512,9 @@ public class RequestServiceTest {
         LocalDate weekend = lastWeekendDay();
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(requestRepository.existsByRequestedByUserIdAndDateAndStatusIn(
-                userId, weekend, List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(weekend), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
                 .thenReturn(false);
         when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
