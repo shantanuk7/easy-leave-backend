@@ -1,6 +1,6 @@
 package com.technogise.leave_management_system.entity;
 
-import com.technogise.leave_management_system.enums.PlateformType;
+import com.technogise.leave_management_system.enums.PlatformType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,7 +34,7 @@ public class LeaveIntegrationEvent {
 
     @Column(name = "platform", nullable = false)
     @Enumerated(EnumType.STRING)
-    private PlateformType platform;
+    private PlatformType platform;
 
     @Column(name = "external_event_id", nullable = false)
     private String externalEventId;

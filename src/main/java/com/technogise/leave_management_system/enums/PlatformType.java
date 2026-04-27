@@ -1,5 +1,5 @@
 package com.technogise.leave_management_system.enums;
 
-public enum PlateformType {
+public enum PlatformType {
     GOOGLE_CALENDAR,
 }
