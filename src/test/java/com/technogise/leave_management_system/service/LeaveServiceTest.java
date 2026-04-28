@@ -142,9 +142,9 @@ class LeaveServiceTest {
         LeaveCategory leaveCategory = new LeaveCategory();
         leaveCategory.setId(leaveCategoryId);
         leaveCategory.setName("Sick Leave");
+        leaveCategory.setAllocatedDays(10);
         return leaveCategory;
     }
-
     private User createValidUser() {
         User user = new User();
         user.setId(userId);
@@ -1094,6 +1094,7 @@ class LeaveServiceTest {
         LeaveCategory sickLeaveCategory = new LeaveCategory();
         sickLeaveCategory.setId(leaveCategoryId);
         sickLeaveCategory.setName("Sick Leave");
+        sickLeaveCategory.setAllocatedDays(10);
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
@@ -1105,6 +1106,83 @@ class LeaveServiceTest {
         verify(annualLeaveService, never()).syncOnLeaveCreated(any(), any(), anyInt(), anyInt());
     }
 
+    @Test
+    void shouldThrowConflictWhenNonAnnualLeaveBalanceIsExhausted() {
+        LeaveCategory sickLeave = new LeaveCategory();
+        sickLeave.setId(leaveCategoryId);
+        sickLeave.setName("Sick Leave");
+        sickLeave.setAllocatedDays(2);
+
+        LocalDate weekday = nextWeekday();
+
+        Leave takenLeave1 = new Leave();
+        takenLeave1.setLeaveCategory(sickLeave);
+        takenLeave1.setDuration(DurationType.FULL_DAY);
+        takenLeave1.setDate(weekday.minusDays(2));
+
+        Leave takenLeave2 = new Leave();
+        takenLeave2.setLeaveCategory(sickLeave);
+        takenLeave2.setDuration(DurationType.FULL_DAY);
+        takenLeave2.setDate(weekday.minusDays(1));
+
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId, List.of(weekday), DurationType.FULL_DAY,
+                LocalTime.of(9, 0), "Feeling sick");
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+                .thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
+                .thenReturn(List.of(takenLeave1, takenLeave2));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.applyLeave(request, userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
+        assertTrue(ex.getMessage().contains("Available: 0.0"));
+    }
+
+    @Test
+    void shouldThrowConflictWhenHalfDaysAlreadyTakenExceedFullDayBalance() {
+        LeaveCategory sickLeave = new LeaveCategory();
+        sickLeave.setId(leaveCategoryId);
+        sickLeave.setName("Sick Leave");
+        sickLeave.setAllocatedDays(1);
+
+        LocalDate weekday = nextWeekday();
+
+        Leave halfDay1 = new Leave();
+        halfDay1.setLeaveCategory(sickLeave);
+        halfDay1.setDuration(DurationType.HALF_DAY);
+        halfDay1.setDate(weekday.minusDays(2));
+
+        Leave halfDay2 = new Leave();
+        halfDay2.setLeaveCategory(sickLeave);
+        halfDay2.setDuration(DurationType.HALF_DAY);
+        halfDay2.setDate(weekday.minusDays(1));
+
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId, List.of(weekday), DurationType.HALF_DAY,
+                LocalTime.of(9, 0), "Sick again");
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+                .thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
+                .thenReturn(List.of(halfDay1, halfDay2));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.applyLeave(request, userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
+        assertTrue(ex.getMessage().contains("Available: 0.0"));
+    }
     @Test
     void shouldDeleteLeaveSuccessfullyWhenLeaveExists() {
         User user = createValidUser();
@@ -1279,5 +1357,62 @@ class LeaveServiceTest {
         leaveService.deleteLeave(leave.getId(), user.getId());
 
         verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
+    }
+    @Test
+    void shouldExcludeLeaveIdWhenComputingTakenDays() {
+        UUID categoryId = UUID.randomUUID();
+        int year = LocalDate.now().getYear();
+
+        LeaveCategory category = new LeaveCategory();
+        category.setId(categoryId);
+
+        UUID leaveToExcludeId = UUID.randomUUID();
+
+        Leave leave1 = new Leave();
+        leave1.setId(leaveToExcludeId);
+        leave1.setLeaveCategory(category);
+        leave1.setDuration(DurationType.FULL_DAY);
+
+        Leave leave2 = new Leave();
+        leave2.setId(UUID.randomUUID());
+        leave2.setLeaveCategory(category);
+        leave2.setDuration(DurationType.HALF_DAY);
+
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
+                .thenReturn(List.of(leave1, leave2));
+
+        double totalDays = leaveService.computeTakenDays(userId, categoryId, year, leaveToExcludeId);
+
+        assertEquals(0.5, totalDays);
+
+        double totalWithNull = leaveService.computeTakenDays(userId, categoryId, year, null);
+        assertEquals(1.5, totalWithNull);
+    }
+
+    @Test
+    void shouldFilterDifferentCategoryWhenComputingTakenDays() {
+        UUID targetCategoryId = UUID.randomUUID();
+        LeaveCategory targetCategory = new LeaveCategory();
+        targetCategory.setId(targetCategoryId);
+
+        LeaveCategory otherCategory = new LeaveCategory();
+        otherCategory.setId(UUID.randomUUID());
+
+        Leave leaveTarget = new Leave();
+        leaveTarget.setLeaveCategory(targetCategory);
+        leaveTarget.setDuration(DurationType.FULL_DAY);
+
+        Leave leaveOther = new Leave();
+        leaveOther.setLeaveCategory(otherCategory);
+        leaveOther.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
+                .thenReturn(List.of(leaveTarget, leaveOther));
+
+        double totalDays = leaveService.computeTakenDays(userId, targetCategoryId, LocalDate.now().getYear(), null);
+
+        assertEquals(1.0, totalDays);
     }
 }
