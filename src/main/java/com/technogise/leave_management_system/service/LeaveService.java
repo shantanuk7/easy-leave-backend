@@ -98,7 +98,7 @@ public class LeaveService {
     }
 
     private LeaveResponse mapToLeaveResponse(Leave leave) {
-        String type = getLeaveType(leave);
+        String type = getLeaveDisplayName(leave);
         return new LeaveResponse(
                 leave.getId(),
                 leave.getDate(),
@@ -211,12 +211,11 @@ public class LeaveService {
         }
     }
 
-    private String getLeaveType(Leave leave) {
+    private String getLeaveDisplayName(Leave leave) {
         if (leave.getLeaveCategory() != null) {
             return leave.getLeaveCategory().getName();
-        } else {
-            return leave.getHoliday().getType().toString() + " HOLIDAY";
         }
+        return leave.getHoliday().getType().getDisplayName();
     }
 
     @Transactional
@@ -289,7 +288,7 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
 
-        String type = getLeaveType(leave);
+        String type = getLeaveDisplayName(leave);
 
         return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), type,
                 leave.getDuration(),

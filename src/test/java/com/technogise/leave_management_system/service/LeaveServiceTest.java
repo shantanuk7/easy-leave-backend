@@ -1432,7 +1432,7 @@ class LeaveServiceTest {
         List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null, null, null);
 
         assertEquals(1, result.size());
-        assertEquals(holiday.getType().toString() + " HOLIDAY", result.getFirst().type);
+        assertEquals(holiday.getType().getDisplayName(), result.getFirst().type);
     }
 
     @Test
