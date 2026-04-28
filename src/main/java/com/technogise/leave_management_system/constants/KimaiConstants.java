@@ -5,6 +5,9 @@ import java.util.Map;
 public class KimaiConstants {
     public static final int LEAVE_PROJECT_ID = 2;
 
+    public static final int FULL_DAY_HOURS = 8;
+    public static final int HALF_DAY_HOURS = 4;
+
     public static final Map<String, Integer> ACTIVITY_MAPPING = Map.of(
             "Annual Leave", 3,
             "Paternity Leave", 4,

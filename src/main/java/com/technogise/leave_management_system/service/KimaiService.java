@@ -35,8 +35,8 @@ public class KimaiService implements LeaveIntegrationService {
                     leave.getStartTime()
             );
             LocalDateTime end = leave.getDuration() == DurationType.HALF_DAY
-                    ? begin.plusHours(4)
-                    : begin.plusHours(8);
+                    ? begin.plusHours(KimaiConstants.HALF_DAY_HOURS)
+                    : begin.plusHours(KimaiConstants.FULL_DAY_HOURS);
 
             if (isLeaveAlreadySynced(userId, begin, end)) {
                 log.info("Leave already synced in Kimai for user {} on {}",
