@@ -51,9 +51,6 @@ class LeaveServiceTest {
     @Mock
     private AnnualLeaveService annualLeaveService;
 
-    @Mock
-    private LeaveIntegrationHandler leaveIntegrationHandler;
-
     @InjectMocks
     private LeaveService leaveService;
 
@@ -1279,5 +1276,25 @@ class LeaveServiceTest {
         leaveService.deleteLeave(leave.getId(), user.getId());
 
         verify(annualLeaveService, never()).syncOnLeaveDeleted(any(), any(), anyInt());
+    }
+
+    @Test
+    void shouldRollbackAndThrowHttpExceptionWhenIntegrationFails() {
+        User user = createValidUser();
+        LeaveCategory leaveCategory = createValidLeaveCategory();
+        Leave leave = createEmployeeLeave(user, leaveCategory);
+
+        leave.setDeletedAt(null);
+        leave.setDate(LocalDate.now());
+        leave.setUser(user);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        doThrow(new RuntimeException("Kimai failure")).when(integrationHandler)
+                .handleLeaveDelete(any());
+
+        HttpException ex = assertThrows(HttpException.class, () -> leaveService.deleteLeave(leave.getId(), user.getId()));
+
+        assertNull(leave.getDeletedAt());
     }
 }
