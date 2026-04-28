@@ -1,11 +1,14 @@
 package com.technogise.leave_management_system.service;
 
+import com.technogise.leave_management_system.dto.KimaiTimesheetResponse;
 import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.UserRole;
+import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,8 +55,12 @@ class KimaiServiceTest {
     @InjectMocks
     private KimaiService kimaiService;
 
+    @Mock
+    private LeaveIntegrationEventRepository eventRepository;
+
     private Leave testLeave;
     private KimaiUserResponse mockKimaiUser;
+    private KimaiTimesheetResponse response;
 
     @BeforeEach
     void setUp() {
@@ -79,11 +86,15 @@ class KimaiServiceTest {
         mockKimaiUser = new KimaiUserResponse();
         mockKimaiUser.setId(4);
         mockKimaiUser.setUsername("Raj");
+
+        response = new KimaiTimesheetResponse();
+        response.setId(1);
     }
 
     @Test
     void shouldSyncLeaveSuccessfullyForFullDayLeave() {
-        when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
+        when(responseSpec.bodyToMono(KimaiTimesheetResponse.class))
+                .thenReturn(Mono.just(response));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(any(String.class)))
@@ -103,13 +114,14 @@ class KimaiServiceTest {
         verify(requestBodyUriSpec).uri("/api/timesheets");
         verify(requestBodyUriSpec).bodyValue(any());
         verify(postHeadersSpec).retrieve();
-        verify(responseSpec).bodyToMono(Void.class);
+        verify(responseSpec).bodyToMono(KimaiTimesheetResponse.class);
     }
 
     @Test
     void shouldSyncLeaveSuccessfullyForHalfDayLeave() {
         testLeave.setDuration(DurationType.HALF_DAY);
-        when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
+        when(responseSpec.bodyToMono(KimaiTimesheetResponse.class))
+                .thenReturn(Mono.just(response));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(any(String.class)))
@@ -129,7 +141,7 @@ class KimaiServiceTest {
         verify(requestBodyUriSpec).uri("/api/timesheets");
         verify(requestBodyUriSpec).bodyValue(any());
         verify(postHeadersSpec).retrieve();
-        verify(responseSpec).bodyToMono(Void.class);
+        verify(responseSpec).bodyToMono(KimaiTimesheetResponse.class);
     }
 
     @Test
@@ -141,7 +153,7 @@ class KimaiServiceTest {
         when(responseSpec.bodyToFlux(KimaiUserResponse.class))
                 .thenReturn(Flux.just(mockKimaiUser));
 
-        when(responseSpec.bodyToMono(Void.class))
+        when(responseSpec.bodyToMono(KimaiTimesheetResponse.class))
                 .thenThrow(WebClientResponseException.create(
                         500, "Internal Server Error", null, null, null));
 
@@ -223,5 +235,101 @@ class KimaiServiceTest {
         kimaiService.syncLeave(testLeave);
 
         verify(webClient, never()).post();
+    }
+
+    @Test
+    void shouldSetExternalEventIdWhenResponseIsNotNull() {
+        KimaiTimesheetResponse timesheetResponse = new KimaiTimesheetResponse();
+        timesheetResponse.setId(42);
+
+        KimaiUserResponse user = new KimaiUserResponse();
+        user.setId(4);
+        user.setUsername("Raj");
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(String.class))).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(KimaiUserResponse.class)).thenReturn(Flux.just(user));
+
+        doReturn(false).when(kimaiService).isLeaveAlreadySynced(any(), any(), any());
+
+        when(webClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri("/api/timesheets")).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.bodyValue(any())).thenReturn(postHeadersSpec);
+        when(postHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(KimaiTimesheetResponse.class))
+                .thenReturn(Mono.just(timesheetResponse));
+
+        when(eventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        kimaiService.syncLeave(testLeave);
+
+        verify(eventRepository).save(argThat(event ->
+                "42".equals(event.getExternalEventId())
+                        && event.getStatus() == IntegrationStatus.SUCCESS
+        ));
+    }
+
+    @Test
+    void shouldNotSetExternalEventIdWhenResponseIsNull() {
+        KimaiUserResponse user = new KimaiUserResponse();
+        user.setId(4);
+        user.setUsername("Raj");
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(String.class))).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(KimaiUserResponse.class)).thenReturn(Flux.just(user));
+
+        doReturn(false).when(kimaiService).isLeaveAlreadySynced(any(), any(), any());
+
+        when(webClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri("/api/timesheets")).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.bodyValue(any())).thenReturn(postHeadersSpec);
+        when(postHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(KimaiTimesheetResponse.class))
+                .thenReturn(Mono.empty()); // returns null
+
+        when(eventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        kimaiService.syncLeave(testLeave);
+
+        verify(eventRepository).save(argThat(event ->
+                event.getExternalEventId() == null
+                        && event.getStatus() == IntegrationStatus.SUCCESS
+        ));
+    }
+
+    @Test
+    void shouldNotSetExternalEventIdWhenResponseIdIsNull() {
+        KimaiTimesheetResponse timesheetResponse = new KimaiTimesheetResponse();
+        timesheetResponse.setId(null); // id is null
+
+        KimaiUserResponse user = new KimaiUserResponse();
+        user.setId(4);
+        user.setUsername("Raj");
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(String.class))).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(KimaiUserResponse.class)).thenReturn(Flux.just(user));
+
+        doReturn(false).when(kimaiService).isLeaveAlreadySynced(any(), any(), any());
+
+        when(webClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri("/api/timesheets")).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.bodyValue(any())).thenReturn(postHeadersSpec);
+        when(postHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(KimaiTimesheetResponse.class))
+                .thenReturn(Mono.just(timesheetResponse));
+
+        when(eventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        kimaiService.syncLeave(testLeave);
+
+        verify(eventRepository).save(argThat(event ->
+                event.getExternalEventId() == null
+                        && event.getStatus() == IntegrationStatus.SUCCESS
+        ));
     }
 }
