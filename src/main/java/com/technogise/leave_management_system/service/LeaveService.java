@@ -13,6 +13,7 @@ import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Sort;
@@ -43,14 +44,16 @@ public class LeaveService {
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
     private final AnnualLeaveService annualLeaveService;
+    private final LeaveIntegrationHandler leaveIntegrationHandler;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
-                        LeaveCategoryService leaveCategoryService, AnnualLeaveService annualLeaveService) {
+                        LeaveCategoryService leaveCategoryService, AnnualLeaveService annualLeaveService, LeaveIntegrationHandler leaveIntegrationHandler) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
         this.annualLeaveService = annualLeaveService;
+        this.leaveIntegrationHandler = leaveIntegrationHandler;
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -185,6 +188,7 @@ public class LeaveService {
         if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
+        leaveIntegrationHandler.handleLeaves(savedLeaves);
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),

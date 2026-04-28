@@ -13,12 +13,15 @@ import com.technogise.leave_management_system.repository.LeaveCategoryRepository
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +35,8 @@ public class UserService {
     private final LeaveCategoryRepository leaveCategoryRepository;
     private final LeaveRepository leaveRepository;
     private final AnnualLeaveRepository annualLeaveRepository;
+    @Value("${google.calendar.timezone}")
+    private String timezone;
 
     public UserService(
             UserRepository userRepository,
@@ -45,9 +50,16 @@ public class UserService {
         this.annualLeaveRepository = annualLeaveRepository;
     }
 
-    public User findOrCreateUser(String email, String name) {
-        return userRepository.findByEmail(email)
+    public User findOrCreateUser(String email, String name, String accessToken, Instant expiresAt) {
+        User user = userRepository.findByEmail(email)
                 .orElseGet(() -> createUser(email, name));
+        user.setGoogleAccessToken(accessToken);
+        user.setGoogleTokenExpiry(
+                expiresAt != null
+                        ? LocalDateTime.ofInstant(expiresAt, ZoneId.of(timezone))
+                        : LocalDateTime.now().plusHours(1)
+        );
+        return userRepository.save(user);
     }
 
     public User getUserByUserId(UUID id) {

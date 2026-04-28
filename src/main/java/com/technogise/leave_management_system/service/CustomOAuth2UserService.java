@@ -8,6 +8,8 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final String allowedDomain;
@@ -34,8 +36,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException("Unauthorized email domain");
         }
 
-        User user = userService.findOrCreateUser(email, name);
-
+        String accessToken = userRequest.getAccessToken().getTokenValue();
+        Instant expiresAt = userRequest.getAccessToken().getExpiresAt();
+        User user = userService.findOrCreateUser(email, name, accessToken, expiresAt);
         annualLeaveService.createAnnualLeaveForNewEmployee(user);
 
         return oauthUser;
