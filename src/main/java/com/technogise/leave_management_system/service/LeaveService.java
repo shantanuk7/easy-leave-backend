@@ -16,6 +16,7 @@ import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,7 @@ import static com.technogise.leave_management_system.enums.ScopeType.SELF;
 import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
 import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
 import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
-
+@Slf4j
 @Service
 public class LeaveService {
 
@@ -398,6 +399,15 @@ public class LeaveService {
 
         if (leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
+        }
+
+        try {
+            leaveIntegrationHandler.handleLeaveDelete(leave);
+        } catch (Exception e) {
+            log.error("Kimai delete failed for leave {}, rolling back: {}", leaveId, e.getMessage());
+            leave.setDeletedAt(null);
+            leaveRepository.save(leave);
+            throw new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to sync leave deletion with Kimai");
         }
     }
 }
