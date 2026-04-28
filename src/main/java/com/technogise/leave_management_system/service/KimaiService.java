@@ -2,9 +2,14 @@ package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.constants.KimaiConstants;
 import com.technogise.leave_management_system.dto.KimaiCreateLeaveRequest;
+import com.technogise.leave_management_system.dto.KimaiTimesheetResponse;
 import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
+import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.IntegrationStatus;
+import com.technogise.leave_management_system.enums.PlatformType;
+import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -17,14 +22,24 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 public class KimaiService implements LeaveIntegrationService {
     private final WebClient webClient;
+    private final LeaveIntegrationEventRepository eventRepository;
 
-    public KimaiService(WebClient kimaiWebClient) {
+    public KimaiService(WebClient kimaiWebClient,
+                        LeaveIntegrationEventRepository eventRepository
+    ) {
         this.webClient = kimaiWebClient;
+        this.eventRepository = eventRepository;
     }
 
     @Override
     @Async
     public void syncLeave(Leave leave) {
+        LeaveIntegrationEvent event = new LeaveIntegrationEvent();
+        event.setLeave(leave);
+        event.setPlatform(PlatformType.KIMAI);
+        event.setAttempts(1);
+        event.setLastAttemptAt(LocalDateTime.now());
+
         try {
             Integer userId = getUserIdByEmail(leave.getUser().getEmail(), leave.getUser().getName());
             Integer activityId = KimaiConstants.ACTIVITY_MAPPING
@@ -41,6 +56,8 @@ public class KimaiService implements LeaveIntegrationService {
             if (isLeaveAlreadySynced(userId, begin, end)) {
                 log.info("Leave already synced in Kimai for user {} on {}",
                         leave.getUser().getName(), begin.toLocalDate());
+                event.setStatus(IntegrationStatus.SUCCESS);
+                eventRepository.save(event);
                 return;
             }
 
@@ -53,17 +70,26 @@ public class KimaiService implements LeaveIntegrationService {
                     .user(userId)
                     .build();
 
-            webClient.post()
+            KimaiTimesheetResponse response = webClient.post()
                     .uri("/api/timesheets")
                     .bodyValue(request)
                     .retrieve()
-                    .bodyToMono(Void.class)
+                    .bodyToMono(KimaiTimesheetResponse.class)
                     .block();
+
+            if (response != null && response.getId() != null) {
+                event.setExternalEventId(String.valueOf(response.getId()));
+            }
+            event.setStatus(IntegrationStatus.SUCCESS);
+            event.setErrorMessage(null);
 
             log.info("Successfully synced leave with Kimai for user {}", leave.getUser().getName());
         } catch (Exception e) {
+            event.setStatus(IntegrationStatus.FAILED);
+            event.setErrorMessage(e.getMessage());
             log.error("Error syncing leave with Kimai: {}", e.getMessage());
         }
+        eventRepository.save(event);
     }
 
     public Integer getUserIdByEmail(String email, String name) {
