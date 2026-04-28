@@ -22,7 +22,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
+        ReflectionTestUtils.setField(userService, "timezone", "Asia/Kolkata");
     }
 
     @Test
@@ -70,8 +73,9 @@ class UserServiceTest {
         existingUser.setName(name);
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
-        User result = userService.findOrCreateUser(email, name);
+        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600));
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
@@ -87,11 +91,38 @@ class UserServiceTest {
         savedUser.setRole(UserRole.EMPLOYEE);
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        User result = userService.findOrCreateUser(email, name);
+        User result = userService.findOrCreateUser(email, name, "mock-token", Instant.now().plusSeconds(3600));
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
         assertEquals(UserRole.EMPLOYEE, result.getRole());
+    }
+
+    @Test
+    void shouldStoreAccessTokenAndExpiry() {
+        Instant expiry = Instant.now().plusSeconds(3600);
+
+        User user = new User();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.findOrCreateUser(email, name, "access-token", expiry);
+
+        assertEquals("access-token", result.getGoogleAccessToken());
+        assertNotNull(result.getGoogleTokenExpiry());
+    }
+
+
+    @Test
+    void shouldSetDefaultExpiryWhenExpiresAtIsNull() {
+        User user = new User();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.findOrCreateUser(
+                email, name, "access-token", null);
+
+        assertNotNull(result.getGoogleTokenExpiry());
     }
 
     @Test

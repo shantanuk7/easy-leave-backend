@@ -1,21 +1,19 @@
 package com.technogise.leave_management_system.entity;
 
-import jakarta.persistence.Column;
+import com.technogise.leave_management_system.enums.PlatformType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.Column;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
-import com.technogise.leave_management_system.enums.UserRole;
+import lombok.*;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -23,22 +21,23 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "users")
-public class User {
+@Entity(name = "leave_integration_events")
+public class LeaveIntegrationEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "name", nullable = false, updatable = false)
-    private String name;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "leave_id", nullable = false)
+    private Leave leave;
 
-    @Column(name = "email", nullable = false, unique = true)
-    private String email;
-
-    @Column(name = "role", nullable = false)
+    @Column(name = "platform", nullable = false)
     @Enumerated(EnumType.STRING)
-    private UserRole role;
+    private PlatformType platform;
+
+    @Column(name = "external_event_id", nullable = false)
+    private String externalEventId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,14 +45,8 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "google_access_token", length = 2048)
-    private String googleAccessToken;
-
-    @Column(name = "google_token_expiry")
-    private LocalDateTime googleTokenExpiry;
-
-    @Column(name = "google_refresh_token", length = 512)
-    private String googleRefreshToken;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     public void prePersist() {
