@@ -359,9 +359,10 @@ public class RequestServiceTest {
 
     @Test
     void shouldSaveOneRequestPerValidDateAndReturnResponsesForPastLeave() {
+
         LocalDate lastWeekMonday = LocalDate.now(IST)
                 .minusDays(7)
-                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate lastWeekTuesday = lastWeekMonday.plusDays(1);
 
         CreateRequestPayload payload = createPastLeavePayload(List.of(lastWeekMonday, lastWeekTuesday));
