@@ -4,10 +4,13 @@ import com.technogise.leave_management_system.dto.KimaiTimesheetResponse;
 import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
+import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
+import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.enums.UserRole;
+import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,10 +27,10 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -331,5 +334,124 @@ class KimaiServiceTest {
                 event.getExternalEventId() == null
                         && event.getStatus() == IntegrationStatus.SUCCESS
         ));
+    }
+
+    private LeaveIntegrationEvent createKimaiEvent(Leave leave) {
+        LeaveIntegrationEvent event = new LeaveIntegrationEvent();
+        event.setLeave(leave);                        // full Leave object, not leaveId
+        event.setPlatform(PlatformType.KIMAI);
+        event.setExternalEventId("123");
+        event.setStatus(IntegrationStatus.SUCCESS);
+        event.setDeletedAt(null);
+        return event;
+    }
+
+    private void mockKimaiDeleteSuccess(String externalId) {
+        when(webClient.delete()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri("/api/timesheets/{id}", externalId))
+                .thenReturn(getHeadersSpec);          // uri() returns RequestHeadersSpec
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
+    }
+
+    @Test
+    void shouldDeleteKimaiEntrySuccessfullyWhenEventExists() {
+        LeaveIntegrationEvent event = createKimaiEvent(testLeave);
+
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.of(event));
+
+        mockKimaiDeleteSuccess("123");
+
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        kimaiService.deleteLeave(testLeave);
+
+        verify(webClient).delete();
+        verify(requestHeadersUriSpec).uri("/api/timesheets/{id}", "123");
+        verify(getHeadersSpec).retrieve();
+        verify(responseSpec).bodyToMono(Void.class);
+    }
+
+    @Test
+    void shouldSetDeletedAtOnEventAfterSuccessfulKimaiDeletion() {
+        LeaveIntegrationEvent event = createKimaiEvent(testLeave);
+
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.of(event));
+
+        mockKimaiDeleteSuccess("123");
+
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        kimaiService.deleteLeave(testLeave);
+
+        verify(eventRepository).save(argThat(savedEvent ->
+                savedEvent.getDeletedAt() != null
+        ));
+    }
+
+    @Test
+    void shouldSkipKimaiCallAndReturnWhenNoIntegrationEventFound() {
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.empty());
+
+        kimaiService.deleteLeave(testLeave);
+
+        verify(webClient, never()).delete();
+        verify(eventRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldQueryRepositoryWithCorrectLeaveIdAndPlatformOnDelete() {
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.empty());
+
+        kimaiService.deleteLeave(testLeave);
+
+        verify(eventRepository).findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI);
+    }
+
+    @Test
+    void shouldThrowHttpExceptionWhenKimaiDeleteCallFails() {
+        LeaveIntegrationEvent event = createKimaiEvent(testLeave);
+
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.of(event));
+
+        when(webClient.delete()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri("/api/timesheets/{id}", "123"))
+                .thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Void.class)).thenThrow(WebClientResponseException.create(
+                        500, "Internal Server Error", null, null, null));
+
+        assertThrows(HttpException.class,
+                () -> kimaiService.deleteLeave(testLeave));
+    }
+
+    @Test
+    void shouldNotSaveEventWhenKimaiDeleteCallFails() {
+        LeaveIntegrationEvent event = createKimaiEvent(testLeave);
+
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.of(event));
+
+        when(webClient.delete()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri("/api/timesheets/{id}", "123"))
+                .thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Void.class)).thenThrow(new RuntimeException("Connection refused"));
+
+        assertThrows(HttpException.class, () -> kimaiService.deleteLeave(testLeave));
+
+        verify(eventRepository, never()).save(any());
     }
 }
