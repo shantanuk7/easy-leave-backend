@@ -77,6 +77,9 @@ public class Request {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @PrePersist
     public void prePersist() {
         this.status = RequestStatus.PENDING;
