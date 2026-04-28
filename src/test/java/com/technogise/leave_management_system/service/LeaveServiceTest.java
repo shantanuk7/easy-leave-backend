@@ -569,7 +569,6 @@ class LeaveServiceTest {
 
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId,
-                null,
                 Arrays.asList(dayOne, dayTwo, dayThree),
                 DurationType.FULL_DAY,
                 LocalTime.of(9, 0),
