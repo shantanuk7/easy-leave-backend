@@ -82,6 +82,7 @@ public class LeaveService {
                 .mapToDouble(leave -> leave.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5)
                 .sum();
     }
+
     void validateNonAnnualBalanceSufficiency(
             LeaveCategory category,
             double requested,
@@ -97,6 +98,8 @@ public class LeaveService {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
                     "Insufficient leave balance for " + category.getName()
+                            + ". Requested No of Days: " + (int)requested
+                            + ", Available No of Days: " + (int)remaining
             );
         }
     }
@@ -295,7 +298,8 @@ public class LeaveService {
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
 
         if (category != null && category.getName().equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE)) {
-            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear()); }
+            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
+        }
 
         leaveIntegrationHandler.handleLeaves(savedLeaves);
 
@@ -434,8 +438,6 @@ public class LeaveService {
         return mapToUpdateLeaveResponse(savedLeave);
     }
 
-
-
     public void validateUpdateRequestNotEmpty(UpdateLeaveRequest request) {
         boolean hasField = Stream.of(
                 request.getDate(),
@@ -513,6 +515,7 @@ public class LeaveService {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot cancel a past leave");
         }
     }
+
     @Transactional
     public void deleteLeave(UUID leaveId, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
@@ -525,9 +528,11 @@ public class LeaveService {
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);
 
-        if (leave.getLeaveCategory() != null && leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+        if (leave.getLeaveCategory() != null
+                && leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
+
         leaveIntegrationHandler.handleLeaveDelete(leave);
     }
 }
