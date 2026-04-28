@@ -86,11 +86,11 @@ public class KimaiService implements LeaveIntegrationService {
     public boolean isLeaveAlreadySynced(Integer userId, LocalDateTime begin, LocalDateTime end) {
         try {
             String beginStr = begin.format(
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    DateTimeFormatter.ofPattern(KimaiConstants.KIMAI_DATE_TIME_PATTERN)
             );
 
             String endStr = end.format(
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    DateTimeFormatter.ofPattern(KimaiConstants.KIMAI_DATE_TIME_PATTERN)
             );
 
             String uri = "/api/timesheets?begin=" + beginStr + "&end=" + endStr + "&user=" + userId;
