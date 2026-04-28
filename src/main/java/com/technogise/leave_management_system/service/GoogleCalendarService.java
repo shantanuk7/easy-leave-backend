@@ -3,10 +3,12 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import com.technogise.leave_management_system.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
@@ -22,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class GoogleCalendarService implements LeaveIntegrationService {
 
     private final UserRepository userRepository;
@@ -96,6 +99,12 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     }
 
     public void addLeaveEvent(User user, Leave leave, String title, String description) {
+        LeaveIntegrationEvent integrationEvent = new LeaveIntegrationEvent();
+        integrationEvent.setLeave(leave);
+        integrationEvent.setPlatform(PlatformType.GOOGLE_CALENDAR);
+        integrationEvent.setAttempts(1);
+        integrationEvent.setLastAttemptAt(LocalDateTime.now());
+
         try {
             String encodedCalendarId = java.net.URLEncoder.encode(calendarId, "UTF-8");
             String url = calendarApiBase + encodedCalendarId + "/events";
@@ -116,16 +125,22 @@ public class GoogleCalendarService implements LeaveIntegrationService {
                 Map<String, Object> eventResponse = objectMapper.readValue(response.body(), Map.class);
                 String eventId = (String) eventResponse.get("id");
 
-                LeaveIntegrationEvent integrationEvent = new LeaveIntegrationEvent();
-                integrationEvent.setLeave(leave);
-                integrationEvent.setPlatform(PlatformType.GOOGLE_CALENDAR);
+                integrationEvent.setStatus(IntegrationStatus.SUCCESS);
                 integrationEvent.setExternalEventId(eventId);
                 leaveIntegrationEventRepository.save(integrationEvent);
             } else {
+                integrationEvent.setStatus(IntegrationStatus.FAILED);
+                integrationEvent.setErrorMessage("Google Calendar API error: " + response.statusCode());
+
+                log.error("Failed to add event to Google Calendar for user");
                 throw new HttpException(HttpStatus.BAD_REQUEST, "Google Calendar API error: " + response.statusCode());
             }
 
         } catch (Exception e) {
+            integrationEvent.setStatus(IntegrationStatus.FAILED);
+            integrationEvent.setErrorMessage(e.getMessage());
+
+            log.error("Exception while adding event to Google Calendar: {}", e.getMessage());
             throw new HttpException(HttpStatus.BAD_REQUEST,"Failed to add leave to calendar" + e.getMessage());
         }
     }
