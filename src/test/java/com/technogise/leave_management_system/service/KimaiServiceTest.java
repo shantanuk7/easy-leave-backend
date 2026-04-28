@@ -9,7 +9,9 @@ import com.technogise.leave_management_system.enums.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -17,13 +19,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class KimaiServiceTest {
@@ -45,6 +48,8 @@ class KimaiServiceTest {
     @Mock
     private WebClient.ResponseSpec responseSpec;
 
+    @Spy
+    @InjectMocks
     private KimaiService kimaiService;
 
     private Leave testLeave;
@@ -52,8 +57,6 @@ class KimaiServiceTest {
 
     @BeforeEach
     void setUp() {
-        kimaiService = new KimaiService(webClient);
-
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setName("Raj");
@@ -184,5 +187,41 @@ class KimaiServiceTest {
         kimaiService.syncLeave(testLeave);
 
         verify(webClient).get();
+    }
+
+    @Test
+    void shouldReturnTrueWhenTimesheetExists() {
+        LocalDateTime begin = LocalDateTime.of(2026, 5, 18, 10, 0);
+        LocalDateTime end = begin.plusDays(1);
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(String.class))).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(Object.class))
+                .thenReturn(Flux.just(new Object()));
+
+        boolean result = kimaiService.isLeaveAlreadySynced(2, begin, end);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void shouldSkipSyncWhenLeaveAlreadyExists() {
+        KimaiUserResponse user = new KimaiUserResponse();
+        user.setId(2);
+        user.setUsername("Raj");
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(String.class))).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(KimaiUserResponse.class))
+                .thenReturn(Flux.just(user));
+
+        doReturn(true).when(kimaiService)
+                .isLeaveAlreadySynced(any(), any(), any());
+
+        kimaiService.syncLeave(testLeave);
+
+        verify(webClient, never()).post();
     }
 }

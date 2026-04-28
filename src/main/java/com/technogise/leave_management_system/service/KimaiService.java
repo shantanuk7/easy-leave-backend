@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @Slf4j
@@ -36,6 +37,12 @@ public class KimaiService implements LeaveIntegrationService {
             LocalDateTime end = leave.getDuration() == DurationType.HALF_DAY
                     ? begin.plusHours(4)
                     : begin.plusHours(8);
+
+            if (isLeaveAlreadySynced(userId, begin, end)) {
+                log.info("Leave already synced in Kimai for user {} on {}",
+                        leave.getUser().getName(), begin.toLocalDate());
+                return;
+            }
 
             KimaiCreateLeaveRequest request = KimaiCreateLeaveRequest.builder()
                     .begin(begin.toString())
@@ -73,6 +80,33 @@ public class KimaiService implements LeaveIntegrationService {
         } catch (Exception e) {
             log.error("Error fetching user from Kimai: {}", e.getMessage());
             throw e;
+        }
+    }
+
+    public boolean isLeaveAlreadySynced(Integer userId, LocalDateTime begin, LocalDateTime end) {
+        try {
+            String beginStr = begin.format(
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+            );
+
+            String endStr = end.format(
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+            );
+
+            String uri = "/api/timesheets?begin=" + beginStr + "&end=" + endStr + "&user=" + userId;
+
+            Boolean result = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToFlux(Object.class)
+                    .hasElements()
+                    .block();
+
+            return Boolean.TRUE.equals(result);
+
+        } catch (Exception e) {
+            log.error("Error checking existing timesheet: {}", e.getMessage());
+            return false;
         }
     }
 }
