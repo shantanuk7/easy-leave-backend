@@ -361,6 +361,7 @@ public class LeaveService {
     }
 
     private List<LocalDate> filterValidWorkingDates(List<LocalDate> requestedDates) {
+
         List<LocalDate> validDates = requestedDates.stream()
                 .filter(this::isValidLeaveDate)
                 .toList();
@@ -473,10 +474,10 @@ public class LeaveService {
         boolean typeChanged = request.getHolidayId() != null || request.getLeaveCategoryId() != null;
         boolean durationChanged = request.getDuration() != null;
 
-        if (typeChanged || durationChanged ||
-                (oldCategoryName != null && oldCategoryName.equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE)) ||
-                (savedLeave.getLeaveCategory() != null &&
-                        savedLeave.getLeaveCategory().getName().equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE))) {
+        if (typeChanged || durationChanged
+                || (oldCategoryName != null && oldCategoryName.equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE)) ||
+                (savedLeave.getLeaveCategory() != null
+                        && savedLeave.getLeaveCategory().getName().equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE))) {
 
             String newCategoryName = savedLeave.getLeaveCategory() != null
                     ? savedLeave.getLeaveCategory().getName()
