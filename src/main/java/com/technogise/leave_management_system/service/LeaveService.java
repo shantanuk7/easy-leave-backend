@@ -105,6 +105,12 @@ public class LeaveService {
         }
     }
 
+    private void validateDurationForCategory(LeaveCategory category, DurationType duration) {
+        if (!category.getName().equals(LeaveConstants.ANNUAL_LEAVE) && duration == DurationType.HALF_DAY) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, category.getName() + " can only be applied as a full day");
+        }
+    }
+
     public List<Leave> filterLeavesByScope(String scope, User user) {
         if (scope.equalsIgnoreCase(SELF.toString())) {
             return leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
@@ -292,6 +298,8 @@ public class LeaveService {
             validateOptionalHolidaysCount(user);
         }
 
+        validateDurationForCategory(category, request.getDuration());
+
         List<LocalDate> workingDates = filterValidWorkingDates(request.getDates());
         List<LocalDate> newDates = filterNonOverlappingLeaveDates(userId, workingDates);
 
@@ -427,6 +435,8 @@ public class LeaveService {
         double requestedDays = (targetDuration == DurationType.FULL_DAY) ? 1.0 : 0.5;
         validateNonAnnualBalanceSufficiency(targetCategory, requestedDays, userId, leave.getDate().getYear(), leaveId);
 
+        validateDurationForCategory(targetCategory, targetDuration);
+
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
             validateNewLeaveDateIsNotWeekend(request.getDate());
@@ -451,6 +461,8 @@ public class LeaveService {
 
         return mapToUpdateLeaveResponse(savedLeave);
     }
+
+
 
     public void validateUpdateRequestNotEmpty(UpdateLeaveRequest request) {
         boolean hasField = Stream.of(
