@@ -1625,7 +1625,7 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldThrowErrorWhenUpdatingLeaveToFixedHoliday(){
+    void shouldThrowErrorWhenUpdatingLeaveToFixedHoliday() {
         User user = createValidUser();
         LocalDate newDate = nextWeekday();
 
