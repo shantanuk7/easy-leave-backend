@@ -91,6 +91,7 @@ public class KimaiService implements LeaveIntegrationService {
         } catch (Exception e) {
             event.setStatus(IntegrationStatus.FAILED);
             event.setErrorMessage(e.getMessage());
+            event.setOperationType(IntegrationOperationType.CREATE);
             log.error("Error syncing leave with Kimai: {}", e.getMessage());
         }
         eventRepository.save(event);
@@ -175,6 +176,7 @@ public class KimaiService implements LeaveIntegrationService {
 
             event.setStatus(IntegrationStatus.FAILED);
             event.setErrorMessage(e.getMessage());
+            event.setOperationType(IntegrationOperationType.DELETE);
         }
         eventRepository.save(event);
     }
