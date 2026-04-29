@@ -401,13 +401,6 @@ public class LeaveService {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
 
-        try {
-            leaveIntegrationHandler.handleLeaveDelete(leave);
-        } catch (Exception e) {
-            log.error("Kimai delete failed for leave {}, rolling back: {}", leaveId, e.getMessage());
-            leave.setDeletedAt(null);
-            leaveRepository.save(leave);
-            throw new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to sync leave deletion with Kimai");
-        }
+        leaveIntegrationHandler.handleLeaveDelete(leave);
     }
 }
