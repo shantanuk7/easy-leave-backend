@@ -338,7 +338,7 @@ class KimaiServiceTest {
 
     private LeaveIntegrationEvent createKimaiEvent(Leave leave) {
         LeaveIntegrationEvent event = new LeaveIntegrationEvent();
-        event.setLeave(leave);                        // full Leave object, not leaveId
+        event.setLeave(leave);
         event.setPlatform(PlatformType.KIMAI);
         event.setExternalEventId("123");
         event.setStatus(IntegrationStatus.SUCCESS);
@@ -349,7 +349,7 @@ class KimaiServiceTest {
     private void mockKimaiDeleteSuccess(String externalId) {
         when(webClient.delete()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri("/api/timesheets/{id}", externalId))
-                .thenReturn(getHeadersSpec);          // uri() returns RequestHeadersSpec
+                .thenReturn(getHeadersSpec);
         when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
     }

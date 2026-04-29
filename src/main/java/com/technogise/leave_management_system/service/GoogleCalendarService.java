@@ -153,4 +153,8 @@ public class GoogleCalendarService implements LeaveIntegrationService {
         String description = leave.getDescription();
         addLeaveEvent(user, leave, title, description);
     }
+
+    @Override
+    public void deleteLeave(Leave leave) {
+    }
 }
