@@ -10,7 +10,6 @@ import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.enums.UserRole;
-import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -375,12 +374,10 @@ class KimaiServiceTest {
     }
 
     @Test
-    void shouldSetDeletedAtOnEventAfterSuccessfulKimaiDeletion() {
+    void shouldSaveSuccessEventAfterSuccessfulKimaiDeletion() {
         LeaveIntegrationEvent event = createKimaiEvent(testLeave);
 
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                testLeave.getId(), PlatformType.KIMAI))
-                .thenReturn(Optional.of(event));
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(testLeave.getId(), PlatformType.KIMAI)).thenReturn(Optional.of(event));
 
         mockKimaiDeleteSuccess("123");
 
@@ -388,37 +385,37 @@ class KimaiServiceTest {
 
         kimaiService.deleteLeave(testLeave);
 
-        verify(eventRepository).save(argThat(savedEvent ->
-                savedEvent.getDeletedAt() != null
-        ));
+        verify(eventRepository).save(argThat(savedEvent -> savedEvent.getStatus() == IntegrationStatus.SUCCESS
+                && savedEvent.getExternalEventId().equals("123")));
     }
 
     @Test
-    void shouldSkipKimaiCallAndReturnWhenNoIntegrationEventFound() {
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                testLeave.getId(), PlatformType.KIMAI))
+    void shouldSaveFailedEventWhenNoIntegrationEventFound() {
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.empty());
+
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         kimaiService.deleteLeave(testLeave);
 
         verify(webClient, never()).delete();
-        verify(eventRepository, never()).save(any());
+        verify(eventRepository).save(argThat(savedEvent -> savedEvent.getStatus() == IntegrationStatus.FAILED
+                && savedEvent.getErrorMessage() != null));
     }
 
     @Test
     void shouldQueryRepositoryWithCorrectLeaveIdAndPlatformOnDelete() {
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                testLeave.getId(), PlatformType.KIMAI))
-                .thenReturn(Optional.empty());
+        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(testLeave.getId(), PlatformType.KIMAI)).thenReturn(Optional.empty());
+
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         kimaiService.deleteLeave(testLeave);
 
-        verify(eventRepository).findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                testLeave.getId(), PlatformType.KIMAI);
+        verify(eventRepository).findByLeaveIdAndPlatformAndDeletedAtIsNull(testLeave.getId(), PlatformType.KIMAI);
     }
 
     @Test
-    void shouldThrowHttpExceptionWhenKimaiDeleteCallFails() {
+    void shouldSaveFailedEventWhenKimaiDeleteCallFails() {
         LeaveIntegrationEvent event = createKimaiEvent(testLeave);
 
         when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
@@ -426,32 +423,15 @@ class KimaiServiceTest {
                 .thenReturn(Optional.of(event));
 
         when(webClient.delete()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri("/api/timesheets/{id}", "123"))
-                .thenReturn(getHeadersSpec);
-        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(Void.class)).thenThrow(WebClientResponseException.create(
-                        500, "Internal Server Error", null, null, null));
-
-        assertThrows(HttpException.class,
-                () -> kimaiService.deleteLeave(testLeave));
-    }
-
-    @Test
-    void shouldNotSaveEventWhenKimaiDeleteCallFails() {
-        LeaveIntegrationEvent event = createKimaiEvent(testLeave);
-
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                testLeave.getId(), PlatformType.KIMAI))
-                .thenReturn(Optional.of(event));
-
-        when(webClient.delete()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri("/api/timesheets/{id}", "123"))
-                .thenReturn(getHeadersSpec);
+        when(requestHeadersUriSpec.uri("/api/timesheets/{id}", "123")).thenReturn(getHeadersSpec);
         when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Void.class)).thenThrow(new RuntimeException("Connection refused"));
 
-        assertThrows(HttpException.class, () -> kimaiService.deleteLeave(testLeave));
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        verify(eventRepository, never()).save(any());
+        kimaiService.deleteLeave(testLeave);
+
+        verify(eventRepository).save(argThat(savedEvent -> savedEvent.getStatus() == IntegrationStatus.FAILED
+                && savedEvent.getErrorMessage().equals("Connection refused")));
     }
 }

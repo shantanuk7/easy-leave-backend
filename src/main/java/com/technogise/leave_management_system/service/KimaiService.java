@@ -7,12 +7,11 @@ import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
-import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -86,6 +85,7 @@ public class KimaiService implements LeaveIntegrationService {
             }
             event.setStatus(IntegrationStatus.SUCCESS);
             event.setErrorMessage(null);
+            event.setOperationType(IntegrationOperationType.CREATE);
 
             log.info("Successfully synced leave with Kimai for user {}", leave.getUser().getName());
         } catch (Exception e) {
@@ -103,7 +103,7 @@ public class KimaiService implements LeaveIntegrationService {
                     .uri(uri)
                     .retrieve()
                     .bodyToFlux(KimaiUserResponse.class)
-                    .filter(user -> user.getUsername().equalsIgnoreCase(name)) // remember to keep name
+                    .filter(user -> user.getUsername().equalsIgnoreCase(name))
                     .map(KimaiUserResponse::getId)
                     .next()
                     .block();
@@ -143,31 +143,39 @@ public class KimaiService implements LeaveIntegrationService {
     @Override
     @Async
     public void deleteLeave(Leave leave) {
+        LeaveIntegrationEvent event = new LeaveIntegrationEvent();
+        event.setLeave(leave);
+        event.setPlatform(PlatformType.KIMAI);
+        event.setAttempts(1);
+        event.setLastAttemptAt(LocalDateTime.now());
+
         try {
             Optional<LeaveIntegrationEvent> kimaiEvent = eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(leave.getId(), PlatformType.KIMAI);
 
             if (kimaiEvent.isEmpty()) {
                 log.warn("No Kimai entry found for leave {}", leave.getId());
+                event.setStatus(IntegrationStatus.FAILED);
+                event.setErrorMessage("No Kimai entry found for leave " + leave.getId());
+                eventRepository.save(event);
                 return;
             }
 
             String kimaiId = kimaiEvent.get().getExternalEventId();
 
-            webClient.delete()
-                    .uri("/api/timesheets/{id}", kimaiId)
-                    .retrieve()
-                    .bodyToMono(Void.class)
-                    .block();
+            webClient.delete().uri("/api/timesheets/{id}", kimaiId).retrieve().bodyToMono(Void.class).block();
 
-            LeaveIntegrationEvent event = kimaiEvent.get();
-            event.setDeletedAt(LocalDateTime.now());
-            eventRepository.save(event);
+            event.setExternalEventId(kimaiId);
+            event.setStatus(IntegrationStatus.SUCCESS);
+            event.setErrorMessage(null);
+            event.setOperationType(IntegrationOperationType.DELETE);
 
             log.info("Successfully deleted Kimai entry {} for leave {}", kimaiId, leave.getId());
-
         } catch (Exception e) {
             log.error("Error deleting Kimai entry for leave {}: {}", leave.getId(), e.getMessage());
-            throw new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete Kimai entry for leave " + leave.getId());
+
+            event.setStatus(IntegrationStatus.FAILED);
+            event.setErrorMessage(e.getMessage());
         }
+        eventRepository.save(event);
     }
 }
