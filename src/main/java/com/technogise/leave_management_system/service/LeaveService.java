@@ -84,13 +84,14 @@ public class LeaveService {
         double remaining = category.getAllocatedDays() - taken;
         if (requested > remaining) {
             throw new HttpException(
-                    HttpStatus.CONFLICT,
+                    HttpStatus.BAD_REQUEST,
                     "Insufficient leave balance for " + category.getName()
                             + ". Requested No of Days: " + (int)requested
                             + ", Available No of Days: " + (int)remaining
             );
         }
     }
+
     public List<Leave> filterLeavesByScope(String scope, User user) {
         if (scope.equalsIgnoreCase(SELF.toString())) {
             return leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
@@ -311,6 +312,16 @@ public class LeaveService {
         DurationType oldDuration     = leave.getDuration();
         String       oldCategoryName = leave.getLeaveCategory().getName();
 
+        LeaveCategory targetCategory = (request.getLeaveCategoryId() != null)
+                ? leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId())
+                : leave.getLeaveCategory();
+        DurationType targetDuration = (request.getDuration() != null)
+                ? request.getDuration()
+                : leave.getDuration();
+
+        double requestedDays = (targetDuration == DurationType.FULL_DAY) ? 1.0 : 0.5;
+        validateNonAnnualBalanceSufficiency(targetCategory, requestedDays, userId, leave.getDate().getYear(), leaveId);
+
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
             validateNewLeaveDateIsNotWeekend(request.getDate());
@@ -318,19 +329,14 @@ public class LeaveService {
             leave.setDate(request.getDate());
         }
 
-        if (request.getLeaveCategoryId() != null) {
-            leave.setLeaveCategory(leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
-        }
-        Optional.ofNullable(request.getDuration()).ifPresent(leave::setDuration);
+        leave.setLeaveCategory(targetCategory);
+        leave.setDuration(targetDuration);
         Optional.ofNullable(request.getStartTime()).ifPresent(leave::setStartTime);
         Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
 
-        boolean categoryChanged = request.getLeaveCategoryId() != null;
-        boolean durationChanged = request.getDuration() != null;
-
-        if (categoryChanged || durationChanged) {
+        if (request.getLeaveCategoryId() != null || request.getDuration() != null) {
             annualLeaveService.syncOnLeaveUpdated(
                     leave.getUser(), oldCategoryName,
                     savedLeave.getLeaveCategory().getName(),

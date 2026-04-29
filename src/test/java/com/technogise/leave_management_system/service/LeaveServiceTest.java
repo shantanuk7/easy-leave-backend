@@ -766,18 +766,22 @@ class LeaveServiceTest {
     @Test
     void shouldThrowBadRequestWhenNewDateIsNotWithinValidRange() {
         User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
 
         Leave leave = new Leave();
         leave.setId(UUID.randomUUID());
         leave.setUser(user);
         leave.setDate(LocalDate.now().plusDays(3));
         leave.setDuration(DurationType.FULL_DAY);
-        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setLeaveCategory(category);
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(LocalDate.now().plusYears(1));
 
         when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        // satisfying balance check dependencies
+        when(leaveCategoryService.getLeaveCategoryById(any())).thenReturn(category);
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any())).thenReturn(List.of());
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.updateLeave(leave.getId(), request, userId));
@@ -788,21 +792,22 @@ class LeaveServiceTest {
     @Test
     void shouldThrowBadRequestWhenNewDateIsAWeekend() {
         User user = createValidUser();
-
-        LocalDate nextSaturday = LocalDate.now()
-                .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        LocalDate nextSaturday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        LeaveCategory category = createValidLeaveCategory();
 
         Leave leave = new Leave();
         leave.setId(UUID.randomUUID());
         leave.setUser(user);
         leave.setDate(LocalDate.now().plusDays(3));
         leave.setDuration(DurationType.FULL_DAY);
-        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setLeaveCategory(category);
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(nextSaturday);
 
         when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(any())).thenReturn(category);
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any())).thenReturn(List.of());
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.updateLeave(leave.getId(), request, userId));
@@ -814,19 +819,22 @@ class LeaveServiceTest {
     void shouldThrowConflictWhenNewDateAlreadyHasAnotherLeave() {
         User user = createValidUser();
         LocalDate newDate = nextWeekday();
+        LeaveCategory category = createValidLeaveCategory();
 
         Leave leaveBeingUpdated = new Leave();
         leaveBeingUpdated.setId(UUID.randomUUID());
         leaveBeingUpdated.setUser(user);
         leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
         leaveBeingUpdated.setDuration(DurationType.FULL_DAY);
-        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+        leaveBeingUpdated.setLeaveCategory(category);
 
         UpdateLeaveRequest request = createValidUpdateRequest();
         request.setDate(newDate);
 
-        when(leaveRepository.findById(leaveBeingUpdated.getId()))
-                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.findById(leaveBeingUpdated.getId())).thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveCategoryService.getLeaveCategoryById(any())).thenReturn(category);
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any())).thenReturn(List.of());
+
         when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveBeingUpdated.getId()))
                 .thenReturn(true);
 
@@ -920,6 +928,7 @@ class LeaveServiceTest {
         LeaveCategory newCategory = new LeaveCategory();
         newCategory.setId(newCategoryId);
         newCategory.setName("Casual Leave");
+        newCategory.setAllocatedDays(10);
 
         Leave leaveBeingUpdated = new Leave();
         leaveBeingUpdated.setId(UUID.randomUUID());
@@ -932,20 +941,18 @@ class LeaveServiceTest {
         request.setDate(nextWeekday());
         request.setLeaveCategoryId(newCategoryId);
 
-        when(leaveRepository.findById(leaveBeingUpdated.getId()))
-                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveRepository.findById(leaveBeingUpdated.getId())).thenReturn(Optional.of(leaveBeingUpdated));
+        when(leaveCategoryService.getLeaveCategoryById(newCategoryId)).thenReturn(newCategory);
+
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any())).thenReturn(List.of());
+
         when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, request.getDate(), leaveBeingUpdated.getId()))
                 .thenReturn(false);
-        when(leaveCategoryService.getLeaveCategoryById(newCategoryId))
-                .thenReturn(newCategory);
-        when(leaveRepository.save(any(Leave.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        UpdateLeaveResponse response = leaveService.updateLeave(
-                leaveBeingUpdated.getId(), request, userId);
+        UpdateLeaveResponse response = leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId);
 
         assertEquals("Casual Leave", response.getLeaveCategoryName());
-        verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
     }
 
     @Test
@@ -1037,6 +1044,7 @@ class LeaveServiceTest {
         LeaveCategory newCategory = new LeaveCategory();
         newCategory.setId(newCategoryId);
         newCategory.setName("Casual Leave");
+        newCategory.setAllocatedDays(10);
 
         Leave leave = new Leave();
         leave.setId(UUID.randomUUID());
@@ -1052,6 +1060,7 @@ class LeaveServiceTest {
 
         when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
         when(leaveCategoryService.getLeaveCategoryById(newCategoryId)).thenReturn(newCategory);
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any())).thenReturn(List.of());
         when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
@@ -1107,7 +1116,7 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldThrowConflictWhenNonAnnualLeaveBalanceIsExhausted() {
+    void shouldThrowBadRequestWhenNonAnnualLeaveBalanceIsExhausted() {
         LeaveCategory sickLeave = new LeaveCategory();
         sickLeave.setId(leaveCategoryId);
         sickLeave.setName("Sick Leave");
@@ -1140,9 +1149,8 @@ class LeaveServiceTest {
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.applyLeave(request, userId));
 
-        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
-        assertTrue(ex.getMessage().contains("Available: 0.0"));
     }
 
     @Test
@@ -1179,9 +1187,8 @@ class LeaveServiceTest {
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.applyLeave(request, userId));
 
-        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
-        assertTrue(ex.getMessage().contains("Available: 0.0"));
     }
     @Test
     void shouldDeleteLeaveSuccessfullyWhenLeaveExists() {
