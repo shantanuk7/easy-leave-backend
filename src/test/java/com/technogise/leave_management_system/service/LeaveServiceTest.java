@@ -986,7 +986,9 @@ class LeaveServiceTest {
     @Test
     void shouldUpdateOnlyDurationWhenOnlyDurationIsProvided() {
         User user = createValidUser();
-        LeaveCategory category = createValidLeaveCategory();
+        LeaveCategory category = new LeaveCategory();
+        category.setId(UUID.randomUUID());
+        category.setName(LeaveConstants.ANNUAL_LEAVE);
 
         Leave leave = new Leave();
         leave.setId(UUID.randomUUID());
@@ -1007,6 +1009,7 @@ class LeaveServiceTest {
 
         assertEquals(DurationType.HALF_DAY, response.getDuration());
         assertEquals("Original description", response.getDescription());
+        assertEquals(LeaveConstants.ANNUAL_LEAVE, response.getLeaveCategoryName());
     }
 
     @Test
@@ -1154,42 +1157,58 @@ class LeaveServiceTest {
     }
 
     @Test
-    void shouldThrowConflictWhenHalfDaysAlreadyTakenExceedFullDayBalance() {
+    void shouldCalculateRequestedDaysCorrectlyForHalfDayAnnualLeave() {
+        User user = createValidUser();
+        LeaveCategory annualLeave = new LeaveCategory();
+        annualLeave.setId(leaveCategoryId);
+        annualLeave.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        LocalDate date = nextWeekday();
+        CreateLeaveRequest request = new CreateLeaveRequest(
+                leaveCategoryId,
+                List.of(date),
+                DurationType.HALF_DAY,
+                LocalTime.of(9, 0),
+                "Testing coverage for half day branch"
+        );
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeave);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findByUserIdAndDate(any(), any())).thenReturn(Optional.empty());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
+
+        assertEquals(1, responses.size());
+        assertEquals(DurationType.HALF_DAY, responses.get(0).getDuration());
+
+        verify(annualLeaveService).syncOnLeaveCreated(user, DurationType.HALF_DAY, 1, date.getYear());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenHalfDayIsAppliedToNonAnnualCategory() {
         LeaveCategory sickLeave = new LeaveCategory();
         sickLeave.setId(leaveCategoryId);
         sickLeave.setName("Sick Leave");
-        sickLeave.setAllocatedDays(1);
+        sickLeave.setAllocatedDays(10);
 
         LocalDate weekday = nextWeekday();
 
-        Leave halfDay1 = new Leave();
-        halfDay1.setLeaveCategory(sickLeave);
-        halfDay1.setDuration(DurationType.HALF_DAY);
-        halfDay1.setDate(weekday.minusDays(2));
-
-        Leave halfDay2 = new Leave();
-        halfDay2.setLeaveCategory(sickLeave);
-        halfDay2.setDuration(DurationType.HALF_DAY);
-        halfDay2.setDate(weekday.minusDays(1));
-
         CreateLeaveRequest request = new CreateLeaveRequest(
                 leaveCategoryId, List.of(weekday), DurationType.HALF_DAY,
-                LocalTime.of(9, 0), "Sick again");
+                LocalTime.of(9, 0), "Should fail due to half day rule");
 
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
-                .thenReturn(List.of());
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
-                .thenReturn(List.of(halfDay1, halfDay2));
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.applyLeave(request, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
+        assertEquals("Sick Leave can only be applied as a full day", ex.getMessage());
     }
+
     @Test
     void shouldDeleteLeaveSuccessfullyWhenLeaveExists() {
         User user = createValidUser();
