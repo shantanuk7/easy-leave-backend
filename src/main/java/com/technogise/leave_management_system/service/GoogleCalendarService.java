@@ -3,6 +3,7 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -127,6 +128,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
 
                 integrationEvent.setStatus(IntegrationStatus.SUCCESS);
                 integrationEvent.setExternalEventId(eventId);
+                integrationEvent.setOperationType(IntegrationOperationType.CREATE);
                 leaveIntegrationEventRepository.save(integrationEvent);
             } else {
                 integrationEvent.setStatus(IntegrationStatus.FAILED);
