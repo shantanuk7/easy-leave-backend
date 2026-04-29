@@ -33,8 +33,10 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 
@@ -181,5 +183,43 @@ class RequestControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isBadRequest());
+    }
+    @Test
+    void shouldReturn201WithCompOffResponseWhenPayloadIsValid() throws Exception {
+        LocalDate lastSaturday = LocalDate.now()
+                .minusDays(1)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY));
+
+        CreateRequestPayload payload = new CreateRequestPayload();
+        payload.setRequestType(RequestType.COMPENSATORY_OFF);
+        payload.setDates(List.of(lastSaturday));
+        payload.setStartTime(LocalTime.of(10, 0));
+        payload.setDuration(DurationType.FULL_DAY);
+        payload.setDescription("Worked on Saturday for release");
+
+        CreateRequestResponse response = new CreateRequestResponse(
+                UUID.randomUUID(),
+                RequestType.COMPENSATORY_OFF,
+                null,
+                lastSaturday,
+                LocalTime.of(10, 0),
+                DurationType.FULL_DAY,
+                "Worked on Saturday for release",
+                RequestStatus.PENDING
+        );
+
+        when(requestService.raiseRequest(any(CreateRequestPayload.class), eq(employee.getId())))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(post("/api/requests")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Request(s) raised successfully"))
+                .andExpect(jsonPath("$.data[0].requestType").value("COMPENSATORY_OFF"))
+                .andExpect(jsonPath("$.data[0].leaveCategoryName").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"));
     }
 }

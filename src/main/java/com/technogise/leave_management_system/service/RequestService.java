@@ -1,12 +1,13 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.dto.CreateRequestPayload;
 import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.dto.RequestResponse;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
+import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -91,16 +92,50 @@ public class RequestService {
     @Transactional
     public List<CreateRequestResponse> raiseRequest(CreateRequestPayload payload, UUID userId) {
         User user = userService.getUserByUserId(userId);
-        validatePastLeaveCategoryPresent(payload);
 
+        if (payload.getRequestType() == RequestType.COMPENSATORY_OFF) {
+            return raiseCompOffRequest(payload, user);
+        }
+
+        validatePastLeaveCategoryPresent(payload);
         LeaveCategory leaveCategory = leaveCategoryService
                 .getLeaveCategoryById(payload.getLeaveCategoryId());
-
         List<LocalDate> validDates = filterValidPastLeaveDates(payload.getDates());
         List<LocalDate> workingDays = filterWeekendDates(validDates);
         validateNoDuplicateRequests(workingDays, userId);
-
         return savePastLeaveRequests(workingDays, payload, user, leaveCategory);
+    }
+
+    private List<CreateRequestResponse> raiseCompOffRequest(CreateRequestPayload payload, User user) {
+        List<LocalDate> validRangeDates = filterValidCompOffDates(payload.getDates());
+        List<LocalDate> weekendDates = filterNonWeekendDates(validRangeDates);
+        validateNoDuplicateRequests(weekendDates, user.getId());
+        return saveCompOffRequests(weekendDates, payload, user);
+
+    }
+
+    private List<LocalDate> filterNonWeekendDates(List<LocalDate> dates) {
+        List<LocalDate> weekendDates = dates.stream()
+                .filter(this::isWeekendDay)
+                .toList();
+
+        if (weekendDates.isEmpty()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Compensatory off dates must fall on a weekend (Saturday or Sunday)");
+        }
+        return weekendDates;
+    }
+
+    private List<LocalDate> filterValidCompOffDates(List<LocalDate> dates) {
+        List<LocalDate> validDates = dates.stream()
+                .filter(this::isValidRequestDateRange)
+                .toList();
+
+        if (validDates.isEmpty()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Compensatory off dates must be within the last 30 days");
+        }
+        return validDates;
     }
 
 
@@ -113,7 +148,7 @@ public class RequestService {
 
     private List<LocalDate> filterValidPastLeaveDates(List<LocalDate> dates) {
         List<LocalDate> validDates = dates.stream()
-                .filter(this::isValidPastLeaveDate)
+                .filter(this::isValidRequestDateRange)
                 .toList();
 
         if (validDates.isEmpty()) {
@@ -145,6 +180,38 @@ public class RequestService {
             throw new HttpException(HttpStatus.CONFLICT,
                     "A request already exists for one of the selected dates");
         }
+    }
+
+    private List<CreateRequestResponse> saveCompOffRequests(
+            List<LocalDate> dates, CreateRequestPayload payload, User user) {
+
+        List<Request> requests = dates.stream().map(date -> {
+            Request request = new Request();
+            request.setRequestedByUser(user);
+            request.setRequestType(payload.getRequestType());
+            request.setLeaveCategory(null);
+            request.setDate(date);
+            request.setStartTime(payload.getStartTime());
+            request.setDuration(payload.getDuration());
+            request.setDescription(payload.getDescription());
+            request.setStatus(RequestStatus.PENDING);
+            return request;
+        }).toList();
+
+        List<Request> saved = requestRepository.saveAll(requests);
+
+        return saved.stream()
+                .map(r -> new CreateRequestResponse(
+                        r.getId(),
+                        r.getRequestType(),
+                        null,
+                        r.getDate(),
+                        r.getStartTime(),
+                        r.getDuration(),
+                        r.getDescription(),
+                        r.getStatus()
+                ))
+                .toList();
     }
 
     private List<CreateRequestResponse> savePastLeaveRequests(
@@ -181,7 +248,7 @@ public class RequestService {
                 .toList();
     }
 
-    private boolean isValidPastLeaveDate(LocalDate date) {
+    private boolean isValidRequestDateRange(LocalDate date) {
         LocalDate today = LocalDate.now(IST);
         LocalDate thirtyDaysAgo = today.minusDays(30);
         return !date.isBefore(thirtyDaysAgo) && date.isBefore(today);

@@ -35,7 +35,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class RequestServiceTest {
@@ -94,6 +94,25 @@ public class RequestServiceTest {
         return payload;
     }
 
+    private CreateRequestPayload createCompOffPayload(List<LocalDate> dates) {
+        CreateRequestPayload payload = new CreateRequestPayload();
+        payload.setRequestType(RequestType.COMPENSATORY_OFF);
+        payload.setLeaveCategoryId(null);
+        payload.setDates(dates);
+        payload.setStartTime(LocalTime.of(10, 0));
+        payload.setDuration(DurationType.FULL_DAY);
+        payload.setDescription("Worked on Saturday for release");
+        return payload;
+    }
+
+    private LocalDate lastWeekendDay() {
+        LocalDate date = LocalDate.now(IST).minusDays(1);
+        while (date.getDayOfWeek() != DayOfWeek.SATURDAY
+                && date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            date = date.minusDays(1);
+        }
+        return date;
+    }
 
     @Test
     void shouldThrowBadRequestWhenPastLeaveRequestHasNullLeaveCategoryId() {
@@ -445,5 +464,83 @@ public class RequestServiceTest {
 
         assertEquals(1, responses.size());
         assertEquals(RequestStatus.PENDING, responses.get(0).getStatus());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenCompOffDateIsOlderThan30Days() {
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(
+                        createCompOffPayload(List.of(LocalDate.now(IST).minusDays(31))), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Compensatory off dates must be within the last 30 days", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenCompOffDateIsTodayOrInFuture() {
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(
+                        createCompOffPayload(List.of(LocalDate.now(IST))), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Compensatory off dates must be within the last 30 days", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowConflictWhenCompOffRequestAlreadyExistsForDate() {
+        LocalDate weekend = lastWeekendDay();
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(weekend), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(true);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+    }
+
+    @Test
+    void shouldSaveCompOffRequestWithNullLeaveCategoryAndPendingStatus() {
+        LocalDate weekend = lastWeekendDay();
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        when(requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
+                userId, List.of(weekend), List.of(RequestStatus.PENDING, RequestStatus.APPROVED)))
+                .thenReturn(false);
+        when(requestRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<CreateRequestResponse> responses =
+                requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId);
+
+        assertEquals(1, responses.size());
+        assertEquals(RequestType.COMPENSATORY_OFF, responses.get(0).getRequestType());
+        assertEquals(RequestStatus.PENDING, responses.get(0).getStatus());
+        assertNull(responses.get(0).getLeaveCategoryName());
+        assertEquals(weekend, responses.get(0).getDate());
+        verify(leaveCategoryService, never()).getLeaveCategoryById(any());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenAllValidCompOffDatesAreWeekdays() {
+        LocalDate weekday = LocalDate.now(IST)
+                .minusDays(7)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+
+        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.raiseRequest(createCompOffPayload(List.of(weekday)), userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Compensatory off dates must fall on a weekend (Saturday or Sunday)", ex.getMessage());
     }
 }
