@@ -133,7 +133,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
             } else {
                 integrationEvent.setStatus(IntegrationStatus.FAILED);
                 integrationEvent.setErrorMessage("Google Calendar API error: " + response.statusCode());
-
+                integrationEvent.setOperationType(IntegrationOperationType.CREATE);
                 log.error("Failed to add event to Google Calendar for user");
                 throw new HttpException(HttpStatus.BAD_REQUEST, "Google Calendar API error: " + response.statusCode());
             }
