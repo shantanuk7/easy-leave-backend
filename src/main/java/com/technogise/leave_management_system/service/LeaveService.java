@@ -458,6 +458,7 @@ public class LeaveService {
             }
             validateNewLeaveDateIsNotWeekend(request.getDate());
             validateNoDateConflict(userId, leaveId, request.getDate());
+            validateNewLeaveDateIsNotHoliday(request.getDate());
             leave.setDate(request.getDate());
         }
 
@@ -579,6 +580,13 @@ public class LeaveService {
         if (hasConflict) {
             throw new HttpException(HttpStatus.CONFLICT,
                     "Leave already exists for this date");
+        }
+    }
+
+    private void validateNewLeaveDateIsNotHoliday(LocalDate newDate) {
+        if (isFixedHoliday(newDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot update leave to a fixed holiday date");
         }
     }
 
