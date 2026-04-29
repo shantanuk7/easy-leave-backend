@@ -218,6 +218,33 @@ public class LeaveService {
         return leave.getHoliday().getType().getDisplayName();
     }
 
+    private void applyTypeChange(Leave leave, UpdateLeaveRequest request, UUID userId) {
+        boolean requestHasHoliday = request.getHolidayId() != null;
+        boolean requestHasCategory = request.getLeaveCategoryId() != null;
+
+        if (!requestHasHoliday && !requestHasCategory) {
+            return;
+        }
+
+        validateMutualExclusiveness(requestHasHoliday, requestHasCategory);
+
+        if (requestHasHoliday) {
+            User user = userService.getUserByUserId(userId);
+            Holiday holiday = holidayService.getHolidayById(request.getHolidayId());
+            if (leave.getHoliday() == null) {
+                validateOptionalHolidaysCount(user);
+            }
+            leave.setHoliday(holiday);
+            leave.setLeaveCategory(null);
+        }
+
+        if (requestHasCategory) {
+            leave.setLeaveCategory(
+                    leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
+            leave.setHoliday(null);
+        }
+    }
+
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
@@ -362,29 +389,34 @@ public class LeaveService {
         validateExistingLeaveDate(leave.getDate());
 
         DurationType oldDuration = leave.getDuration();
-        String oldCategoryName = leave.getLeaveCategory().getName();
+        String oldCategoryName = leave.getLeaveCategory() != null
+                ? leave.getLeaveCategory().getName()
+                : null;
 
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
             validateNewLeaveDateIsNotWeekend(request.getDate());
             validateNoDateConflict(userId, leaveId, request.getDate());
+            validateNewLeaveDateIsNotHoliday(request.getDate());
             leave.setDate(request.getDate());
         }
 
-        if (request.getLeaveCategoryId() != null) {
-            leave.setLeaveCategory(leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
-        }
+        applyTypeChange(leave, request, userId);
+
         Optional.ofNullable(request.getDuration()).ifPresent(leave::setDuration);
         Optional.ofNullable(request.getStartTime()).ifPresent(leave::setStartTime);
         Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
 
-        boolean categoryChanged = request.getLeaveCategoryId() != null;
+        boolean typeChanged = request.getHolidayId() != null || request.getLeaveCategoryId() != null;
         boolean durationChanged = request.getDuration() != null;
-
-        if (categoryChanged || durationChanged) {
-            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldCategoryName, savedLeave.getLeaveCategory().getName(),
+        if (typeChanged || durationChanged) {
+            String newCategoryName = savedLeave.getLeaveCategory() != null
+                    ? savedLeave.getLeaveCategory().getName()
+                    : null;
+            annualLeaveService.syncOnLeaveUpdated(
+                    savedLeave.getUser(), oldCategoryName, newCategoryName,
                     oldDuration, savedLeave.getDuration(), savedLeave.getDate().getYear());
         }
 
@@ -397,7 +429,8 @@ public class LeaveService {
                 request.getStartTime(),
                 request.getDescription(),
                 request.getDuration(),
-                request.getLeaveCategoryId()
+                request.getLeaveCategoryId(),
+                request.getHolidayId()
         ).anyMatch(Objects::nonNull);
 
         if (!hasField) {
@@ -409,7 +442,7 @@ public class LeaveService {
         return new UpdateLeaveResponse(
                 leave.getId(),
                 leave.getDate(),
-                leave.getLeaveCategory().getName(),
+                getLeaveDisplayName(leave),
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getDescription()
@@ -449,6 +482,13 @@ public class LeaveService {
         if (hasConflict) {
             throw new HttpException(HttpStatus.CONFLICT,
                     "You already have a leave applied on this date");
+        }
+    }
+
+    private void validateNewLeaveDateIsNotHoliday(LocalDate newDate) {
+        if (isFixedHoliday(newDate)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Cannot update leave to a fixed holiday date");
         }
     }
 

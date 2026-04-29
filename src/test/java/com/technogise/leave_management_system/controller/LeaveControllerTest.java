@@ -161,7 +161,7 @@ public class LeaveControllerTest {
         UpdateLeaveResponse response = new UpdateLeaveResponse();
         response.setId(UUID.randomUUID());
         response.setDate(LocalDate.now().plusDays(3));
-        response.setLeaveCategoryName(LeaveConstants.ANNUAL_LEAVE);
+        response.setType(LeaveConstants.ANNUAL_LEAVE);
         response.setDuration(DurationType.FULL_DAY);
         response.setStartTime(LocalTime.of(9, 0));
         response.setDescription("Updated description");
@@ -488,7 +488,7 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Leave updated successfully"))
                 .andExpect(jsonPath("$.data.date").value(response.getDate().toString()))
-                .andExpect(jsonPath("$.data.leaveCategoryName").value(LeaveConstants.ANNUAL_LEAVE))
+                .andExpect(jsonPath("$.data.type").value(LeaveConstants.ANNUAL_LEAVE))
                 .andExpect(jsonPath("$.data.duration").value("FULL_DAY"))
                 .andExpect(jsonPath("$.data.description").value("Updated description"));
     }

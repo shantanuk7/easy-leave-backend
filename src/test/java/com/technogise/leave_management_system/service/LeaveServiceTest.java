@@ -947,7 +947,7 @@ class LeaveServiceTest {
 
         assertNotNull(response);
         assertEquals(newDate, response.getDate());
-        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(category.getName(), response.getType());
         assertEquals(request.getDuration(), response.getDuration());
         assertEquals(request.getStartTime(), response.getStartTime());
         assertEquals(request.getDescription(), response.getDescription());
@@ -993,7 +993,7 @@ class LeaveServiceTest {
         UpdateLeaveResponse response = leaveService.updateLeave(
                 leaveBeingUpdated.getId(), request, userId);
 
-        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        assertEquals("Casual Leave", response.getType());
         verify(leaveCategoryService).getLeaveCategoryById(newCategoryId);
     }
 
@@ -1020,7 +1020,7 @@ class LeaveServiceTest {
         UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
 
         assertEquals("Updated description", response.getDescription());
-        assertEquals(category.getName(), response.getLeaveCategoryName());
+        assertEquals(category.getName(), response.getType());
         assertEquals(DurationType.FULL_DAY, response.getDuration());
         verify(leaveRepository, never()).existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any());
     }
@@ -1105,7 +1105,7 @@ class LeaveServiceTest {
 
         UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
 
-        assertEquals("Casual Leave", response.getLeaveCategoryName());
+        assertEquals("Casual Leave", response.getType());
         assertEquals("Original description", response.getDescription());
     }
 
@@ -1479,5 +1479,178 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Cannot apply leave on weekends or fixed holidays", ex.getMessage());
+    }
+
+    @Test
+    void shouldUpdateRegularLeaveToOptionalHolidaySuccessfully() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
+        User user = createValidUser();
+        Holiday holiday = createOptionalHoliday();
+        LocalDate mockDate = LocalDate.of(2026, 4,27);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(mockDate);
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(10, 0));
+        leave.setDescription("Regular leave");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(holidayId);
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any())).thenReturn(0L);
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(holidayService.getHolidayById(holidayId)).thenReturn(holiday);
+        when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals("Optional Holiday", response.getType());
+        assertNull(leave.getLeaveCategory());
+        assertEquals(holiday, leave.getHoliday());
+    }
+
+    @Test
+    void shouldUpdateOptionalHolidayToRegularLeaveSuccessfully() {
+        User user = createValidUser();
+        Holiday holiday = createOptionalHoliday();
+        LeaveCategory newCategory = createValidLeaveCategory();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(holiday.getDate());
+        leave.setLeaveCategory(null);
+        leave.setHoliday(holiday);
+        leave.setDuration(DurationType.FULL_DAY);
+        leave.setStartTime(LocalTime.of(10, 0));
+        leave.setDescription(holiday.getName());
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(newCategory);
+        when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
+
+        assertEquals(newCategory.getName(), response.getType());
+        assertNull(leave.getHoliday());
+        assertEquals(newCategory, leave.getLeaveCategory());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenBothHolidayIdAndCategoryIdProvidedInUpdateRequest() {
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(nextWeekday());
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(holidayId);
+        request.setLeaveCategoryId(leaveCategoryId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId.", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrow400ErrorWhenUpdatingRegularLeaveToOptionalHolidayExceedsAllocatedQuota() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
+        User user = createValidUser();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(nextWeekday());
+        leave.setLeaveCategory(createValidLeaveCategory());
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(holidayId);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any())).thenReturn(2L);
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot apply more than allocated days for optional holidays", ex.getMessage());
+    }
+
+    @Test
+    void shouldNotValidateQuotaWhenSwitchingFromOptionalHolidayToAnotherOptionalHoliday() {
+        ReflectionTestUtils.setField(leaveService, "maxOptionalHolidayDays", 2);
+
+        User user = createValidUser();
+        Holiday newHoliday = createOptionalHoliday();
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(nextWeekday());
+        leave.setHoliday(createOptionalHoliday());
+        leave.setDuration(DurationType.FULL_DAY);
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setHolidayId(newHoliday.getId());
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(holidayService.getHolidayById(newHoliday.getId())).thenReturn(newHoliday);
+        when(leaveRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        leaveService.updateLeave(leave.getId(), request, userId);
+
+        verify(leaveRepository, never())
+                .countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(any(), any(), any());
+    }
+
+    @Test
+    void shouldThrowErrorWhenUpdatingLeaveToFixedHoliday() {
+        User user = createValidUser();
+        LocalDate newDate = nextWeekday();
+
+        Leave leaveBeingUpdated = new Leave();
+        leaveBeingUpdated.setId(UUID.randomUUID());
+        leaveBeingUpdated.setUser(user);
+        leaveBeingUpdated.setDate(LocalDate.now().plusDays(3));
+        leaveBeingUpdated.setLeaveCategory(createValidLeaveCategory());
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(newDate);
+
+        Holiday fixedHoliday = new Holiday();
+        fixedHoliday.setId(UUID.randomUUID());
+        fixedHoliday.setDate(newDate);
+        fixedHoliday.setType(HolidayType.FIXED);
+
+        when(leaveRepository.findById(leaveBeingUpdated.getId()))
+                .thenReturn(Optional.of(leaveBeingUpdated));
+        when(holidayService.getHolidaysByType(HolidayType.FIXED)).thenReturn(List.of(fixedHoliday));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leaveBeingUpdated.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Cannot update leave to a fixed holiday date", ex.getMessage());
     }
 }
