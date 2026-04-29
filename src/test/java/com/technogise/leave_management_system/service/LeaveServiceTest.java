@@ -1511,7 +1511,7 @@ class LeaveServiceTest {
 
         UpdateLeaveResponse response = leaveService.updateLeave(leave.getId(), request, userId);
 
-        assertEquals("OPTIONAL HOLIDAY", response.getType());
+        assertEquals("Optional Holiday", response.getType());
         assertNull(leave.getLeaveCategory());
         assertEquals(holiday, leave.getHoliday());
     }

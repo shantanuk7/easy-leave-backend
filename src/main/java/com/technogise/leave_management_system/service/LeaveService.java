@@ -441,7 +441,7 @@ public class LeaveService {
         return new UpdateLeaveResponse(
                 leave.getId(),
                 leave.getDate(),
-                getLeaveType(leave),
+                getLeaveDisplayName(leave),
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getDescription()
