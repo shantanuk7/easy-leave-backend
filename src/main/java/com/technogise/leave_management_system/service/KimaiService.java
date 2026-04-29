@@ -112,9 +112,6 @@ public class KimaiService implements LeaveIntegrationService {
             throw e;
         }
     }
-//    public Integer getUserIdByEmail(String email, String name) {
-//        return 233;
-//    }
 
     public boolean isLeaveAlreadySynced(Integer userId, LocalDateTime begin, LocalDateTime end) {
         try {

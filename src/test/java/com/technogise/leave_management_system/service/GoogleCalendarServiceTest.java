@@ -161,5 +161,9 @@ class GoogleCalendarServiceTest {
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         verify(httpClient).send(requestCaptor.capture(), any());
     }
-}
 
+    @Test
+    void shouldDoNothing() {
+        googleCalendarService.deleteLeave(new Leave());
+    }
+}
