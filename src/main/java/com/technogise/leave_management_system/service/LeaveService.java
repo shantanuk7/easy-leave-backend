@@ -59,6 +59,45 @@ public class LeaveService {
         this.leaveIntegrationHandler = leaveIntegrationHandler;
     }
 
+    double computeTakenDays(UUID userId, UUID categoryId, int year, UUID excludeLeaveId) {
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
+
+        return leaveRepository
+                .findAllByUserIdAndDateBetweenAndDeletedAtIsNull(userId, startDate, endDate, Sort.unsorted())
+                .stream()
+                .filter(leave -> leave.getLeaveCategory().getId().equals(categoryId))
+                .filter(leave -> excludeLeaveId == null || !leave.getId().equals(excludeLeaveId))
+                .mapToDouble(leave -> leave.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5)
+                .sum();
+    }
+    void validateNonAnnualBalanceSufficiency(
+            LeaveCategory category,
+            double requested,
+            UUID userId,
+            int year,
+            UUID excludeLeaveId) {
+        if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+            return;
+        }
+        double taken     = computeTakenDays(userId, category.getId(), year, excludeLeaveId);
+        double remaining = category.getAllocatedDays() - taken;
+        if (requested > remaining) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Insufficient leave balance for " + category.getName()
+                            + ". Requested No of Days: " + (int)requested
+                            + ", Available No of Days: " + (int)remaining
+            );
+        }
+    }
+
+    private void validateDurationForCategory(LeaveCategory category, DurationType duration) {
+        if (!category.getName().equals(LeaveConstants.ANNUAL_LEAVE) && duration == DurationType.HALF_DAY) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, category.getName() + " can only be applied as a full day");
+        }
+    }
+
     public List<Leave> filterLeavesByScope(String scope, User user) {
         if (scope.equalsIgnoreCase(SELF.toString())) {
             return leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
@@ -112,8 +151,7 @@ public class LeaveService {
     }
     private List<Leave> getLeavesByEmployeeAndYear(User user, UUID empId, Integer year) {
         if (!user.getRole().equals(UserRole.MANAGER)) {
-            throw new HttpException(HttpStatus.FORBIDDEN,
-                    "Not allowed to access this resource");
+            throw new HttpException(HttpStatus.FORBIDDEN, "Not allowed to access this resource");
         }
 
         userService.getUserByUserId(empId);
@@ -164,15 +202,24 @@ public class LeaveService {
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
-        User user = userService.getUserByUserId(userId);
-        LeaveCategory category =
-                leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
+        User user          = userService.getUserByUserId(userId);
+        LeaveCategory category = leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
 
-        List<LocalDate> workingDates =
-                filterValidWorkingDates(request.getDates());
+        validateDurationForCategory(category, request.getDuration());
 
-        List<LocalDate> newDates =
-                filterNonOverlappingLeaveDates(userId, workingDates);
+        List<LocalDate> workingDates = filterValidWorkingDates(request.getDates());
+        List<LocalDate> newDates = filterNonOverlappingLeaveDates(userId, workingDates);
+
+        double requestedDays = newDates.size()
+                * (request.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5);
+
+        validateNonAnnualBalanceSufficiency(
+                category,
+                requestedDays,
+                userId,
+                LocalDate.now().getYear(),
+                null
+        );
 
         List<Leave> leavesToSave = newDates.stream()
                 .map(date -> {
@@ -189,7 +236,8 @@ public class LeaveService {
                 }).toList();
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
         if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
-            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
+            annualLeaveService.syncOnLeaveCreated(
+                    user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
         leaveIntegrationHandler.handleLeaves(savedLeaves);
         return savedLeaves.stream()
@@ -204,7 +252,7 @@ public class LeaveService {
     }
 
     public LeaveResponse getLeaveById(UUID leaveId, UUID userId) {
-        User user = userService.getUserByUserId(userId);
+        User user  = userService.getUserByUserId(userId);
         Leave leave = leaveRepository.findById(leaveId).orElseThrow(
                 () -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
@@ -212,25 +260,19 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
 
-        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), leave.getLeaveCategory().getName(),
-                leave.getDuration(),
-                leave.getStartTime(),
-                leave.getUpdatedAt(),
-                leave.getDescription()
-        );
+        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(),
+                leave.getLeaveCategory().getName(), leave.getDuration(),
+                leave.getStartTime(), leave.getUpdatedAt(), leave.getDescription());
     }
 
     private List<LocalDate> filterValidWorkingDates(List<LocalDate> requestedDates) {
-
         List<LocalDate> validDates = requestedDates.stream()
                 .filter(this::isValidLeaveDate)
                 .toList();
 
         if (validDates.isEmpty()) {
-            throw new HttpException(
-                    HttpStatus.BAD_REQUEST,
-                    "Dates must be within current month for past dates, or current year for future dates"
-            );
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Dates must be within current month for past dates, or current year for future dates");
         }
 
         List<LocalDate> workingDays = validDates.stream()
@@ -238,17 +280,13 @@ public class LeaveService {
                 .toList();
 
         if (workingDays.isEmpty()) {
-            throw new HttpException(
-                    HttpStatus.BAD_REQUEST,
-                    "Cannot apply leave on weekends"
-            );
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot apply leave on weekends");
         }
 
         return workingDays;
     }
 
     private List<LocalDate> filterNonOverlappingLeaveDates(UUID userId, List<LocalDate> dates) {
-
         Set<LocalDate> existingDates = leaveRepository
                 .findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
                 .stream()
@@ -260,10 +298,7 @@ public class LeaveService {
                 .toList();
 
         if (newDates.isEmpty()) {
-            throw new HttpException(
-                    HttpStatus.CONFLICT,
-                    "All selected working days already applied"
-            );
+            throw new HttpException(HttpStatus.CONFLICT, "All selected working days already applied");
         }
 
         return newDates;
@@ -285,6 +320,18 @@ public class LeaveService {
         DurationType oldDuration = leave.getDuration();
         String oldCategoryName = leave.getLeaveCategory().getName();
 
+        LeaveCategory targetCategory = (request.getLeaveCategoryId() != null)
+                ? leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId())
+                : leave.getLeaveCategory();
+        DurationType targetDuration = (request.getDuration() != null)
+                ? request.getDuration()
+                : leave.getDuration();
+
+        double requestedDays = (targetDuration == DurationType.FULL_DAY) ? 1.0 : 0.5;
+        validateNonAnnualBalanceSufficiency(targetCategory, requestedDays, userId, leave.getDate().getYear(), leaveId);
+
+        validateDurationForCategory(targetCategory, targetDuration);
+
         if (request.getDate() != null) {
             validateNewLeaveDate(request.getDate());
             validateNewLeaveDateIsNotWeekend(request.getDate());
@@ -292,25 +339,25 @@ public class LeaveService {
             leave.setDate(request.getDate());
         }
 
-        if (request.getLeaveCategoryId() != null) {
-            leave.setLeaveCategory(leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId()));
-        }
-        Optional.ofNullable(request.getDuration()).ifPresent(leave::setDuration);
+        leave.setLeaveCategory(targetCategory);
+        leave.setDuration(targetDuration);
         Optional.ofNullable(request.getStartTime()).ifPresent(leave::setStartTime);
         Optional.ofNullable(request.getDescription()).ifPresent(leave::setDescription);
 
         Leave savedLeave = leaveRepository.save(leave);
 
-        boolean categoryChanged = request.getLeaveCategoryId() != null;
-        boolean durationChanged = request.getDuration() != null;
-
-        if (categoryChanged || durationChanged) {
-            annualLeaveService.syncOnLeaveUpdated(leave.getUser(), oldCategoryName, savedLeave.getLeaveCategory().getName(),
-                    oldDuration, savedLeave.getDuration(), savedLeave.getDate().getYear());
+        if (request.getLeaveCategoryId() != null || request.getDuration() != null) {
+            annualLeaveService.syncOnLeaveUpdated(
+                    leave.getUser(), oldCategoryName,
+                    savedLeave.getLeaveCategory().getName(),
+                    oldDuration, savedLeave.getDuration(),
+                    savedLeave.getDate().getYear());
         }
 
         return mapToUpdateLeaveResponse(savedLeave);
     }
+
+
 
     public void validateUpdateRequestNotEmpty(UpdateLeaveRequest request) {
         boolean hasField = Stream.of(
@@ -322,7 +369,8 @@ public class LeaveService {
         ).anyMatch(Objects::nonNull);
 
         if (!hasField) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "At least one field must be provided to update");
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "At least one field must be provided to update");
         }
     }
 
@@ -339,8 +387,7 @@ public class LeaveService {
 
     private void validateLeaveOwnership(Leave leave, UUID userId, String errorMessage) {
         if (!isValidLeaveOwner(leave, userId)) {
-            throw new HttpException(HttpStatus.FORBIDDEN,
-                    errorMessage);
+            throw new HttpException(HttpStatus.FORBIDDEN, errorMessage);
         }
     }
 
@@ -366,7 +413,8 @@ public class LeaveService {
     }
 
     private void validateNoDateConflict(UUID userId, UUID leaveId, LocalDate newDate) {
-        boolean hasConflict = leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveId);
+        boolean hasConflict = leaveRepository
+                .existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveId);
         if (hasConflict) {
             throw new HttpException(HttpStatus.CONFLICT,
                     "You already have a leave applied on this date");
@@ -397,7 +445,8 @@ public class LeaveService {
         leaveRepository.save(leave);
 
         if (leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
-            annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
+            annualLeaveService.syncOnLeaveDeleted(
+                    leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
     }
 }

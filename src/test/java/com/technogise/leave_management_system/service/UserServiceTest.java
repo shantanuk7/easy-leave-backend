@@ -4,8 +4,10 @@ import com.technogise.leave_management_system.dto.UpdateUserRoleRequest;
 import com.technogise.leave_management_system.dto.EmployeeLeavesRecordResponse;
 import com.technogise.leave_management_system.dto.UserResponse;
 import com.technogise.leave_management_system.entity.AnnualLeave;
+import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
@@ -23,8 +25,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -229,50 +233,48 @@ class UserServiceTest {
     void shouldReturnEmployeeLeaveRecordsWhenLeavesExist() {
         int year = 2026;
 
-        List<LeaveCategory> categories = new ArrayList<>();
-        categories.add(new LeaveCategory(
-                UUID.randomUUID(),
-                "Annual",
-                24,
-                LocalDateTime.now(),
-                LocalDateTime.now())
-        );
-        categories.add(new LeaveCategory(
-                UUID.randomUUID(),
-                "Paternity",
-                90,
-                LocalDateTime.now(),
-                LocalDateTime.now())
-        );
+        UUID cat1Id = UUID.randomUUID();
+        UUID cat2Id = UUID.randomUUID();
 
-        when(userRepository.findById(userId)).
-                thenReturn(Optional.of(new User()));
+        LeaveCategory annual = new LeaveCategory(
+                cat1Id, "Annual", 24, LocalDateTime.now(), LocalDateTime.now());
+        LeaveCategory paternity = new LeaveCategory(
+                cat2Id, "Paternity", 90, LocalDateTime.now(), LocalDateTime.now());
 
-        when(leaveCategoryRepository.findAll())
-                .thenReturn(categories);
+        Leave leave1 = new Leave();
+        leave1.setLeaveCategory(annual);
+        leave1.setDuration(DurationType.FULL_DAY);
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), eq(categories.getFirst().getId()), any(), any()))
-                .thenReturn(4L);
+        Leave leave2 = new Leave();
+        leave2.setLeaveCategory(annual);
+        leave2.setDuration(DurationType.HALF_DAY);
 
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), eq(categories.get(1).getId()), any(), any()))
-                .thenReturn(10L);
+        Leave leave3 = new Leave();
+        leave3.setLeaveCategory(paternity);
+        leave3.setDuration(DurationType.FULL_DAY);
+
+        List<Leave> allLeaves = new ArrayList<>();
+        allLeaves.add(leave1);
+        allLeaves.add(leave2);
+        for (int i = 0; i < 10; i++) {
+            Leave l = new Leave();
+            l.setLeaveCategory(paternity);
+            l.setDuration(DurationType.FULL_DAY);
+            allLeaves.add(l);
+        }
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User()));
+        when(leaveCategoryRepository.findAll()).thenReturn(List.of(annual, paternity));
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any(), any(Sort.class)))
+                .thenReturn(allLeaves);
 
         List<EmployeeLeavesRecordResponse> result =
                 userService.getEmployeeLeavesRecordByYear(userId, year);
 
         assertEquals(2, result.size());
-
-        EmployeeLeavesRecordResponse annual = result.getFirst();
-        assertEquals("Annual", annual.getLeaveType());
-        assertEquals(4, annual.getLeavesTaken());
-        assertEquals(20, annual.getLeavesRemaining());
-
-        EmployeeLeavesRecordResponse paternity = result.get(1);
-        assertEquals("Paternity", paternity.getLeaveType());
-        assertEquals(10, paternity.getLeavesTaken());
-        assertEquals(80, paternity.getLeavesRemaining());
+        assertEquals(1.5, result.get(0).getLeavesTaken());
+        assertEquals(10.0, result.get(1).getLeavesTaken());
     }
 
     @Test
@@ -287,15 +289,13 @@ class UserServiceTest {
                 LocalDateTime.now()
         );
 
-        when(userRepository.findById(userId)).
-                thenReturn(Optional.of(new User()));
-
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(new User()));
         when(leaveCategoryRepository.findAll())
                 .thenReturn(List.of(category));
-
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
-                any(), any(), any(), any()))
-                .thenReturn(0L);
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any(), any(Sort.class)))
+                .thenReturn(List.of());
 
         List<EmployeeLeavesRecordResponse> result =
                 userService.getEmployeeLeavesRecordByYear(userId, year);
@@ -350,24 +350,31 @@ class UserServiceTest {
         AnnualLeave annualLeave = new AnnualLeave();
         annualLeave.setTotal(30.0);
 
+        List<Leave> leaves = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            Leave leave = new Leave();
+            leave.setLeaveCategory(category);
+            leave.setDuration(DurationType.FULL_DAY);
+            leaves.add(leave);
+        }
+
         when(userRepository.findById(userId))
                 .thenReturn(Optional.of(new User()));
-
         when(leaveCategoryRepository.findAll())
                 .thenReturn(List.of(category));
-
         when(annualLeaveRepository.findByUserIdAndYear(eq(userId), any()))
                 .thenReturn(Optional.of(annualLeave));
-
-        when(leaveRepository.countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
-                any(), any(), any(), any()))
-                .thenReturn(5L);
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId), any(), any(), any(Sort.class)))
+                .thenReturn(leaves);
 
         List<EmployeeLeavesRecordResponse> result =
                 userService.getEmployeeLeavesRecordByYear(userId, year);
 
         assertEquals(1, result.size());
         assertEquals(30.0, result.getFirst().getTotalLeavesAvailable());
+        assertEquals(5.0, result.getFirst().getLeavesTaken());
+        assertEquals(25.0, result.getFirst().getLeavesRemaining());
     }
 
     @Test
@@ -384,4 +391,37 @@ class UserServiceTest {
         assertEquals(result.getEmail(), user.getEmail());
         assertEquals(result.getName(), user.getName());
     }
+    @Test
+    void shouldCountHalfDayLeaveAs0Point5InLeaveBalance() {
+        int year = 2026;
+        UUID categoryId = UUID.randomUUID();
+
+        LeaveCategory category = new LeaveCategory(
+                categoryId, "Sick Leave", 10,
+                LocalDateTime.now(), LocalDateTime.now()
+        );
+
+        Leave halfDayLeave = new Leave();
+        halfDayLeave.setLeaveCategory(category);
+        halfDayLeave.setDuration(DurationType.HALF_DAY);
+        halfDayLeave.setDate(LocalDate.of(year, 5, 10));
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User()));
+        when(leaveCategoryRepository.findAll()).thenReturn(List.of(category));
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                eq(userId),
+                eq(LocalDate.of(year, 1, 1)),
+                eq(LocalDate.of(year, 12, 31)),
+                any(Sort.class)))
+                .thenReturn(List.of(halfDayLeave));
+
+        List<EmployeeLeavesRecordResponse> result =
+                userService.getEmployeeLeavesRecordByYear(userId, year);
+
+        assertEquals(1, result.size());
+        assertEquals(0.5, result.getFirst().getLeavesTaken());
+        assertEquals(9.5, result.getFirst().getLeavesRemaining());
+    }
+
+
 }
