@@ -4,6 +4,7 @@ import com.technogise.leave_management_system.entity.Leave;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -33,4 +34,7 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID> {
     Optional<Leave> findByUserIdAndDate(UUID userId, LocalDate date);
 
     boolean existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(UUID userId, LocalDate date, UUID id);
+
+    @Query(value = "SELECT DISTINCT EXTRACT(YEAR FROM l.date)FROM leaves l WHERE l.deleted_at IS NULL ORDER BY 1 DESC", nativeQuery = true)
+    List<String> findDistinctYears();
 }

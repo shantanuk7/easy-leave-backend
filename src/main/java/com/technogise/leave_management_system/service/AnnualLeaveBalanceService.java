@@ -2,6 +2,7 @@ package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.AnnualLeaveBalanceResponse;
 import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
+import com.technogise.leave_management_system.repository.LeaveRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -11,9 +12,11 @@ import java.util.List;
 @Service
 public class AnnualLeaveBalanceService {
     private final AnnualLeaveRepository annualLeaveRepository;
+    private final LeaveRepository leaveRepository;
 
-    public AnnualLeaveBalanceService(AnnualLeaveRepository annualLeaveRepository) {
+    public AnnualLeaveBalanceService(AnnualLeaveRepository annualLeaveRepository, LeaveRepository leaveRepository) {
         this.annualLeaveRepository = annualLeaveRepository;
+        this.leaveRepository = leaveRepository;
     }
 
     public Page<AnnualLeaveBalanceResponse> getAnnualLeaveBalancesForAllEmployees(int year, Pageable pageable) {
@@ -25,6 +28,6 @@ public class AnnualLeaveBalanceService {
     }
 
     public List<String> getDistinctYears() {
-        return annualLeaveRepository.findDistinctYears();
+        return leaveRepository.findDistinctYears();
     }
 }
