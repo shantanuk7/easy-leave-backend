@@ -74,7 +74,7 @@ public class LeaveService {
 
     double computeTakenDays(UUID userId, UUID categoryId, int year, UUID excludeLeaveId) {
         LocalDate startDate = LocalDate.of(year, 1, 1);
-        LocalDate endDate   = LocalDate.of(year, 12, 31);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
 
         return leaveRepository
                 .findAllByUserIdAndDateBetweenAndDeletedAtIsNull(userId, startDate, endDate, Sort.unsorted())
