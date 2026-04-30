@@ -1,9 +1,13 @@
 package com.technogise.leave_management_system.controller;
 import com.technogise.leave_management_system.dto.RequestResponse;
+
+import com.technogise.leave_management_system.dto.CreateRequestPayload;
+import com.technogise.leave_management_system.dto.CreateRequestResponse;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.ScopeType;
+import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.UserRepository;
@@ -20,20 +24,26 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import tools.jackson.databind.ObjectMapper;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,7 +66,11 @@ class RequestControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private User employee;
+
 
     private RequestPostProcessor mockUser(User user) {
         return request -> {
@@ -75,6 +89,16 @@ class RequestControllerTest {
         employee.setName("Priyansh Saxena");
         employee.setEmail("priyansh@technogise.com");
         employee.setRole(UserRole.EMPLOYEE);
+    }
+    private CreateRequestPayload buildValidPayload() {
+        CreateRequestPayload payload = new CreateRequestPayload();
+        payload.setRequestType(RequestType.PAST_LEAVE);
+        payload.setLeaveCategoryId(UUID.randomUUID());
+        payload.setDates(List.of(LocalDate.now().minusDays(3)));
+        payload.setStartTime(LocalTime.of(9, 0));
+        payload.setDuration(DurationType.FULL_DAY);
+        payload.setDescription("Was sick but forgot to apply");
+        return payload;
     }
 
     @Test
@@ -116,5 +140,86 @@ class RequestControllerTest {
                         .param("scope", "ORGANIZATION")
                         .with(mockUser(employee)))
                 .andExpect(status().isForbidden());
+    }
+    @Test
+    void shouldReturn201WithRequestResponseWhenPayloadIsValid() throws Exception {
+        CreateRequestPayload payload = buildValidPayload();
+
+        CreateRequestResponse response = new CreateRequestResponse(
+                UUID.randomUUID(),
+                RequestType.PAST_LEAVE,
+                "Sick Leave",
+                LocalDate.now().minusDays(3),
+                LocalTime.of(9, 0),
+                DurationType.FULL_DAY,
+                "Was sick but forgot to apply",
+                RequestStatus.PENDING
+        );
+
+        when(requestService.raiseRequest(any(CreateRequestPayload.class), eq(employee.getId())))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(post("/api/requests")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Request(s) raised successfully"))
+                .andExpect(jsonPath("$.data[0].requestType").value("PAST_LEAVE"))
+                .andExpect(jsonPath("$.data[0].leaveCategoryName").value("Sick Leave"))
+                .andExpect(jsonPath("$.data[0].duration").value("FULL_DAY"))
+                .andExpect(jsonPath("$.data[0].description").value("Was sick but forgot to apply"))
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"));
+    }
+
+    @Test
+    void shouldReturn400WhenDatesListIsEmpty() throws Exception {
+        CreateRequestPayload payload = buildValidPayload();
+        payload.setDates(List.of());
+
+        mockMvc.perform(post("/api/requests")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest());
+    }
+    @Test
+    void shouldReturn201WithCompOffResponseWhenPayloadIsValid() throws Exception {
+        LocalDate lastSaturday = LocalDate.now()
+                .minusDays(1)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY));
+
+        CreateRequestPayload payload = new CreateRequestPayload();
+        payload.setRequestType(RequestType.COMPENSATORY_OFF);
+        payload.setDates(List.of(lastSaturday));
+        payload.setStartTime(LocalTime.of(10, 0));
+        payload.setDuration(DurationType.FULL_DAY);
+        payload.setDescription("Worked on Saturday for release");
+
+        CreateRequestResponse response = new CreateRequestResponse(
+                UUID.randomUUID(),
+                RequestType.COMPENSATORY_OFF,
+                null,
+                lastSaturday,
+                LocalTime.of(10, 0),
+                DurationType.FULL_DAY,
+                "Worked on Saturday for release",
+                RequestStatus.PENDING
+        );
+
+        when(requestService.raiseRequest(any(CreateRequestPayload.class), eq(employee.getId())))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(post("/api/requests")
+                        .with(mockUser(employee))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Request(s) raised successfully"))
+                .andExpect(jsonPath("$.data[0].requestType").value("COMPENSATORY_OFF"))
+                .andExpect(jsonPath("$.data[0].leaveCategoryName").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"));
     }
 }

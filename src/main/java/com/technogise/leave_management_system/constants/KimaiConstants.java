@@ -11,11 +11,11 @@ public class KimaiConstants {
     public static final String KIMAI_DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss";
 
     public static final Map<String, Integer> ACTIVITY_MAPPING = Map.of(
-            "Annual Leave", 3,
-            "Paternity Leave", 4,
-            "Maternity Leave", 5,
-            "Sabbatical Leave", 6,
-            "Bereavement Leave", 7,
-            "5 Year Rejuvenation Leave", 8
+            LeaveConstants.ANNUAL_LEAVE, 3,
+            LeaveConstants.PATERNITY_LEAVE, 4,
+            LeaveConstants.MATERNITY_LEAVE, 5,
+            LeaveConstants.SABBATICAL_LEAVE, 6,
+            LeaveConstants.BEREAVEMENT_LEAVE, 7,
+            LeaveConstants.REJUVENATION_LEAVE, 8
     );
 }

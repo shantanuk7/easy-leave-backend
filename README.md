@@ -721,3 +721,129 @@ GET /api/requests?page=0&size=10
     "totalPages": 1
   }
 }
+
+### Raise Request — `POST /api/requests`
+---
+
+## Raise Request — POST /api/requests
+
+Allows an employee to raise a retroactive leave request or a compensatory off request. All requests are saved with `status = PENDING` and require manager approval.
+
+**Endpoint:** `POST /api/requests`
+
+**Authorization:** Any authenticated user
+
+---
+
+### Request Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| requestType | String (enum) | Yes | `PAST_LEAVE` or `COMPENSATORY_OFF` |
+| leaveCategoryId | UUID | Conditional | Required for `PAST_LEAVE`. Must be omitted or `null` for `COMPENSATORY_OFF` |
+| dates | Array of dates | Yes | One or more dates in `YYYY-MM-DD` format |
+| startTime | String (LocalTime) | Yes | Start time in `HH:mm:ss` format |
+| duration | String (enum) | Yes | `FULL_DAY` or `HALF_DAY` |
+| description | String | Yes | Reason for the request (max 1000 characters) |
+
+---
+
+### Date Validation Rules
+
+| Rule | PAST_LEAVE | COMPENSATORY_OFF |
+|---|---|---|
+| Today or future dates | Rejected | Rejected |
+| Dates older than 30 days | Rejected | Rejected |
+| Dates within last 30 days | Allowed | Allowed |
+| Weekdays (Mon–Fri) | Allowed | Rejected |
+| Weekends (Sat–Sun) | Skipped automatically | Required |
+
+---
+
+### Example Request — PAST_LEAVE
+
+```json
+POST /api/requests
+Content-Type: application/json
+
+{
+  "requestType": "PAST_LEAVE",
+  "leaveCategoryId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "dates": ["2026-03-10", "2026-03-11"],
+  "startTime": "09:00:00",
+  "duration": "FULL_DAY",
+  "description": "Was sick but forgot to apply"
+}
+```
+
+### Example Request — COMPENSATORY_OFF
+
+```json
+POST /api/requests
+Content-Type: application/json
+
+{
+  "requestType": "COMPENSATORY_OFF",
+  "dates": ["2026-04-12"],
+  "startTime": "10:00:00",
+  "duration": "FULL_DAY",
+  "description": "Worked on Saturday for release"
+}
+```
+
+---
+
+### Response — 201 Created
+
+**PAST_LEAVE**
+```json
+{
+  "success": true,
+  "message": "Request(s) raised successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "requestType": "PAST_LEAVE",
+      "leaveCategoryName": "Sick Leave",
+      "date": "2026-03-10",
+      "startTime": "09:00:00",
+      "duration": "FULL_DAY",
+      "description": "Was sick but forgot to apply",
+      "status": "PENDING"
+    }
+  ]
+}
+```
+
+**COMPENSATORY_OFF**
+```json
+{
+  "success": true,
+  "message": "Request(s) raised successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "requestType": "COMPENSATORY_OFF",
+      "leaveCategoryName": null,
+      "date": "2026-04-12",
+      "startTime": "10:00:00",
+      "duration": "FULL_DAY",
+      "description": "Worked on Saturday for release",
+      "status": "PENDING"
+    }
+  ]
+}
+```
+
+---
+
+### Error Responses
+
+| HTTP Status | PAST_LEAVE Scenario | COMPENSATORY_OFF Scenario |
+|---|---|---|
+| 400 | `leaveCategoryId` is missing | All dates are weekdays |
+| 400 | All dates outside last 30 days or today/future | All dates outside last 30 days or today/future |
+| 400 | All valid dates fall on weekends | — |
+| 400 | Request body missing required fields | Request body missing required fields |
+| 404 | `leaveCategoryId` does not exist | — |
+| 409 | Request already exists for same date with `PENDING` or `APPROVED` status | Request already exists for same date with `PENDING` or `APPROVED` status |
