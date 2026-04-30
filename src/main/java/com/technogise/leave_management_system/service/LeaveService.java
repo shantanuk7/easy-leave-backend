@@ -16,7 +16,6 @@ import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import jakarta.transaction.Transactional;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,7 +36,7 @@ import static com.technogise.leave_management_system.enums.ScopeType.SELF;
 import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
 import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
 import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
-@Slf4j
+
 @Service
 public class LeaveService {
 
