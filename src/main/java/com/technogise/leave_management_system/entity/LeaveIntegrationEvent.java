@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.entity;
 
+import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -36,8 +37,21 @@ public class LeaveIntegrationEvent {
     @Enumerated(EnumType.STRING)
     private PlatformType platform;
 
-    @Column(name = "external_event_id", nullable = false)
+    @Column(name = "external_event_id", nullable = true)
     private String externalEventId;
+
+    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    private IntegrationStatus status;
+
+    @Column(name = "error_message")
+    private String errorMessage;
+
+    @Column(name = "attempts", nullable = false)
+    private int attempts = 1;
+
+    @Column(name = "last_attempt_at")
+    private LocalDateTime lastAttemptAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -51,7 +65,7 @@ public class LeaveIntegrationEvent {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
     }
 
     @PreUpdate
