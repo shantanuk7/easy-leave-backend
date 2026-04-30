@@ -23,4 +23,7 @@ public class LeaveIntegrationHandler {
             kimaiService.syncLeave(leave);
         }
     }
+    public void handleLeaveDelete(Leave leave) {
+        kimaiService.deleteLeave(leave);
+    }
 }

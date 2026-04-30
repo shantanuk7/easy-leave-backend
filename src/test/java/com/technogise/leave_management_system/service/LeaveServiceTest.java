@@ -51,9 +51,6 @@ class LeaveServiceTest {
     @Mock
     private AnnualLeaveService annualLeaveService;
 
-    @Mock
-    private LeaveIntegrationHandler leaveIntegrationHandler;
-
     @InjectMocks
     private LeaveService leaveService;
 

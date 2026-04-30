@@ -399,5 +399,7 @@ public class LeaveService {
         if (leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
+
+        leaveIntegrationHandler.handleLeaveDelete(leave);
     }
 }
