@@ -847,3 +847,24 @@ Content-Type: application/json
 | 400 | Request body missing required fields | Request body missing required fields |
 | 404 | `leaveCategoryId` does not exist | — |
 | 409 | Request already exists for same date with `PENDING` or `APPROVED` status | Request already exists for same date with `PENDING` or `APPROVED` status |
+
+### Employee Annual Leave Metrics - `GET /api/dashboard/employee`
+The API returns total leaves, remaining balance, leaves taken and pending leave requests for the authenticated user.
+
+**Endpoint:** `GET /api/dashboard/employee` 
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee Annual Leave data retrieved successfully",
+  "data": {
+    "totalAnnualLeaves": 18,
+    "remainingAnnualLeaves": -25,
+    "leavesTaken": 43,
+    "pendingRequests": 19
+  }
+}
+```
+
+---
