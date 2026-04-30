@@ -61,7 +61,7 @@ public class LeaveService {
 
     double computeTakenDays(UUID userId, UUID categoryId, int year, UUID excludeLeaveId) {
         LocalDate startDate = LocalDate.of(year, 1, 1);
-        LocalDate endDate   = LocalDate.of(year, 12, 31);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
 
         return leaveRepository
                 .findAllByUserIdAndDateBetweenAndDeletedAtIsNull(userId, startDate, endDate, Sort.unsorted())
@@ -158,7 +158,7 @@ public class LeaveService {
 
         int targetYear = (year != null) ? year : LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
         LocalDate startDate = LocalDate.of(targetYear, 1, 1);
-        LocalDate endDate   = LocalDate.of(targetYear, 12, 31);
+        LocalDate endDate = LocalDate.of(targetYear, 12, 31);
 
         return leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
                 empId, startDate, endDate,
@@ -208,7 +208,7 @@ public class LeaveService {
         validateDurationForCategory(category, request.getDuration());
 
         List<LocalDate> workingDates = filterValidWorkingDates(request.getDates());
-        List<LocalDate> newDates     = filterNonOverlappingLeaveDates(userId, workingDates);
+        List<LocalDate> newDates = filterNonOverlappingLeaveDates(userId, workingDates);
 
         double requestedDays = newDates.size()
                 * (request.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5);
@@ -317,8 +317,8 @@ public class LeaveService {
         validateLeaveOwnership(leave, userId, "Not allowed to update this leave");
         validateExistingLeaveDate(leave.getDate());
 
-        DurationType oldDuration     = leave.getDuration();
-        String       oldCategoryName = leave.getLeaveCategory().getName();
+        DurationType oldDuration = leave.getDuration();
+        String oldCategoryName = leave.getLeaveCategory().getName();
 
         LeaveCategory targetCategory = (request.getLeaveCategoryId() != null)
                 ? leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId())
