@@ -101,8 +101,8 @@ public class HolidayService {
 
         List<Holiday> holidays =
                 holidayType == null
-                        ? holidayRepository.findAll()
-                        : holidayRepository.findAllByType(holidayType);
+                        ? holidayRepository.findAllByOrderByDateAsc()
+                        : holidayRepository.findAllByTypeOrderByDateAsc(holidayType);
 
         return holidays.stream()
                 .filter(holiday -> holiday.getDate().getYear() == LocalDate.now().getYear())
