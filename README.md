@@ -233,7 +233,7 @@ Content-Type: application/json
     {
       "id": "uuid",
       "date": "2026-04-10",
-      "leaveCategoryName": "Annual Leave",
+      "type": "Annual Leave",
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "description": "Dummy Description"
@@ -241,7 +241,7 @@ Content-Type: application/json
     {
       "id": "uuid",
       "date": "2026-04-13",
-      "leaveCategoryName": "Annual Leave",
+      "type": "Annual Leave",
       "duration": "FULL_DAY",
       "startTime": "09:00:00",
       "description": "Dummy Description"
@@ -847,3 +847,90 @@ Content-Type: application/json
 | 400 | Request body missing required fields | Request body missing required fields |
 | 404 | `leaveCategoryId` does not exist | — |
 | 409 | Request already exists for same date with `PENDING` or `APPROVED` status | Request already exists for same date with `PENDING` or `APPROVED` status |
+
+### Apply Optional Holiday — `POST /api/leaves`
+
+Allows a user to apply leave using an **optional holiday** instead of a leave category.
+
+---
+
+### Request Body
+
+| Field             | Type               | Required    | Description                              |
+| ----------------- | ------------------ | ----------- | ---------------------------------------- |
+| `holidayId`       | UUID               | Conditional | Required if applying optional holiday    |
+| `leaveCategoryId` | UUID               | Conditional | Required if not using holiday            |
+| `dates`           | Array of dates     | Yes         | One or more dates in `YYYY-MM-DD` format |
+| `duration`        | String (enum)      | Yes         | `FULL_DAY` or `HALF_DAY`                 |
+| `startTime`       | String (LocalTime) | Yes         | Format: `HH:mm:ss`                       |
+| `description`     | String             | Yes         | Reason for leave                         |
+
+---
+
+### Validation Rules
+
+| Rule                   | Description                                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| Mutual Exclusiveness   | Provide only one of `holidayId` or `leaveCategoryId`             |
+| Mandatory Fields       | At least one of the above must be present                        |
+| Optional Holiday Limit | Cannot exceed yearly configured limit                            |
+| Date Rules             | Same as standard leave (no weekends, valid range, no duplicates) |
+
+---
+
+### Example Request
+
+```json
+{
+  "holidayId": "uuid",
+  "dates": ["2026-11-09"],
+  "duration": "FULL_DAY",
+  "startTime": "10:00:00",
+  "description": "Diwali"
+}
+```
+
+---
+
+### Response
+
+**201 Created** — Leave(s) applied successfully.
+
+```json
+{
+  "success": true,
+  "message": "Leaves applied successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "date": "2026-11-09",
+      "type": "Diwali",
+      "duration": "FULL_DAY",
+      "startTime": "10:00:00",
+      "description": "Diwali"
+    }
+  ]
+}
+```
+
+---
+
+### Error Responses
+
+| HTTP Status | Scenario                                        |
+| ----------- | ----------------------------------------------- |
+| `400`       | Both `holidayId` and `leaveCategoryId` provided |
+| `400`       | Neither field provided                          |
+| `400`       | Optional holiday limit exceeded                 |
+| `404`       | Provided `holidayId` does not exist             |
+| `409`       | Leave already exists for given date             |
+
+---
+
+### Configuration
+
+| Variable                          | Description                                         |
+| --------------------------------- | --------------------------------------------------- |
+| `leave.optional-holiday.max-days` | Maximum optional holidays allowed per user per year |
+
+---

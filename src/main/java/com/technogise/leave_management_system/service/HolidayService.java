@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -95,6 +96,10 @@ public class HolidayService {
         );
     }
 
+    public List<Holiday> getHolidaysByType(HolidayType holidayType) {
+        return holidayRepository.findAllByType(holidayType);
+    }
+
     public List<HolidayResponse> getHolidays(String type) {
         validateHolidayType(type);
         HolidayType holidayType = convertStringToHolidayType(type);
@@ -102,7 +107,7 @@ public class HolidayService {
         List<Holiday> holidays =
                 holidayType == null
                         ? holidayRepository.findAll()
-                        : holidayRepository.findAllByType(holidayType);
+                        : getHolidaysByType(holidayType);
 
         return holidays.stream()
                 .filter(holiday -> holiday.getDate().getYear() == LocalDate.now().getYear())
@@ -113,5 +118,11 @@ public class HolidayService {
                         holiday.getDate()
                 ))
                 .toList();
+    }
+
+    public Holiday getHolidayById(UUID id) {
+        return holidayRepository.findById(id).orElseThrow(
+                () -> new HttpException(HttpStatus.NOT_FOUND, "Holiday not found")
+        );
     }
 }

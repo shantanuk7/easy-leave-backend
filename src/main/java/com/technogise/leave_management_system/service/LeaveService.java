@@ -6,16 +6,19 @@ import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
+import com.technogise.leave_management_system.entity.Holiday;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -45,18 +48,24 @@ public class LeaveService {
     private final LeaveCategoryService leaveCategoryService;
     private final AnnualLeaveService annualLeaveService;
     private final LeaveIntegrationHandler leaveIntegrationHandler;
+    private final HolidayService holidayService;
+
+    @Value("${leave.optional-holiday.max-days}")
+    private int maxOptionalHolidayDays;
 
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
                         LeaveCategoryService leaveCategoryService,
                         AnnualLeaveService annualLeaveService,
-                        LeaveIntegrationHandler leaveIntegrationHandler
+                        LeaveIntegrationHandler leaveIntegrationHandler,
+                        HolidayService holidayService
     ) {
         this.leaveRepository = leaveRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
         this.annualLeaveService = annualLeaveService;
         this.leaveIntegrationHandler = leaveIntegrationHandler;
+        this.holidayService = holidayService;
     }
 
     public List<Leave> filterLeavesByScope(String scope, User user) {
@@ -89,11 +98,12 @@ public class LeaveService {
     }
 
     private LeaveResponse mapToLeaveResponse(Leave leave) {
+        String type = getLeaveDisplayName(leave);
         return new LeaveResponse(
                 leave.getId(),
                 leave.getDate(),
                 leave.getUser().getName(),
-                leave.getLeaveCategory().getName(),
+                type,
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
@@ -161,12 +171,72 @@ public class LeaveService {
                 .anyMatch(weekend -> weekend.getDayOfWeek() == date.getDayOfWeek());
     }
 
+    private boolean isFixedHoliday(LocalDate date) {
+        List<Holiday> fixedHolidays = holidayService.getHolidaysByType(HolidayType.FIXED);
+
+        return fixedHolidays.stream().anyMatch(holiday -> holiday.getDate().equals(date));
+    }
+
+    private void validateMutualExclusiveness(boolean hasHoliday, boolean hasCategory) {
+        if (hasHoliday && hasCategory) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot apply for a leave with both fields provided. Provide either holidayId or leaveCategoryId."
+            );
+        }
+        if (!hasHoliday && !hasCategory) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "At least one of the two fields must be provided holiday_id or category_id."
+            );
+        }
+    }
+
+    private void validateOptionalHolidaysCount(User user) {
+        int currentYear = LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
+        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
+        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+
+        long optionalHolidaysCount = leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
+                user.getId(),
+                startDate,
+                endDate
+        );
+
+        if (optionalHolidaysCount >= maxOptionalHolidayDays) {
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot apply more than allocated days for optional holidays"
+            );
+        }
+    }
+
+    private String getLeaveDisplayName(Leave leave) {
+        if (leave.getLeaveCategory() != null) {
+            return leave.getLeaveCategory().getName();
+        }
+        return leave.getHoliday().getType().getDisplayName();
+    }
+
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
 
+        boolean hasHoliday = request.getHolidayId() != null;
+        boolean hasCategory = request.getLeaveCategoryId() != null;
+        validateMutualExclusiveness(hasHoliday, hasCategory);
+
         User user = userService.getUserByUserId(userId);
-        LeaveCategory category =
-                leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId());
+        LeaveCategory category = hasCategory
+                ? leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId())
+                : null;
+
+        Holiday holiday = hasHoliday
+                ? holidayService.getHolidayById(request.getHolidayId())
+                : null;
+
+        if (hasHoliday) {
+            validateOptionalHolidaysCount(user);
+        }
 
         List<LocalDate> workingDates =
                 filterValidWorkingDates(request.getDates());
@@ -181,22 +251,28 @@ public class LeaveService {
                     leave.setDate(date);
                     leave.setUser(user);
                     leave.setLeaveCategory(category);
+                    leave.setHoliday(holiday);
                     leave.setDescription(request.getDescription());
                     leave.setStartTime(request.getStartTime());
                     leave.setDuration(request.getDuration());
                     leave.setDeletedAt(null);
                     return leave;
                 }).toList();
+
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
-        if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+
+        if (category != null && category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
         }
         leaveIntegrationHandler.handleLeaves(savedLeaves);
+
+        String leaveTypeName = hasCategory ? category.getName() : holiday.getName();
+
         return savedLeaves.stream()
                 .map(leave -> new CreateLeaveResponse(
                         leave.getId(),
                         leave.getDate(),
-                        category.getName(),
+                        leaveTypeName,
                         leave.getDuration(),
                         leave.getStartTime(),
                         leave.getDescription()
@@ -212,7 +288,9 @@ public class LeaveService {
             throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
         }
 
-        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), leave.getLeaveCategory().getName(),
+        String type = getLeaveDisplayName(leave);
+
+        return new LeaveResponse(leave.getId(), leave.getDate(), leave.getUser().getName(), type,
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
@@ -235,12 +313,13 @@ public class LeaveService {
 
         List<LocalDate> workingDays = validDates.stream()
                 .filter(date -> !isWeekendDay(date))
+                .filter(date -> !isFixedHoliday(date))
                 .toList();
 
         if (workingDays.isEmpty()) {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
-                    "Cannot apply leave on weekends"
+                    "Cannot apply leave on weekends or fixed holidays"
             );
         }
 
@@ -396,7 +475,8 @@ public class LeaveService {
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);
 
-        if (leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+        if (leave.getLeaveCategory() != null
+                && leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
     }
