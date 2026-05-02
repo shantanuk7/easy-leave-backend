@@ -25,5 +25,6 @@ public class LeaveIntegrationHandler {
     }
     public void handleLeaveDelete(Leave leave) {
         kimaiService.deleteLeave(leave);
+        googleCalendarService.deleteLeave(leave);
     }
 }
