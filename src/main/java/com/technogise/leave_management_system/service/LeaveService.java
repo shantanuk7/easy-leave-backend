@@ -122,7 +122,8 @@ public class LeaveService {
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
-                leave.getDescription()
+                leave.getDescription(),
+                leave.getHoliday() != null ? leave.getHoliday().getId() : null
         );
     }
 
@@ -356,7 +357,8 @@ public class LeaveService {
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getUpdatedAt(),
-                leave.getDescription()
+                leave.getDescription(),
+                leave.getHoliday() != null ? leave.getHoliday().getId() : null
         );
     }
 

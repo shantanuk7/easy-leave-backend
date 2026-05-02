@@ -24,4 +24,5 @@ public class LeaveResponse {
     public LocalTime startTime;
     public LocalDateTime applyOn;
     public String reason;
+    public UUID holidayId;
 }

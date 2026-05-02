@@ -1,12 +1,7 @@
 package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.constants.LeaveConstants;
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
-import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveFilterRequest;
+import com.technogise.leave_management_system.dto.*;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -186,7 +181,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                employeeLeave.getHoliday().getId()
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response));
@@ -219,7 +215,8 @@ public class LeaveControllerTest {
                 managerLeave.getDuration(),
                 managerLeave.getStartTime(),
                 managerLeave.getUpdatedAt(),
-                managerLeave.getDescription()
+                managerLeave.getDescription(),
+                managerLeave.getHoliday().getId()
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response));
@@ -273,7 +270,8 @@ public class LeaveControllerTest {
                 managerLeave.getDuration(),
                 managerLeave.getStartTime(),
                 managerLeave.getUpdatedAt(),
-                managerLeave.getDescription()
+                managerLeave.getDescription(),
+                managerLeave.getHoliday().getId()
         );
 
         LeaveResponse response2 = new LeaveResponse(
@@ -284,7 +282,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                managerLeave.getHoliday().getId()
         );
         Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
 
@@ -319,7 +318,8 @@ public class LeaveControllerTest {
                 managerLeave.getDuration(),
                 managerLeave.getStartTime(),
                 managerLeave.getUpdatedAt(),
-                managerLeave.getDescription()
+                managerLeave.getDescription(),
+                managerLeave.getHoliday().getId()
                 );
         LeaveResponse response2 = new LeaveResponse(
                 employeeLeave.getId(),
@@ -329,7 +329,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                employeeLeave.getHoliday().getId()
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
@@ -406,7 +407,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                employeeLeave.getHoliday().getId()
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response));
@@ -471,7 +473,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                employeeLeave.getHoliday().getId()
         );
 
         when(leaveService.getLeaveById(employeeLeave.getId(), employee.getId()))
