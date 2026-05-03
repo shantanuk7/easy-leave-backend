@@ -220,4 +220,8 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     public void updateLeave(Leave leave) {
         log.info("Google Calendar update triggered for leaveId={}, skipping implementation.", leave.getId());
     }
+
+    @Override
+    public void updateLeave(Leave leave) {
+    }
 }
