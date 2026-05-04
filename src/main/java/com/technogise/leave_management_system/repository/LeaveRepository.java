@@ -1,8 +1,8 @@
 package com.technogise.leave_management_system.repository;
-
 import com.technogise.leave_management_system.entity.Leave;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,18 +16,21 @@ import java.util.UUID;
 
 @Repository
 public interface LeaveRepository extends JpaRepository<Leave, UUID>, JpaSpecificationExecutor<Leave> {
+
     @EntityGraph(attributePaths = {"user", "leaveCategory"})
     Page<Leave> findAll(Specification<Leave> spec, Pageable pageable);
 
     List<Leave> findAllByUserIdAndDeletedAtNull(UUID userId);
 
+    List<Leave> findAllByUserIdAndDeletedAtNull(UUID userId, Sort sort);
+
     long countByDateAndDeletedAtIsNull(LocalDate date);
 
-    long countByUserIdAndLeaveCategoryIdAndDateBetweenAndDeletedAtIsNull(
+    List<Leave> findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
             UUID userId,
-            UUID leaveCategoryId,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            Sort sort
     );
 
     Optional<Leave> findByUserIdAndDate(UUID userId, LocalDate date);
@@ -39,4 +42,6 @@ public interface LeaveRepository extends JpaRepository<Leave, UUID>, JpaSpecific
             LocalDate startDate,
             LocalDate endDate
     );
+
+    List<Leave> findAllByDeletedAtIsNull(Sort sort);
 }

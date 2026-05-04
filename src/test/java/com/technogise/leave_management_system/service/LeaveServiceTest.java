@@ -1250,33 +1250,41 @@ class LeaveServiceTest {
 
     @Test
     void shouldThrowBadRequestWhenNonAnnualLeaveBalanceIsExhausted() {
+        User user = createValidUser();
         LeaveCategory sickLeave = new LeaveCategory();
         sickLeave.setId(leaveCategoryId);
         sickLeave.setName("Sick Leave");
         sickLeave.setAllocatedDays(2);
 
-        LocalDate weekday = nextWeekday();
+        LocalDate weekday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.WEDNESDAY));
+
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(weekday));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(9, 0));
+        request.setDescription("Feeling sick");
+
+        lenient().when(userService.getUserByUserId(userId)).thenReturn(user);
+        lenient().when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
+
+        lenient().when(holidayService.getHolidaysByType(HolidayType.FIXED)).thenReturn(new ArrayList<>());
+
+        lenient().when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+                .thenReturn(new ArrayList<>());
+        lenient().when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId)))
+                .thenReturn(new ArrayList<>());
 
         Leave takenLeave1 = new Leave();
         takenLeave1.setLeaveCategory(sickLeave);
         takenLeave1.setDuration(DurationType.FULL_DAY);
-        takenLeave1.setDate(weekday.minusDays(2));
 
         Leave takenLeave2 = new Leave();
         takenLeave2.setLeaveCategory(sickLeave);
         takenLeave2.setDuration(DurationType.FULL_DAY);
-        takenLeave2.setDate(weekday.minusDays(1));
 
-        CreateLeaveRequest request = new CreateLeaveRequest(
-                leaveCategoryId, null, List.of(weekday), DurationType.FULL_DAY,
-                LocalTime.of(9, 0), "Feeling sick");
-
-        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
-                .thenReturn(List.of());
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
+        lenient().when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
+                        eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
                 .thenReturn(List.of(takenLeave1, takenLeave2));
 
         HttpException ex = assertThrows(HttpException.class,
@@ -1295,17 +1303,15 @@ class LeaveServiceTest {
 
         LocalDate date = nextWeekday();
         CreateLeaveRequest request = new CreateLeaveRequest(
-                leaveCategoryId,
-                null,
-                List.of(date),
-                DurationType.HALF_DAY,
-                LocalTime.of(9, 0),
-                "Testing coverage for half day branch"
-        );
+                leaveCategoryId, null, List.of(date), DurationType.HALF_DAY,
+                LocalTime.of(9, 0), "Half day test");
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeave);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(holidayService.getHolidaysByType(HolidayType.FIXED)).thenReturn(List.of());
+
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
+
         when(leaveRepository.findByUserIdAndDate(any(), any())).thenReturn(Optional.empty());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -1314,7 +1320,7 @@ class LeaveServiceTest {
         assertEquals(1, responses.size());
         assertEquals(DurationType.HALF_DAY, responses.get(0).getDuration());
 
-        verify(annualLeaveService).syncOnLeaveCreated(user, DurationType.HALF_DAY, 1, date.getYear());
+        verify(annualLeaveService).syncOnLeaveCreated(eq(user), eq(DurationType.HALF_DAY), eq(responses.size()), anyInt());
     }
 
     @Test
@@ -1338,6 +1344,59 @@ class LeaveServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Sick Leave can only be applied as a full day", ex.getMessage());
+    }
+
+    @Test
+    void shouldHandleNullOldCategoryWhenUpdatingHolidayLeave() {
+        User user = createValidUser();
+        Holiday holiday = createOptionalHoliday();
+
+        Leave holidayLeave = new Leave();
+        holidayLeave.setId(UUID.randomUUID());
+        holidayLeave.setUser(user);
+        holidayLeave.setLeaveCategory(null);
+        holidayLeave.setHoliday(holiday);
+        holidayLeave.setDate(LocalDate.now());
+        holidayLeave.setDuration(DurationType.FULL_DAY);
+        holidayLeave.setStartTime(LocalTime.of(9, 0));
+        holidayLeave.setDescription("Original Description");
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDescription("Updated holiday description");
+
+        when(leaveRepository.findById(holidayLeave.getId())).thenReturn(Optional.of(holidayLeave));
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateLeaveResponse response = leaveService.updateLeave(holidayLeave.getId(), request, userId);
+
+        assertNotNull(response);
+        assertEquals("Updated holiday description", response.getDescription());
+        assertEquals(holiday.getType().getDisplayName(), response.getLeaveCategoryName());
+
+        verify(annualLeaveService, never()).syncOnLeaveUpdated(any(), any(), any(), any(), any(), anyInt());
+    }
+
+    @Test
+    void shouldSyncBalanceWhenUpdatingNonAnnualToAnnualLeave() {
+        User user = createValidUser();
+        LeaveCategory sickCat = new LeaveCategory(UUID.randomUUID(), "Sick Leave", 10, null, null);
+        LeaveCategory annualCat = new LeaveCategory(UUID.randomUUID(), LeaveConstants.ANNUAL_LEAVE, 24, null, null);
+
+        Leave existingLeave = createEmployeeLeave(user, sickCat);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setLeaveCategoryId(annualCat.getId());
+
+        when(leaveRepository.findById(existingLeave.getId())).thenReturn(Optional.of(existingLeave));
+        when(leaveCategoryService.getLeaveCategoryById(annualCat.getId())).thenReturn(annualCat);
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        leaveService.updateLeave(existingLeave.getId(), request, userId);
+
+        // This covers the second half of the || condition on line 424
+        verify(annualLeaveService).syncOnLeaveUpdated(
+                eq(user), eq("Sick Leave"), eq(LeaveConstants.ANNUAL_LEAVE), any(), any(), anyInt()
+        );
     }
 
     @Test

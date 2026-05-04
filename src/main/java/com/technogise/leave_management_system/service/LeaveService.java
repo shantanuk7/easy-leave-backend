@@ -23,6 +23,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -40,9 +41,6 @@ import java.time.LocalDateTime;
 
 import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATION;
 import static com.technogise.leave_management_system.enums.ScopeType.SELF;
-import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
-import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
-import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
 
 @Service
 public class LeaveService {
@@ -90,7 +88,7 @@ public class LeaveService {
             UUID userId,
             int year,
             UUID excludeLeaveId) {
-        if (category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+        if (category == null || category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             return;
         }
         double taken     = computeTakenDays(userId, category.getId(), year, excludeLeaveId);
@@ -99,8 +97,6 @@ public class LeaveService {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
                     "Insufficient leave balance for " + category.getName()
-                            + ". Requested No of Days: " + (int)requested
-                            + ", Available No of Days: " + (int)remaining
             );
         }
     }
@@ -112,35 +108,6 @@ public class LeaveService {
         if (!category.getName().equals(LeaveConstants.ANNUAL_LEAVE) && duration == DurationType.HALF_DAY) {
             throw new HttpException(HttpStatus.BAD_REQUEST, category.getName() + " can only be applied as a full day");
         }
-    }
-
-    public List<Leave> filterLeavesByScope(String scope, User user) {
-        if (scope.equalsIgnoreCase(SELF.toString())) {
-            return leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
-        } else if (scope.equalsIgnoreCase(ORGANIZATION.toString())) {
-            if (user.getRole().equals(UserRole.MANAGER)) {
-                return leaveRepository.findAllByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, "date"));
-            }
-            throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
-        }
-        throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope query parameter");
-    }
-
-    public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
-        if (status.equalsIgnoreCase(UPCOMING.toString())) {
-            return leaveList.stream()
-                    .filter(leave -> leave.getDate().isAfter(LocalDate.now()))
-                    .toList();
-        } else if (status.equalsIgnoreCase(COMPLETED.toString())) {
-            return leaveList.stream()
-                    .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
-                    .toList();
-        } else if (status.equalsIgnoreCase(ONGOING.toString())) {
-            return leaveList.stream()
-                    .filter(leave -> leave.getDate().equals(LocalDate.now()))
-                    .toList();
-        }
-        throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid status query parameter");
     }
 
     private LeaveResponse mapToLeaveResponse(Leave leave) {
@@ -283,7 +250,6 @@ public class LeaveService {
 
     @Transactional
     public List<CreateLeaveResponse> applyLeave(CreateLeaveRequest request, UUID userId) {
-
         boolean hasHoliday = request.getHolidayId() != null;
         boolean hasCategory = request.getLeaveCategoryId() != null;
         validateMutualExclusiveness(hasHoliday, hasCategory);
@@ -328,9 +294,9 @@ public class LeaveService {
 
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
 
-        if (category != null && category.getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
-            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
-        }
+        if (category != null && category.getName().equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE)) {
+            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear()); }
+
         leaveIntegrationHandler.handleLeaves(savedLeaves);
 
         String leaveTypeName = hasCategory ? category.getName() : holiday.getName();
@@ -426,7 +392,7 @@ public class LeaveService {
         validateExistingLeaveDate(leave.getDate());
 
         DurationType oldDuration = leave.getDuration();
-        String oldCategoryName = leave.getLeaveCategory().getName();
+        String oldCategoryName = leave.getLeaveCategory() != null ? leave.getLeaveCategory().getName() : "";
 
         LeaveCategory targetCategory = (request.getLeaveCategoryId() != null)
                 ? leaveCategoryService.getLeaveCategoryById(request.getLeaveCategoryId())
@@ -437,7 +403,6 @@ public class LeaveService {
 
         double requestedDays = (targetDuration == DurationType.FULL_DAY) ? 1.0 : 0.5;
         validateNonAnnualBalanceSufficiency(targetCategory, requestedDays, userId, leave.getDate().getYear(), leaveId);
-
         validateDurationForCategory(targetCategory, targetDuration);
 
         if (request.getDate() != null) {
@@ -454,11 +419,15 @@ public class LeaveService {
 
         Leave savedLeave = leaveRepository.save(leave);
 
-        if (request.getLeaveCategoryId() != null || request.getDuration() != null) {
+        if (oldCategoryName.equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE)
+                || (targetCategory != null && targetCategory.getName().equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE))) {
+
             annualLeaveService.syncOnLeaveUpdated(
-                    leave.getUser(), oldCategoryName,
+                    leave.getUser(),
+                    oldCategoryName,
                     savedLeave.getLeaveCategory().getName(),
-                    oldDuration, savedLeave.getDuration(),
+                    oldDuration,
+                    savedLeave.getDuration(),
                     savedLeave.getDate().getYear());
         }
 
@@ -483,10 +452,14 @@ public class LeaveService {
     }
 
     private UpdateLeaveResponse mapToUpdateLeaveResponse(Leave leave) {
+        String categoryName = (leave.getLeaveCategory() != null)
+                ? leave.getLeaveCategory().getName()
+                : leave.getHoliday().getType().getDisplayName();
+
         return new UpdateLeaveResponse(
                 leave.getId(),
                 leave.getDate(),
-                leave.getLeaveCategory().getName(),
+                categoryName,
                 leave.getDuration(),
                 leave.getStartTime(),
                 leave.getDescription()
