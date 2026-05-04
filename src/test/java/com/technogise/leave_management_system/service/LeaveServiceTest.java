@@ -2139,14 +2139,17 @@ class LeaveServiceTest {
         leave.setStartTime(LocalTime.of(10, 0));
         leave.setUpdatedAt(LocalDateTime.now());
 
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
+
         when(userService.getUserByUserId(user.getId())).thenReturn(user);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(leave));
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(user.getId(), "self", null, null, null);
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                user.getId(), buildFilter("SELF", null, null, null), pageable);
 
-        assertEquals(1, result.size());
-        assertEquals(holiday.getId(), result.getFirst().holidayId);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(holiday.getId(), result.getContent().getFirst().holidayId);
     }
 
     @Test
