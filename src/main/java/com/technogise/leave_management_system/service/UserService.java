@@ -8,6 +8,7 @@ import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
@@ -42,6 +43,9 @@ public class UserService {
     private final AnnualLeaveRepository annualLeaveRepository;
     @Value("${google.calendar.timezone}")
     private String timezone;
+
+    @Value("${leave.optional-holiday.max-days}")
+    private int maxOptionalHolidayDays;
 
     public UserService(
             UserRepository userRepository,
@@ -153,10 +157,10 @@ public class UserService {
 
         responses.add(EmployeeLeavesRecordResponse.builder()
                 .leaveId(null)
-                .leaveType("Optional Holiday")
+                .leaveType(HolidayType.OPTIONAL.getDisplayName())
                 .leavesTaken(optionalHolidaysTaken)
-                .totalLeavesAvailable(2.0)
-                .leavesRemaining(2.0 - optionalHolidaysTaken)
+                .totalLeavesAvailable(maxOptionalHolidayDays)
+                .leavesRemaining(maxOptionalHolidayDays - optionalHolidaysTaken)
                 .build());
 
         return responses;
