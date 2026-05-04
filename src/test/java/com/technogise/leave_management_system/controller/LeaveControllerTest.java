@@ -1,7 +1,12 @@
 package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.constants.LeaveConstants;
-import com.technogise.leave_management_system.dto.*;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveFilterRequest;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -19,6 +24,9 @@ import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2Clien
 import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,7 +35,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
@@ -36,8 +43,9 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -170,168 +178,198 @@ public class LeaveControllerTest {
 
     @Test
     void shouldReturn200AndListOfLeavesWhenEmployeeRequestsSelfLeaves() throws Exception {
-        List<LeaveResponse> response = List.of(
-                new LeaveResponse(
-                        employeeLeave.getId(),
-                        employeeLeave.getDate(),
-                        employee.getName(),
-                        leaveCategory.getName(),
-                        employeeLeave.getDuration(),
-                        employeeLeave.getStartTime(),
-                        employeeLeave.getUpdatedAt(),
-                        employeeLeave.getDescription()
-                )
+        LeaveResponse response = new LeaveResponse(
+                employeeLeave.getId(),
+                employeeLeave.getDate(),
+                employee.getName(),
+                leaveCategory.getName(),
+                employeeLeave.getDuration(),
+                employeeLeave.getStartTime(),
+                employeeLeave.getUpdatedAt(),
+                employeeLeave.getDescription()
         );
 
-        when(leaveService.getAllLeaves(employee.getId(), "self", null, null , null))
-                .thenReturn(response);
+        Page<LeaveResponse> page = new PageImpl<>(List.of(response));
+
+        when(leaveService.getAllLeaves(eq(employee.getId()), argThat(filter ->
+                        "self".equals(filter.getScope())
+                                && filter.getStatus() == null
+                                && filter.getEmpId() == null),
+                any(Pageable.class))).thenReturn(page);
+        when(leaveService.getAllLeaves(eq(employee.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
+                .thenReturn(page);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(employee))
                         .param("scope", "self"))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration")
-                        .value(response.getFirst().getDuration().toString()));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(jsonPath("$.data.content[0].duration")
+                        .value(response.getDuration().toString()));
     }
 
     @Test
     void shouldReturn200AndListOfLeavesWhenManagerRequestsSelfLeaves() throws Exception {
-        List<LeaveResponse> response = List.of(
-                new LeaveResponse(
-                        managerLeave.getId(),
-                        managerLeave.getDate(),
-                        manager.getName(),
-                        leaveCategory.getName(),
-                        managerLeave.getDuration(),
-                        managerLeave.getStartTime(),
-                        managerLeave.getUpdatedAt(),
-                        managerLeave.getDescription()
-                )
+        LeaveResponse response = new LeaveResponse(
+                managerLeave.getId(),
+                managerLeave.getDate(),
+                manager.getName(),
+                leaveCategory.getName(),
+                managerLeave.getDuration(),
+                managerLeave.getStartTime(),
+                managerLeave.getUpdatedAt(),
+                managerLeave.getDescription()
         );
 
-        when(leaveService.getAllLeaves(manager.getId(), "self", null, null , null))
-                .thenReturn(response);
+        Page<LeaveResponse> page = new PageImpl<>(List.of(response));
+
+        when(leaveService.getAllLeaves(eq(manager.getId()), argThat(filter ->
+                        "self".equals(filter.getScope())
+                                && filter.getStatus() == null
+                                && filter.getEmpId() == null),
+                any(Pageable.class))).thenReturn(page);
+        when(leaveService.getAllLeaves(eq(manager.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
+                .thenReturn(page);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(manager))
                         .param("scope", "self"))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration")
-                        .value(response.getFirst().getDuration().toString()));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(jsonPath("$.data.content[0].duration")
+                        .value(response.getDuration().toString()));
+    }
+
+    @Test
+    void shouldApplyAscendingSortWhenSortDirIsAsc() throws Exception {
+        Page<LeaveResponse> page = new PageImpl<>(List.of());
+
+        when(leaveService.getAllLeaves(
+                eq(employee.getId()),
+                any(LeaveFilterRequest.class),
+                argThat(pageable ->
+                        pageable.getSort().getOrderFor("date") != null
+                                && pageable.getSort().getOrderFor("date").isAscending()
+                )
+        )).thenReturn(page);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .with(mockUser(employee))
+                        .param("scope", "self")
+                        .param("sort", "date")
+                        .param("sortDir", "asc"))
+                .andExpect(status().isOk());
     }
 
     @Test
     void shouldReturn200AndListOfLeavesWhenManagerRequestsAllEmployeeLeaves() throws Exception {
-        List<LeaveResponse> response = List.of(
-                new LeaveResponse(
-                        managerLeave.getId(),
-                        managerLeave.getDate(),
-                        manager.getName(),
-                        leaveCategory.getName(),
-                        managerLeave.getDuration(),
-                        managerLeave.getStartTime(),
-                        managerLeave.getUpdatedAt(),
-                        managerLeave.getDescription()
-                ),
-                new LeaveResponse(
-                        employeeLeave.getId(),
-                        employeeLeave.getDate(),
-                        employee.getName(),
-                        leaveCategory.getName(),
-                        employeeLeave.getDuration(),
-                        employeeLeave.getStartTime(),
-                        employeeLeave.getUpdatedAt(),
-                        employeeLeave.getDescription()
-                )
+        LeaveResponse response1 = new LeaveResponse(
+                managerLeave.getId(),
+                managerLeave.getDate(),
+                manager.getName(),
+                leaveCategory.getName(),
+                managerLeave.getDuration(),
+                managerLeave.getStartTime(),
+                managerLeave.getUpdatedAt(),
+                managerLeave.getDescription()
         );
 
-        when(leaveService.getAllLeaves(manager.getId(), "organization", null , null , null))
-                .thenReturn(response);
+        LeaveResponse response2 = new LeaveResponse(
+                employeeLeave.getId(),
+                employeeLeave.getDate(),
+                employee.getName(),
+                leaveCategory.getName(),
+                employeeLeave.getDuration(),
+                employeeLeave.getStartTime(),
+                employeeLeave.getUpdatedAt(),
+                employeeLeave.getDescription()
+        );
+        Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
+
+        when(leaveService.getAllLeaves(eq(manager.getId()), argThat(filter -> "self".equals(filter.getScope())
+                && filter.getStatus() == null && filter.getEmpId() == null), any(Pageable.class))).thenReturn(page);
+        when(leaveService.getAllLeaves(eq(manager.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
+                .thenReturn(page);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(manager))
                         .param("scope", "organization"))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].date")
-                        .value(response.getFirst().getDate().toString()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].employeeName")
-                        .value(response.getFirst().getEmployeeName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].type")
-                        .value(response.getFirst().getType()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].reason")
-                        .value(response.getFirst().getReason()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].date")
-                        .value(response.get(1).getDate().toString()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].employeeName")
-                        .value(response.get(1).getEmployeeName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].type")
-                        .value(response.get(1).getType()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[1].reason")
-                        .value(response.get(1).getReason()));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(jsonPath("$.data.content[0].date").value(response1.getDate().toString()))
+                .andExpect(jsonPath("$.data.content[0].employeeName").value(response1.getEmployeeName()))
+                .andExpect(jsonPath("$.data.content[0].type").value(response1.getType()))
+                .andExpect(jsonPath("$.data.content[0].reason").value(response1.getReason()))
+                .andExpect(jsonPath("$.data.content[1].date").value(response2.getDate().toString()))
+                .andExpect(jsonPath("$.data.content[1].employeeName").value(response2.getEmployeeName()))
+                .andExpect(jsonPath("$.data.content[1].type").value(response2.getType()))
+                .andExpect(jsonPath("$.data.content[1].reason").value(response2.getReason()));
     }
 
     @Test
     void shouldReturn200AndListOfLeavesFilterByStatus() throws Exception {
-        List<LeaveResponse> response = List.of(
-                new LeaveResponse(
-                        managerLeave.getId(),
-                        managerLeave.getDate(),
-                        manager.getName(),
-                        leaveCategory.getName(),
-                        managerLeave.getDuration(),
-                        managerLeave.getStartTime(),
-                        managerLeave.getUpdatedAt(),
-                        managerLeave.getDescription()
-                ),
-                new LeaveResponse(
-                        employeeLeave.getId(),
-                        employeeLeave.getDate(),
-                        employee.getName(),
-                        leaveCategory.getName(),
-                        employeeLeave.getDuration(),
-                        employeeLeave.getStartTime(),
-                        employeeLeave.getUpdatedAt(),
-                        employeeLeave.getDescription()
-                )
+        LeaveResponse response1 = new LeaveResponse(
+                managerLeave.getId(),
+                managerLeave.getDate(),
+                manager.getName(),
+                leaveCategory.getName(),
+                managerLeave.getDuration(),
+                managerLeave.getStartTime(),
+                managerLeave.getUpdatedAt(),
+                managerLeave.getDescription()
+                );
+        LeaveResponse response2 = new LeaveResponse(
+                employeeLeave.getId(),
+                employeeLeave.getDate(),
+                employee.getName(),
+                leaveCategory.getName(),
+                employeeLeave.getDuration(),
+                employeeLeave.getStartTime(),
+                employeeLeave.getUpdatedAt(),
+                employeeLeave.getDescription()
         );
 
-        when(leaveService.getAllLeaves(manager.getId(), "organization", "completed", null , null ))
-                .thenReturn(response);
+        Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
+
+        when(leaveService.getAllLeaves(eq(manager.getId()), argThat(filter ->
+                        "self".equals(filter.getScope())
+                                && filter.getStatus() == null
+                                && filter.getEmpId() == null),
+                any(Pageable.class))).thenReturn(page);
+        when(leaveService.getAllLeaves(eq(manager.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
+                .thenReturn(page);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(manager))
                         .param("scope", "organization")
                         .param("status", "completed"))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].date")
-                        .value(response.getFirst().getDate().toString()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].employeeName")
-                        .value(response.getFirst().getEmployeeName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].type")
-                        .value(response.getFirst().getType()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].reason")
-                        .value(response.getFirst().getReason()));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(jsonPath("$.data.content[0].date")
+                        .value(response1.getDate().toString()))
+                .andExpect(jsonPath("$.data.content[0].employeeName")
+                        .value(response1.getEmployeeName()))
+                .andExpect(jsonPath("$.data.content[0].type")
+                        .value(response1.getType()))
+                .andExpect(jsonPath("$.data.content[0].reason")
+                        .value(response1.getReason()));
     }
 
     @Test
     void shouldReturn400WhenScopeIsNotValid() throws Exception {
-        when(leaveService.getAllLeaves(employee.getId(), "organization", null, null , null))
+        when(leaveService.getAllLeaves(eq(employee.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
                 .thenThrow(new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope query parameter"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(employee))
                         .param("scope", "organization"))
                 .andExpect(status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("400"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Invalid scope query parameter"));
+                .andExpect(jsonPath("$.statusCode").value("400"))
+                .andExpect(jsonPath("$.message").value("Invalid scope query parameter"));
     }
 
     @Test
@@ -360,21 +398,27 @@ public class LeaveControllerTest {
         UUID empId = employee.getId();
         int year = 2024;
 
-        List<LeaveResponse> response = List.of(
-                new LeaveResponse(
-                        employeeLeave.getId(),
-                        employeeLeave.getDate(),
-                        employee.getName(),
-                        leaveCategory.getName(),
-                        employeeLeave.getDuration(),
-                        employeeLeave.getStartTime(),
-                        employeeLeave.getUpdatedAt(),
-                        employeeLeave.getDescription()
-                )
+        LeaveResponse response = new LeaveResponse(
+                employeeLeave.getId(),
+                employeeLeave.getDate(),
+                employee.getName(),
+                leaveCategory.getName(),
+                employeeLeave.getDuration(),
+                employeeLeave.getStartTime(),
+                employeeLeave.getUpdatedAt(),
+                employeeLeave.getDescription()
         );
 
-        when(leaveService.getAllLeaves(manager.getId(), "ORGANIZATION", null, empId, year))
-                .thenReturn(response);
+        Page<LeaveResponse> page = new PageImpl<>(List.of(response));
+
+        when(leaveService.getAllLeaves(eq(manager.getId()), argThat(filter ->
+                        "self".equals(filter.getScope())
+                                && filter.getStatus() == null
+                                && filter.getEmpId() == null),
+                any(Pageable.class))).thenReturn(page);
+
+        when(leaveService.getAllLeaves(eq(manager.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
+                .thenReturn(page);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(manager))
@@ -382,20 +426,17 @@ public class LeaveControllerTest {
                         .param("empId", empId.toString())
                         .param("year", String.valueOf(year)))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Leaves retrieved successfully"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].employeeName").value(employee.getName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].type").value(leaveCategory.getName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].duration").value(employeeLeave.getDuration().toString()));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Leaves retrieved successfully"))
+                .andExpect(jsonPath("$.data.content[0].employeeName").value(employee.getName()))
+                .andExpect(jsonPath("$.data.content[0].type").value(leaveCategory.getName()))
+                .andExpect(jsonPath("$.data.content[0].duration").value(employeeLeave.getDuration().toString()));
     }
 
     @Test
     void shouldReturn200WithNoLeavesFoundMessageWhenLeaveListIsEmpty() throws Exception {
-        List<LeaveResponse> emptyResponse = List.of();
-
-        when(leaveService.getAllLeaves(employee.getId(), "self", null, null, null))
-                .thenReturn(emptyResponse);
-
+        when(leaveService.getAllLeaves(eq(employee.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(employee))
@@ -403,20 +444,20 @@ public class LeaveControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("No leave found"))
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(jsonPath("$.data.content").isEmpty());
     }
 
     @Test
     void shouldReturn403WhenEmployeeTryToGetLeaveListWithOrganizationScope() throws Exception {
-        when(leaveService.getAllLeaves(employee.getId(), "organization", null, null , null))
+        when(leaveService.getAllLeaves(eq(employee.getId()), any(LeaveFilterRequest.class), any(Pageable.class)))
                 .thenThrow(new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource"));
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
                         .with(mockUser(employee))
                         .param("scope", "organization"))
                 .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.statusCode").value("403"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Not Allowed to access this resource"));
+                .andExpect(jsonPath("$.statusCode").value("403"))
+                .andExpect(jsonPath("$.message").value("Not Allowed to access this resource"));
     }
 
     // GET /api/leaves/{leaveId} tests

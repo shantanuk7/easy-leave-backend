@@ -3,10 +3,11 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.constants.LeaveConstants;
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.entity.Holiday;
+import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveFilterRequest;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -17,9 +18,12 @@ import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.handler.LeaveIntegrationHandler;
 import com.technogise.leave_management_system.repository.LeaveRepository;
+import com.technogise.leave_management_system.specification.LeaveSpecification;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
@@ -36,9 +40,6 @@ import java.time.LocalDateTime;
 
 import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATION;
 import static com.technogise.leave_management_system.enums.ScopeType.SELF;
-import static com.technogise.leave_management_system.enums.StatusType.COMPLETED;
-import static com.technogise.leave_management_system.enums.StatusType.ONGOING;
-import static com.technogise.leave_management_system.enums.StatusType.UPCOMING;
 
 @Service
 public class LeaveService {
@@ -68,35 +69,6 @@ public class LeaveService {
         this.holidayService = holidayService;
     }
 
-    public List<Leave> filterLeavesByScope(String scope, User user) {
-        if (scope.equalsIgnoreCase(SELF.toString())) {
-            return leaveRepository.findAllByUserIdAndDeletedAtNull(user.getId(), Sort.by(Sort.Direction.DESC, "date"));
-        } else if (scope.equalsIgnoreCase(ORGANIZATION.toString())) {
-            if (user.getRole().equals(UserRole.MANAGER)) {
-                return leaveRepository.findAllByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, "date"));
-            }
-            throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
-        }
-        throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope query parameter");
-    }
-
-    public List<Leave> filterLeavesByStatus(String status, List<Leave> leaveList) {
-        if (status.equalsIgnoreCase(UPCOMING.toString())) {
-            return leaveList.stream()
-                    .filter(leave -> leave.getDate().isAfter(LocalDate.now()))
-                    .toList();
-        } else if (status.equalsIgnoreCase(COMPLETED.toString())) {
-            return leaveList.stream()
-                    .filter(leave -> leave.getDate().isBefore(LocalDate.now()))
-                    .toList();
-        } else if (status.equalsIgnoreCase(ONGOING.toString())) {
-            return leaveList.stream()
-                    .filter(leave -> leave.getDate().equals(LocalDate.now()))
-                    .toList();
-        }
-        throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid status query parameter");
-    }
-
     private LeaveResponse mapToLeaveResponse(Leave leave) {
         String type = getLeaveDisplayName(leave);
         return new LeaveResponse(
@@ -111,45 +83,62 @@ public class LeaveService {
         );
     }
 
-    private List<Leave> getLeavesByScopeAndStatus(User user, String scope, String status) {
-        List<Leave> leaveList = filterLeavesByScope(scope, user);
-
-        if (status != null && !status.isBlank()) {
-            return filterLeavesByStatus(status, leaveList);
-        }
-
-        return leaveList;
-    }
-    private List<Leave> getLeavesByEmployeeAndYear(User user, UUID empId, Integer year) {
-        if (!user.getRole().equals(UserRole.MANAGER)) {
-            throw new HttpException(HttpStatus.FORBIDDEN,
-                    "Not allowed to access this resource");
-        }
-
-        userService.getUserByUserId(empId);
-
-        int targetYear = (year != null) ? year : LocalDate.now(ZoneId.of("Asia/Kolkata")).getYear();
-        LocalDate startDate = LocalDate.of(targetYear, 1, 1);
-        LocalDate endDate = LocalDate.of(targetYear, 12, 31);
-
-        return leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                empId, startDate, endDate,
-                Sort.by(Sort.Direction.DESC, "date"));
-    }
-
-    public List<LeaveResponse> getAllLeaves(UUID userId, String scope, String status, UUID empId, Integer year) {
+    public Page<LeaveResponse> getAllLeaves(
+            UUID userId,
+            LeaveFilterRequest filter,
+            Pageable pageable
+    ) {
         User user = userService.getUserByUserId(userId);
+        String scope = filter.getScope();
 
-        if (empId != null && !scope.equalsIgnoreCase(ORGANIZATION.toString())) {
+        if (filter.getEmpId() != null && !scope.equalsIgnoreCase(ORGANIZATION.toString())) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "empId can only be used when scope is ORGANIZATION");
+                    "empId is only allowed when scope is ORGANIZATION");
         }
 
-        List<Leave> leaveList = (empId != null)
-                ? getLeavesByEmployeeAndYear(user, empId, year)
-                : getLeavesByScopeAndStatus(user, scope, status);
+        Specification<Leave> spec = buildSpecification(user, filter);
 
-        return leaveList.stream().map(this::mapToLeaveResponse).toList();
+        Page<Leave> leaves = leaveRepository.findAll(spec, pageable);
+        return leaves.map(this::mapToLeaveResponse);
+    }
+
+    private Specification<Leave> buildSpecification(User user, LeaveFilterRequest filter) {
+        Specification<Leave> spec = Specification
+                .where(LeaveSpecification.notDeleted());
+
+        spec = spec.and(applyScopeFilter(user, filter));
+
+        if (filter.getStatus() != null && !filter.getStatus().isBlank()) {
+            Specification<Leave> statusSpec = LeaveSpecification.leavesByStatus(filter.getStatus());
+            spec = spec.and(statusSpec);
+        }
+
+        if (filter.getYear() != null) {
+            spec = spec.and(LeaveSpecification.leavesWithinYear(filter.getYear()));
+        }
+
+        return spec;
+    }
+
+    private Specification<Leave> applyScopeFilter(User user, LeaveFilterRequest filter) {
+        String scope = filter.getScope();
+
+        if (scope.equalsIgnoreCase(SELF.toString())) {
+            return LeaveSpecification.allLeavesOfEmployee(user.getId());
+        } else if (scope.equalsIgnoreCase(ORGANIZATION.toString())) {
+            if (!user.getRole().equals(UserRole.MANAGER)) {
+                throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
+            }
+
+            if (filter.getEmpId() != null) {
+                userService.getUserByUserId(filter.getEmpId());
+                return LeaveSpecification.allLeavesOfEmployee(filter.getEmpId());
+            }
+
+            return LeaveSpecification.noFilter();
+        }
+
+        throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope query parameter");
     }
 
     public boolean isValidLeaveDate(LocalDate date) {
@@ -329,7 +318,7 @@ public class LeaveService {
     private List<LocalDate> filterNonOverlappingLeaveDates(UUID userId, List<LocalDate> dates) {
 
         Set<LocalDate> existingDates = leaveRepository
-                .findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
+                .findAllByUserIdAndDeletedAtNull(userId)
                 .stream()
                 .map(Leave::getDate)
                 .collect(Collectors.toSet());

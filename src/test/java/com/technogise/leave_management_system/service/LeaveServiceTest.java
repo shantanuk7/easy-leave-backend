@@ -1,11 +1,12 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.CreateLeaveRequest;
+import com.technogise.leave_management_system.dto.CreateLeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
 import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveFilterRequest;
 import com.technogise.leave_management_system.constants.LeaveConstants;
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.entity.Holiday;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
@@ -23,7 +24,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -36,7 +42,15 @@ import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.technogise.leave_management_system.enums.ScopeType.ORGANIZATION;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -70,12 +84,14 @@ class LeaveServiceTest {
 
     private UUID userId;
     private UUID leaveCategoryId;
+    private Pageable pageable;
     private UUID holidayId;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
         leaveCategoryId = UUID.randomUUID();
+        pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "date"));
         holidayId = UUID.randomUUID();
     }
 
@@ -204,230 +220,294 @@ class LeaveServiceTest {
         request.setLeaveCategoryId(leaveCategoryId);
         return request;
     }
+
+    private LeaveFilterRequest buildFilter(String scope, String status, UUID empId, Integer year) {
+        return LeaveFilterRequest.builder()
+                .scope(scope)
+                .status(status)
+                .empId(empId)
+                .year(year)
+                .build();
+    }
+
     @Test
     void shouldReturnEmployeeLeavesWhenEmployeeRequestsLeavesWithScopeSelf() {
         User employee = createEmployee();
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(employeeLeave));
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
 
-        List<Leave> result = leaveService.filterLeavesByScope("self", employee);
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        assertEquals(1, result.size());
-        assertEquals(employeeLeave, result.getFirst());
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("SELF", null, null, null), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(employee.getName(), result.getContent().getFirst().employeeName);
+        assertEquals("Annual Leave", result.getContent().getFirst().type);
     }
 
     @Test
     void shouldThrowAccessDeniedWhenEmployeeRequestsLeavesWithScopeOrganization() {
         User employee = createEmployee();
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
 
-        assertThrows(HttpException.class, () ->
-                leaveService.filterLeavesByScope("organization", employee));
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(
+                        employee.getId(), buildFilter("ORGANIZATION", null, null, null), pageable));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertEquals("Not Allowed to access this resource", ex.getMessage());
     }
 
     @Test
     void shouldReturnAllEmployeeLeavesWhenManagerRequestsLeavesWithScopeOrganization() {
-        User employee = createEmployee();
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
         User manager = createManager();
-        when(leaveRepository.findAllByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(employeeLeave));
+        User employee = createEmployee();
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
 
-        List<Leave> result = leaveService.filterLeavesByScope("organization", manager);
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        assertEquals(1, result.size());
-        assertEquals(employeeLeave, result.getLast());
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(), buildFilter(ORGANIZATION.toString(), null, null, null), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(employee.getName(), result.getContent().getFirst().employeeName);
+        assertEquals("Annual Leave", result.getContent().getFirst().type);
     }
 
     @Test
     void shouldThrowBadRequestWhenScopeParamIsInvalid() {
         User employee = createEmployee();
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
 
-        assertThrows(HttpException.class, () ->
-                leaveService.filterLeavesByScope("invalid", employee));
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(
+                        employee.getId(), buildFilter("invalid", null, null, null), pageable));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Invalid scope query parameter", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenEmpIdIsProvidedWithScopeSelf() {
+        User employee = createEmployee();
+        UUID empId = UUID.randomUUID();
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(
+                        employee.getId(), buildFilter("SELF", null, empId, null), pageable));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        System.out.println(ex.getMessage());
+        assertEquals("empId is only allowed when scope is ORGANIZATION", ex.getMessage());
+    }
+
+    @Test
+    void shouldFilterByEmpIdWhenManagerProvidesEmpIdWithScopeOrganization() {
+        User manager = createManager();
+        User employee = createEmployee();
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
+
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(),
+                buildFilter("ORGANIZATION", null, employee.getId(), null),
+                pageable
+        );
+
+        verify(userService).getUserByUserId(employee.getId());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(employee.getName(), result.getContent().getFirst().employeeName);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenEmpIdDoesNotExist() {
+        User manager = createManager();
+        UUID invalidEmpId = UUID.randomUUID();
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(userService.getUserByUserId(invalidEmpId))
+                .thenThrow(new HttpException(HttpStatus.NOT_FOUND, "User not found"));
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(
+                        manager.getId(),
+                        buildFilter("ORGANIZATION", null, invalidEmpId, null),
+                        pageable
+                )
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals("User not found", ex.getMessage());
+        verify(leaveRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void shouldReturnUpcomingLeavesWhenStatusIsUpcoming() {
-        Leave futureLeave = new Leave();
-        futureLeave.setDate(LocalDate.now().plusDays(1));
+        User employee = createEmployee();
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        leave.setDate(LocalDate.now().plusDays(1));
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
 
-        List<Leave> result = leaveService.filterLeavesByStatus("upcoming", List.of(futureLeave));
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        assertEquals(1, result.size());
-        assertEquals(futureLeave, result.getFirst());
-        assertEquals(futureLeave.getLeaveCategory(), result.getFirst().getLeaveCategory());
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("self", "upcoming", null, null), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertTrue(leaves.getContent().getFirst().getDate().isAfter(LocalDate.now()));
     }
 
     @Test
     void shouldReturnOngoingLeavesWhenStatusIsOngoing() {
         User employee = createEmployee();
-        Leave todayLeave = new Leave();
-        todayLeave.setDate(LocalDate.now());
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
 
-        List<Leave> result = leaveService.filterLeavesByStatus("ongoing", List.of(todayLeave, employeeLeave));
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        assertEquals(2, result.size());
-        assertEquals(todayLeave, result.getFirst());
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("self", "ongoing", null, null), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(leaves.getContent().getFirst().getDate(), LocalDate.now());
     }
 
     @Test
     void shouldReturnPastLeavesWhenStatusIsCompleted() {
-        Leave completedLeave = new Leave();
-        completedLeave.setDate(LocalDate.now().minusDays(1));
-
-        List<Leave> result = leaveService.filterLeavesByStatus("completed", List.of(completedLeave));
-
-        assertEquals(1, result.size());
-        assertEquals(completedLeave, result.getFirst());
-        assertEquals(completedLeave.getStartTime(), result.getFirst().getStartTime());
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenEmpIdIsProvidedWithScopeSelf() {
-        User manager = createManager();
-        UUID empId = UUID.randomUUID();
-        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
-
-        HttpException ex = assertThrows(HttpException.class, () ->
-                leaveService.getAllLeaves(manager.getId(), "SELF", null, empId, null));
-
-        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("empId can only be used when scope is ORGANIZATION", ex.getMessage());
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenStatusParamIsInvalid() {
         User employee = createEmployee();
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        leave.setDate(LocalDate.now().minusDays(1));
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
 
-        assertThrows(HttpException.class, () ->
-                leaveService.filterLeavesByStatus("invalid", List.of(employeeLeave)));
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
+
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("self", "completed", null, null), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertTrue(leaves.getContent().getFirst().getDate().isBefore(LocalDate.now()));
     }
 
     @Test
     void shouldNotApplyStatusFilterWhenStatusIsNull() {
         User employee = createEmployee();
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
+
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(employeeLeave));
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null,null ,null);
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("self", null, null, null), pageable);
 
-        assertEquals(1, result.size());
-        assertEquals("Employee", result.getFirst().employeeName);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Employee", result.getContent().getFirst().employeeName);
     }
 
     @Test
     void shouldNotApplyStatusFilterWhenStatusIsBlank() {
         User employee = createEmployee();
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
+
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(employeeLeave));
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "", null ,null);
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("self", "", null, null), pageable);
 
-        assertEquals(1, result.size());
-        assertEquals("Employee", result.getFirst().employeeName);
-    }
-
-    @Test
-    void shouldReturnEmployeeUpcomingLeaveWhenStatusIsUpcomingAndScopeIsSelf() {
-        User employee = createEmployee();
-        Leave employeeLeave = createEmployeeLeave(employee, createLeaveCategory());
-        employeeLeave.setDate(LocalDate.now().plusDays(1));
-        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(employeeLeave));
-
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", "upcoming", null,null);
-
-        assertEquals(1, result.size());
-        assertEquals("Employee", result.getFirst().employeeName);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Employee", result.getContent().getFirst().employeeName);
     }
 
     @Test
     void shouldReturnEmployeeLeavesForGivenYearWhenManagerProvidesEmpIdAndYear() {
         User manager = createManager();
         User employee = createEmployee();
-        LeaveCategory category = createLeaveCategory();
-        Leave leave = createEmployeeLeave(employee, category);
-        leave.setDate(LocalDate.of(2024, 6, 15));
-
-        LocalDate startDate = LocalDate.of(2024, 1, 1);
-        LocalDate endDate = LocalDate.of(2024, 12, 31);
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leaves = new PageImpl<>(List.of(leave));
 
         when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                employee.getId(), startDate, endDate,
-                Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(leave));
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(
-                manager.getId(), "ORGANIZATION", null, employee.getId(), 2024);
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(),
+                buildFilter("ORGANIZATION", null, employee.getId(), 2026),
+                pageable
+        );
 
-        assertEquals(1, result.size());
-        assertEquals(employee.getName(), result.getFirst().employeeName);
-        assertEquals(LocalDate.of(2024, 6, 15), result.getFirst().date);
+        verify(userService).getUserByUserId(employee.getId());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(employee.getName(), result.getContent().getFirst().employeeName);
     }
 
     @Test
     void shouldThrowForbiddenWhenNonManagerRequestsLeavesByEmployeeAndYear() {
         User employee = createEmployee();
         UUID targetEmpId = UUID.randomUUID();
-        Integer targetYear = 2024;
 
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
 
-        HttpException exception = assertThrows(HttpException.class, () ->
-                leaveService.getAllLeaves(employee.getId(), "ORGANIZATION", null, targetEmpId, targetYear)
+        HttpException ex = assertThrows(HttpException.class, () ->
+                leaveService.getAllLeaves(
+                        employee.getId(),
+                        buildFilter("ORGANIZATION", null, targetEmpId, 2026),
+                        pageable)
         );
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
-        assertEquals("Not allowed to access this resource", exception.getMessage());
-
-        verify(leaveRepository, never()).findAllByUserIdAndDateBetweenAndDeletedAtIsNull(any(), any(), any(), any());
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        verify(leaveRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
-    void shouldDefaultToCurrentYearWhenYearIsNotProvided() {
+    void shouldApplyYearFilterWhenYearIsProvided() {
         User manager = createManager();
         User employee = createEmployee();
-        LeaveCategory category = createLeaveCategory();
-        Leave leave = createEmployeeLeave(employee, category);
-
-        int currentYear = LocalDate.now().getYear();
-        LocalDate startDate = LocalDate.of(currentYear, 1, 1);
-        LocalDate endDate = LocalDate.of(currentYear, 12, 31);
+        Leave leave = createEmployeeLeave(employee, createLeaveCategory());
+        Page<Leave> leavePage = new PageImpl<>(List.of(leave));
 
         when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
-        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                employee.getId(), startDate, endDate,
-                Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(leave));
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leavePage);
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(
-                manager.getId(), "ORGANIZATION", null, employee.getId(), null);
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                manager.getId(), buildFilter("ORGANIZATION", null, null, 2026), pageable);
 
-        assertEquals(1, result.size());
-        verify(leaveRepository).findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                employee.getId(), startDate, endDate,
-                Sort.by(Sort.Direction.DESC, "date"));
+        assertEquals(1, result.getTotalElements());
+        verify(leaveRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void shouldThrowNotFoundWhenUserDoesNotExist() {
         User employee = createEmployee();
         when(userService.getUserByUserId(employee.getId()))
-                .thenThrow(new HttpException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+                .thenThrow(new HttpException(HttpStatus.NOT_FOUND, "User not found"));
 
         assertThrows(HttpException.class, () ->
-                leaveService.getAllLeaves(employee.getId(), "self", null, null ,null));
+                leaveService.getAllLeaves(
+                        employee.getId(), buildFilter("self", null, null, null), pageable));
     }
 
     @Test
@@ -496,7 +576,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(leaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(user);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -522,7 +602,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
@@ -539,7 +619,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(createValidLeaveCategory());
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
@@ -578,7 +658,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId)))
                 .thenReturn(List.of(existingLeaveOnDayTwo));
         when(leaveRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
 
@@ -677,7 +757,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of(existingLeave));
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of(existingLeave));
 
         assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
     }
@@ -1129,7 +1209,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -1146,7 +1226,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -1232,7 +1312,7 @@ class LeaveServiceTest {
 
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(category);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId)))
                 .thenReturn(List.of());
         when(leaveRepository.findByUserIdAndDate(userId, weekday))
                 .thenReturn(Optional.of(cancelledLeave));
@@ -1343,7 +1423,7 @@ class LeaveServiceTest {
         when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveRepository.countByUserIdAndHolidayIsNotNullAndDateBetweenAndDeletedAtIsNull(
                 eq(userId), any(LocalDate.class), any(LocalDate.class))).thenReturn(1L);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -1425,14 +1505,17 @@ class LeaveServiceTest {
         holidayLeave.setStartTime(LocalTime.of(10, 0));
         holidayLeave.setUpdatedAt(LocalDateTime.now());
 
+        Page<Leave> leaves = new PageImpl<>(List.of(holidayLeave));
+
         when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(employee.getId(), Sort.by(Sort.Direction.DESC, "date")))
-                .thenReturn(List.of(holidayLeave));
+        when(leaveRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(leaves);
 
-        List<LeaveResponse> result = leaveService.getAllLeaves(employee.getId(), "self", null, null, null);
+        Page<LeaveResponse> result = leaveService.getAllLeaves(
+                employee.getId(), buildFilter("SELF", null, null, null), pageable);
 
-        assertEquals(1, result.size());
-        assertEquals(holiday.getType().getDisplayName(), result.getFirst().type);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(holiday.getType().getDisplayName(), result.getContent().getFirst().type);
     }
 
     @Test
