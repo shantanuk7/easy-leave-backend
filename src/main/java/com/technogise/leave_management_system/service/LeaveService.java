@@ -108,6 +108,11 @@ public class LeaveService {
 
         spec = spec.and(applyScopeFilter(user, filter));
 
+        if (filter.getStatus() != null && !filter.getStatus().isBlank()) {
+            Specification<Leave> statusSpec = LeaveSpecification.leavesByStatus(filter.getStatus());
+            spec = spec.and(statusSpec);
+        }
+
         return spec;
     }
 
