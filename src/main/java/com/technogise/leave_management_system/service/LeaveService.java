@@ -316,6 +316,18 @@ public class LeaveService {
                 )).toList();
     }
 
+
+    private void validateNoDateConflictForMaternity(UUID userId, List<LocalDate> blockDates) {
+        Set<LocalDate> existingDates = leaveRepository.findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
+                .stream().map(Leave::getDate).collect(Collectors.toSet());
+
+        for (LocalDate date : blockDates) {
+            if (existingDates.contains(date)) {
+                throw new HttpException(HttpStatus.CONFLICT, "Maternity block overlaps with an existing leave on: " + date);
+            }
+        }
+    }
+
     public LeaveResponse getLeaveById(UUID leaveId, UUID userId) {
         User user = userService.getUserByUserId(userId);
         Leave leave = leaveRepository.findById(leaveId).orElseThrow(
