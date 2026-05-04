@@ -19,9 +19,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -109,11 +109,10 @@ class HolidayServiceTest {
 
     @Test
     void shouldFetchAllHolidaysSuccessfully() {
-        // When
-        when(holidayRepository.findAll()).thenReturn(List.of(mockHoliday));
+        when(holidayRepository.findAllByOrderByDateAsc()).thenReturn(List.of(mockHoliday));
+
         List<HolidayResponse> responses = holidayService.getHolidays(null);
 
-        // Then
         assertEquals(1, responses.size());
         assertEquals(mockHoliday.getId(), responses.getFirst().getId());
     }
@@ -125,7 +124,8 @@ class HolidayServiceTest {
 
     @Test
     void shouldFetchHolidaysByTypeSuccessfully() {
-        when(holidayRepository.findAllByType(HolidayType.FIXED)).thenReturn(List.of(mockHoliday));
+        when(holidayRepository.findAllByTypeOrderByDateAsc(HolidayType.FIXED)).thenReturn(List.of(mockHoliday));
+
         List<HolidayResponse> responses = holidayService.getHolidays("FIXED");
 
         assertEquals(1, responses.size());
@@ -134,10 +134,41 @@ class HolidayServiceTest {
 
     @Test
     void shouldReturnAllHolidaysWhenHolidayTypeIsBlank() {
-        when(holidayRepository.findAll()).thenReturn(List.of(mockHoliday));
+        when(holidayRepository.findAllByOrderByDateAsc()).thenReturn(List.of(mockHoliday));
+
         List<HolidayResponse> responses = holidayService.getHolidays("");
+
         assertEquals(1, responses.size());
         assertEquals(mockHoliday.getId(), responses.getFirst().getId());
+    }
+
+
+    @Test
+    void shouldReturnHolidaysSortedByDateAscending() {
+        int currentYear = LocalDate.now().getYear();
+
+        Holiday laterHoliday = Holiday.builder()
+                .id(UUID.randomUUID())
+                .name("Christmas")
+                .date(LocalDate.of(currentYear, 12, 25))
+                .build();
+        Holiday earlierHoliday = Holiday.builder()
+                .id(UUID.randomUUID())
+                .name("New Year")
+                .date(LocalDate.of(currentYear, 1, 1))
+                .build();
+
+        when(holidayRepository.findAllByOrderByDateAsc())
+                .thenReturn(List.of(earlierHoliday, laterHoliday));
+
+        List<HolidayResponse> responses = holidayService.getHolidays(null);
+
+        assertEquals(2, responses.size());
+        assertEquals("New Year", responses.get(0).getName());
+        assertEquals("Christmas", responses.get(1).getName());
+
+        assertTrue(responses.get(0).getDate().isBefore(responses.get(1).getDate()));
+        assertEquals(currentYear, responses.get(0).getDate().getYear());
     }
 
     @Test
@@ -155,19 +186,12 @@ class HolidayServiceTest {
                 .date(LocalDate.of(2025, 12, 25))
                 .build();
 
-        List<HolidayResponse> mockHolidaysResponse = List.of(
-                new HolidayResponse(
-                        currentYearHoliday.getId(),
-                        currentYearHoliday.getName(),
-                        currentYearHoliday.getType(),
-                        currentYearHoliday.getDate()
-                )
-        );
+        when(holidayRepository.findAllByOrderByDateAsc()).thenReturn(List.of(currentYearHoliday, previousYearHoliday));
 
-        when(holidayRepository.findAll()).thenReturn(List.of(currentYearHoliday, previousYearHoliday));
-        List <HolidayResponse> actualResponse = holidayService.getHolidays(null);
+        List<HolidayResponse> actualResponse = holidayService.getHolidays(null);
 
-        assertEquals(mockHolidaysResponse, actualResponse);
+        assertEquals(1, actualResponse.size());
+        assertEquals("Diwali", actualResponse.getFirst().getName());
     }
 
     @Test
@@ -184,5 +208,18 @@ class HolidayServiceTest {
         when(holidayRepository.findById(nonExistentId)).thenReturn(Optional.empty());
         HttpException exception = assertThrows(HttpException.class, () -> holidayService.getHolidayById(nonExistentId));
         assertEquals("Holiday not found", exception.getMessage());
+    }
+
+    @Test
+    void shouldReturnHolidaysFilteredBySpecificType() {
+        when(holidayRepository.findAllByType(HolidayType.FIXED))
+                .thenReturn(List.of(mockHoliday));
+
+        List<Holiday> result = holidayService.getHolidaysByType(HolidayType.FIXED);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(HolidayType.FIXED, result.get(0).getType());
+        verify(holidayRepository).findAllByType(HolidayType.FIXED);
     }
 }

@@ -14,4 +14,6 @@ public interface HolidayRepository extends JpaRepository<Holiday, UUID> {
     boolean existsByNameIgnoreCaseAndDateBetween(String name, LocalDate startDate, LocalDate endDate);
     boolean existsByDate(LocalDate date);
     List<Holiday> findAllByType(HolidayType type);
+    List<Holiday> findAllByOrderByDateAsc();
+    List<Holiday> findAllByTypeOrderByDateAsc(HolidayType type);
 }
