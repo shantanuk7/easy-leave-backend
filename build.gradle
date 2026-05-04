@@ -94,7 +94,8 @@ jacocoTestReport {
 						'**/config/**',
 						'**/constants/**',
 						'**/filter/**',
-						'**/handler/**'
+						'**/handler/**',
+						'**/specification/**'
 				])
 			})
 	)
@@ -113,7 +114,8 @@ jacocoTestCoverageVerification {
 					'**/config/**',
 					'**/constants/**',
 					'**/filter/**',
-					'**/handler/**'
+					'**/handler/**',
+					'**/specification/**'
 			])
 		}))
 	}
