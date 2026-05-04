@@ -330,7 +330,7 @@ public class LeaveControllerTest {
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
                 employeeLeave.getDescription(),
-                employeeLeave.getHoliday().getId()
+                null
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
