@@ -7,6 +7,7 @@ import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.enums.DurationType;
+import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
@@ -17,6 +18,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -76,17 +78,20 @@ public class KimaiService implements LeaveIntegrationService {
                     .retrieve()
                     .bodyToMono(KimaiTimesheetResponse.class)
                     .block();
+            log.info("Kimai raw response: {}", response);
 
             if (response != null && response.getId() != null) {
                 event.setExternalEventId(String.valueOf(response.getId()));
             }
             event.setStatus(IntegrationStatus.SUCCESS);
             event.setErrorMessage(null);
+            event.setOperationType(IntegrationOperationType.CREATE);
 
             log.info("Successfully synced leave with Kimai for user {}", leave.getUser().getName());
         } catch (Exception e) {
             event.setStatus(IntegrationStatus.FAILED);
             event.setErrorMessage(e.getMessage());
+            event.setOperationType(IntegrationOperationType.CREATE);
             log.error("Error syncing leave with Kimai: {}", e.getMessage());
         }
         eventRepository.save(event);
@@ -134,5 +139,45 @@ public class KimaiService implements LeaveIntegrationService {
             log.error("Error checking existing timesheet: {}", e.getMessage());
             return false;
         }
+    }
+
+    @Override
+    @Async
+    public void deleteLeave(Leave leave) {
+        LeaveIntegrationEvent event = new LeaveIntegrationEvent();
+        event.setLeave(leave);
+        event.setPlatform(PlatformType.KIMAI);
+        event.setAttempts(1);
+        event.setLastAttemptAt(LocalDateTime.now());
+
+        try {
+            Optional<LeaveIntegrationEvent> kimaiEvent = eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(leave.getId(), PlatformType.KIMAI);
+
+            if (kimaiEvent.isEmpty()) {
+                log.warn("No Kimai entry found for leave {}", leave.getId());
+                event.setStatus(IntegrationStatus.FAILED);
+                event.setErrorMessage("No Kimai entry found for leave " + leave.getId());
+                eventRepository.save(event);
+                return;
+            }
+
+            String kimaiId = kimaiEvent.get().getExternalEventId();
+
+            webClient.delete().uri("/api/timesheets/{id}", kimaiId).retrieve().bodyToMono(Void.class).block();
+
+            event.setExternalEventId(kimaiId);
+            event.setStatus(IntegrationStatus.SUCCESS);
+            event.setErrorMessage(null);
+            event.setOperationType(IntegrationOperationType.DELETE);
+
+            log.info("Successfully deleted Kimai entry {} for leave {}", kimaiId, leave.getId());
+        } catch (Exception e) {
+            log.error("Error deleting Kimai entry for leave {}: {}", leave.getId(), e.getMessage());
+
+            event.setStatus(IntegrationStatus.FAILED);
+            event.setErrorMessage(e.getMessage());
+            event.setOperationType(IntegrationOperationType.DELETE);
+        }
+        eventRepository.save(event);
     }
 }

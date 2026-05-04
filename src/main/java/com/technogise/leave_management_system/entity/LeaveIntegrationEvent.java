@@ -1,5 +1,6 @@
 package com.technogise.leave_management_system.entity;
 
+import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import jakarta.persistence.Entity;
@@ -49,6 +50,10 @@ public class LeaveIntegrationEvent {
 
     @Column(name = "attempts", nullable = false)
     private int attempts = 1;
+
+    @Column(name = "operation_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private IntegrationOperationType operationType;
 
     @Column(name = "last_attempt_at")
     private LocalDateTime lastAttemptAt;

@@ -3,6 +3,7 @@ package com.technogise.leave_management_system.service;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.exception.HttpException;
@@ -127,11 +128,12 @@ public class GoogleCalendarService implements LeaveIntegrationService {
 
                 integrationEvent.setStatus(IntegrationStatus.SUCCESS);
                 integrationEvent.setExternalEventId(eventId);
+                integrationEvent.setOperationType(IntegrationOperationType.CREATE);
                 leaveIntegrationEventRepository.save(integrationEvent);
             } else {
                 integrationEvent.setStatus(IntegrationStatus.FAILED);
                 integrationEvent.setErrorMessage("Google Calendar API error: " + response.statusCode());
-
+                integrationEvent.setOperationType(IntegrationOperationType.CREATE);
                 log.error("Failed to add event to Google Calendar for user");
                 throw new HttpException(HttpStatus.BAD_REQUEST, "Google Calendar API error: " + response.statusCode());
             }
@@ -152,5 +154,9 @@ public class GoogleCalendarService implements LeaveIntegrationService {
         String title = user.getName() + " - " + leave.getLeaveCategory().getName();
         String description = leave.getDescription();
         addLeaveEvent(user, leave, title, description);
+    }
+
+    @Override
+    public void deleteLeave(Leave leave) {
     }
 }
