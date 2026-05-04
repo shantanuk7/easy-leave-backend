@@ -2,15 +2,20 @@ package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.dto.CreateLeaveRequest;
 import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
-import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
 import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveResponse;
+import com.technogise.leave_management_system.dto.LeaveFilterRequest;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.response.SuccessResponse;
 import com.technogise.leave_management_system.service.LeaveService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,25 +44,34 @@ public class LeaveController {
     }
 
     @GetMapping
-    public ResponseEntity<SuccessResponse<List<LeaveResponse>>> findAllLeave(
+    public ResponseEntity<SuccessResponse<Page<LeaveResponse>>> findAllLeave(
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "scope", defaultValue = ScopeType.DEFAULT_SCOPE) String scope,
             @RequestParam(name = "empId", required = false) UUID empId,
             @RequestParam(name = "year", required = false) Integer year,
+            @PageableDefault(size = 20, sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal User user
     ) {
         log.info("GET /api/leaves called by userId={}, scope={}, status={}, empId={}, year={}",
                 user.getId(), scope, status, empId, year);
 
-        List<LeaveResponse> leaveList = leaveService.getAllLeaves(user.getId(), scope, status, empId, year);
+        LeaveFilterRequest filter = LeaveFilterRequest.builder()
+                .scope(scope)
+                .status(status)
+                .empId(empId)
+                .year(year)
+                .build();
 
-        log.debug("Returning {} leaves for userId={}", leaveList.size(), user.getId());
+        Page<LeaveResponse> leaves = leaveService.getAllLeaves(user.getId(), filter, pageable);
 
-        String message = leaveList.isEmpty() ? "No leave found" : "Leaves retrieved successfully";
+        log.debug("Returning {} leaves for userId={}", leaves.getTotalElements(), user.getId());
+
+        String message = leaves.isEmpty() ? "No leave found" : "Leaves retrieved successfully";
 
         return ResponseEntity.status(HttpStatus.OK)
-                .body(SuccessResponse.success(message, leaveList));
+                .body(SuccessResponse.success(message, leaves));
     }
+
     @PostMapping
     public ResponseEntity<SuccessResponse<List<CreateLeaveResponse>>> applyLeave(
             @AuthenticationPrincipal User user,
