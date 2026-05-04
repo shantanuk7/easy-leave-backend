@@ -27,4 +27,6 @@ public interface RequestRepository extends JpaRepository<Request, UUID> {
             List<LocalDate> dates,
             List<RequestStatus> statuses
     );
+
+    int countByRequestedByUserIdAndStatus(UUID userId, RequestStatus status);
 }

@@ -23,5 +23,7 @@ public interface AnnualLeaveRepository extends JpaRepository<AnnualLeave, UUID> 
     @Query("SELECT DISTINCT al.year FROM annual_leaves al ORDER BY al.year DESC")
     List<String> findDistinctYears();
 
+    Optional<AnnualLeave> findByUserId(UUID id);
+
     Optional<AnnualLeave> findByUserIdAndYear(UUID userId, String year);
 }
