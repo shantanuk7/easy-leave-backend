@@ -316,6 +316,40 @@ public class LeaveService {
                 )).toList();
     }
 
+    private List<CreateLeaveResponse> applyMaternityLeaveBlock(CreateLeaveRequest request, User user, LeaveCategory category) {
+        LocalDate startDate = request.getDates().stream()
+                .min(LocalDate::compareTo)
+                .orElseThrow(() -> new HttpException(HttpStatus.BAD_REQUEST, "Start date is required"));
+
+        if (request.getDuration() != DurationType.FULL_DAY) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Maternity leave must be a full day");
+        }
+
+        int totalDays = category.getAllocatedDays();
+        List<LocalDate> maternityDates = startDate.datesUntil(startDate.plusDays(totalDays)).toList();
+        validateNoDateConflictForMaternity(user.getId(), maternityDates);
+
+        List<Leave> leavesToSave = maternityDates.stream().map(date -> {
+            Leave leave = leaveRepository.findByUserIdAndDate(user.getId(), date).orElse(new Leave());
+            leave.setDate(date);
+            leave.setUser(user);
+            leave.setLeaveCategory(category);
+            leave.setDescription(request.getDescription());
+            leave.setStartTime(request.getStartTime());
+            leave.setDuration(DurationType.FULL_DAY);
+            leave.setDeletedAt(null);
+            return leave;
+        }).toList();
+
+        List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
+
+        leaveIntegrationHandler.handleLeaves(savedLeaves);
+
+        return savedLeaves.stream()
+                .map(l -> new CreateLeaveResponse(l.getId(), l.getDate(), category.getName(),
+                        l.getDuration(), l.getStartTime(), l.getDescription()))
+                .toList();
+    }
 
     private void validateNoDateConflictForMaternity(UUID userId, List<LocalDate> blockDates) {
         Set<LocalDate> existingDates = leaveRepository.findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
