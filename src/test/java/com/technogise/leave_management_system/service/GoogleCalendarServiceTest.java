@@ -373,6 +373,7 @@ class GoogleCalendarServiceTest {
         verify(leaveIntegrationEventRepository).save(argThat(event ->
                 event.getExternalEventId().equals("event-existing-123")
                         && event.getPlatform().equals(PlatformType.GOOGLE_CALENDAR)
+                        && event.getOperationType().equals(IntegrationOperationType.UPDATE)
         ));
     }
 
