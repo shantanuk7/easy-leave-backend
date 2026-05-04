@@ -31,6 +31,14 @@ public class LeaveSpecification {
         };
     }
 
+    public static Specification<Leave> leavesWithinYear(int year) {
+        return (root, query, criteriaBuilder) ->
+            criteriaBuilder.between(root.get("date"),
+                LocalDate.of(year, 1, 1),
+                LocalDate.of(year, 12, 31)
+            );
+    }
+
     public static Specification<Leave> noFilter() {
         return (root, query, cb) -> cb.conjunction();
     }

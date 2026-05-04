@@ -113,6 +113,10 @@ public class LeaveService {
             spec = spec.and(statusSpec);
         }
 
+        if (filter.getYear() != null) {
+            spec = spec.and(LeaveSpecification.leavesWithinYear(filter.getYear()));
+        }
+
         return spec;
     }
 
