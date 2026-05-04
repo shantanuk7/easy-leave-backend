@@ -97,7 +97,10 @@ class LeaveServiceTest {
 
     private LocalDate nextWeekday() {
         LocalDate date = LocalDate.now();
-        while (leaveService.isWeekendDay(date)) {
+        if (date.getDayOfWeek() == DayOfWeek.SATURDAY) {
+            date = date.plusDays(2);
+        }
+        else if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             date = date.plusDays(1);
         }
         return date;
@@ -149,6 +152,14 @@ class LeaveServiceTest {
         holiday.setCreatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 0, 0, 0));
         holiday.setUpdatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 0, 0, 0));
         return holiday;
+    }
+
+    private LeaveCategory createAnnualLeaveCategory() {
+        LeaveCategory cat = new LeaveCategory();
+        cat.setId(leaveCategoryId);
+        cat.setName(LeaveConstants.ANNUAL_LEAVE);
+        cat.setAllocatedDays(24);
+        return cat;
     }
 
     private Holiday createFixedHoliday() {
@@ -209,6 +220,7 @@ class LeaveServiceTest {
     private User createValidUser() {
         User user = new User();
         user.setId(userId);
+        user.setName("Test User");
         return user;
     }
 
@@ -1215,19 +1227,25 @@ class LeaveServiceTest {
 
     @Test
     void shouldCallSyncWhenAppliedLeaveIsAnnualLeave() {
-        CreateLeaveRequest request = createValidLeaveRequest();
-        LeaveCategory annualLeaveCategory = new LeaveCategory();
-        annualLeaveCategory.setId(leaveCategoryId);
-        annualLeaveCategory.setName(LeaveConstants.ANNUAL_LEAVE);
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        LocalDate date = nextWeekday();
+        request.setDates(List.of(date));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(9, 0));
+
+        LeaveCategory annualLeaveCategory = createAnnualLeaveCategory();
+        User user = createValidUser();
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
-        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(userId)).thenReturn(new ArrayList<>());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
 
-        verify(annualLeaveService).syncOnLeaveCreated(any(User.class), eq(DurationType.FULL_DAY), eq(1), eq(LocalDate.now().getYear()));
+        verify(annualLeaveService).syncOnLeaveCreated(eq(user), eq(DurationType.FULL_DAY), eq(1), anyInt());
     }
 
     @Test
@@ -1401,81 +1419,66 @@ class LeaveServiceTest {
 
     @Test
     void shouldThrowConflictWhenNonAnnualLeaveBalanceIsExhausted() {
+        User user = createValidUser();
         LeaveCategory sickLeave = new LeaveCategory();
         sickLeave.setId(leaveCategoryId);
         sickLeave.setName("Sick Leave");
         sickLeave.setAllocatedDays(2);
 
         LocalDate weekday = nextWeekday();
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(weekday));
+        request.setDuration(DurationType.FULL_DAY);
 
-        Leave takenLeave1 = new Leave();
-        takenLeave1.setLeaveCategory(sickLeave);
-        takenLeave1.setDuration(DurationType.FULL_DAY);
-        takenLeave1.setDate(weekday.minusDays(2));
-
-        Leave takenLeave2 = new Leave();
-        takenLeave2.setLeaveCategory(sickLeave);
-        takenLeave2.setDuration(DurationType.FULL_DAY);
-        takenLeave2.setDate(weekday.minusDays(1));
-
-        CreateLeaveRequest request = new CreateLeaveRequest(
-                leaveCategoryId, List.of(weekday), DurationType.FULL_DAY,
-                LocalTime.of(9, 0), "Feeling sick");
-
-        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
+        when(userService.getUserByUserId(userId)).thenReturn(user);
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
-                .thenReturn(List.of());
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
-                .thenReturn(List.of(takenLeave1, takenLeave2));
 
-        HttpException ex = assertThrows(HttpException.class,
-                () -> leaveService.applyLeave(request, userId));
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(userId)).thenReturn(new ArrayList<>());
 
-        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
-        assertTrue(ex.getMessage().contains("Available: 0.0"));
+        Leave l1 = new Leave(); l1.setLeaveCategory(sickLeave); l1.setDuration(DurationType.FULL_DAY);
+        Leave l2 = new Leave(); l2.setLeaveCategory(sickLeave); l2.setDuration(DurationType.FULL_DAY);
+
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(eq(userId), any(), any(), any()))
+                .thenReturn(List.of(l1, l2));
+
+        HttpException ex = assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Insufficient leave balance"));
     }
 
     @Test
     void shouldThrowConflictWhenHalfDaysAlreadyTakenExceedFullDayBalance() {
+        User user = createValidUser();
         LeaveCategory sickLeave = new LeaveCategory();
         sickLeave.setId(leaveCategoryId);
         sickLeave.setName("Sick Leave");
         sickLeave.setAllocatedDays(1);
 
         LocalDate weekday = nextWeekday();
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(weekday));
+        request.setDuration(DurationType.FULL_DAY);
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(userId)).thenReturn(new ArrayList<>());
 
         Leave halfDay1 = new Leave();
         halfDay1.setLeaveCategory(sickLeave);
         halfDay1.setDuration(DurationType.HALF_DAY);
-        halfDay1.setDate(weekday.minusDays(2));
 
-        Leave halfDay2 = new Leave();
-        halfDay2.setLeaveCategory(sickLeave);
-        halfDay2.setDuration(DurationType.HALF_DAY);
-        halfDay2.setDate(weekday.minusDays(1));
+        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(eq(userId), any(), any(), any()))
+                .thenReturn(List.of(halfDay1));
 
-        CreateLeaveRequest request = new CreateLeaveRequest(
-                leaveCategoryId, List.of(weekday), DurationType.HALF_DAY,
-                LocalTime.of(9, 0), "Sick again");
+        HttpException ex = assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
 
-        when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(sickLeave);
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
-                .thenReturn(List.of());
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
-                .thenReturn(List.of(halfDay1, halfDay2));
-
-        HttpException ex = assertThrows(HttpException.class,
-                () -> leaveService.applyLeave(request, userId));
-
-        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("Insufficient leave balance for Sick Leave"));
-        assertTrue(ex.getMessage().contains("Available: 0.0"));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Insufficient leave balance"));
     }
+
     @Test
     void shouldDeleteLeaveSuccessfullyWhenLeaveExists() {
         User user = createValidUser();

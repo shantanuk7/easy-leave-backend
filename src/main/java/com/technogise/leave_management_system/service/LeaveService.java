@@ -98,8 +98,6 @@ public class LeaveService {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
                     "Insufficient leave balance for " + category.getName()
-                            + ". Requested No of Days: " + (int)requested
-                            + ", Available No of Days: " + (int)remaining
             );
         }
     }
