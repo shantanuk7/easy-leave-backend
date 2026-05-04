@@ -5,6 +5,7 @@ import com.technogise.leave_management_system.entity.AnnualLeave;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
+import com.technogise.leave_management_system.repository.LeaveRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +31,9 @@ class AnnualLeaveBalanceServiceTest {
 
     @InjectMocks
     private AnnualLeaveBalanceService annualLeaveBalanceService;
+
+    @Mock
+    private LeaveRepository leaveRepository;
 
     private static final int CURRENT_YEAR = Year.now().getValue();
     private static final Pageable PAGEABLE = PageRequest.of(0, 10);
@@ -126,7 +130,7 @@ class AnnualLeaveBalanceServiceTest {
 
     @Test
     void shouldReturnDistinctYearsInDescendingOrder() {
-        when(annualLeaveRepository.findDistinctYears()).thenReturn(List.of("2025", "2024", "2023"));
+        when(leaveRepository.findDistinctYears()).thenReturn(List.of("2025", "2024", "2023"));
 
         List<String> result = annualLeaveBalanceService.getDistinctYears();
 
@@ -137,7 +141,7 @@ class AnnualLeaveBalanceServiceTest {
 
     @Test
     void shouldReturnEmptyListWhenNoYearsExist() {
-        when(annualLeaveRepository.findDistinctYears()).thenReturn(List.of());
+        when(leaveRepository.findDistinctYears()).thenReturn(List.of());
 
         List<String> result = annualLeaveBalanceService.getDistinctYears();
 
