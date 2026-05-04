@@ -190,7 +190,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() == 200 || response.statusCode() == 201) {
+            if (response.statusCode() == 200) {
                 integrationEvent.setExternalEventId(googleCalendarEventId);
                 integrationEvent.setStatus(IntegrationStatus.SUCCESS);
                 integrationEvent.setErrorMessage(null);
