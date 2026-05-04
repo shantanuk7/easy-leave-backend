@@ -21,6 +21,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -206,5 +207,18 @@ class HolidayServiceTest {
         when(holidayRepository.findById(nonExistentId)).thenReturn(Optional.empty());
         HttpException exception = assertThrows(HttpException.class, () -> holidayService.getHolidayById(nonExistentId));
         assertEquals("Holiday not found", exception.getMessage());
+    }
+
+    @Test
+    void shouldReturnHolidaysFilteredBySpecificType() {
+        when(holidayRepository.findAllByType(HolidayType.FIXED))
+                .thenReturn(List.of(mockHoliday));
+
+        List<Holiday> result = holidayService.getHolidaysByType(HolidayType.FIXED);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(HolidayType.FIXED, result.get(0).getType());
+        verify(holidayRepository).findAllByType(HolidayType.FIXED);
     }
 }
