@@ -266,6 +266,10 @@ public class LeaveService {
                 ? holidayService.getHolidayById(request.getHolidayId())
                 : null;
 
+        if (category != null && category.getName().equals(LeaveConstants.MATERNITY_LEAVE)) {
+            return applyMaternityLeaveBlock(request, user, category);
+        }
+
         if (hasHoliday) {
             validateOptionalHolidaysCount(user);
         }
@@ -439,6 +443,10 @@ public class LeaveService {
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
         validateLeaveOwnership(leave, userId, "Not allowed to update this leave");
+        if (leave.getLeaveCategory() != null && leave.getLeaveCategory().getName().equals(LeaveConstants.MATERNITY_LEAVE)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Maternity Leave blocks cannot be modified individually. Please cancel the block and re-apply.");
+        }
         validateExistingLeaveDate(leave.getDate());
 
         DurationType oldDuration = leave.getDuration();

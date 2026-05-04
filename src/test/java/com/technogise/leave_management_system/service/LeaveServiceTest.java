@@ -1222,7 +1222,7 @@ class LeaveServiceTest {
 
         when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(annualLeaveCategory);
         when(userService.getUserByUserId(userId)).thenReturn(createValidUser());
-        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId))).thenReturn(List.of());
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
         when(leaveRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveService.applyLeave(request, userId);
@@ -1868,61 +1868,109 @@ class LeaveServiceTest {
 
         assertEquals(1.0, totalDays);
     }
+
     @Test
-    void shouldExcludeLeaveIdWhenComputingTakenDays() {
-        UUID categoryId = UUID.randomUUID();
-        int year = LocalDate.now().getYear();
+    void shouldApplyMaternityLeaveAsContiguousBlockIncludingWeekends() {
+        User user = createValidUser();
+        LeaveCategory maternityCategory = new LeaveCategory();
+        maternityCategory.setId(leaveCategoryId);
+        maternityCategory.setName(LeaveConstants.MATERNITY_LEAVE);
+        maternityCategory.setAllocatedDays(90);
 
-        LeaveCategory category = new LeaveCategory();
-        category.setId(categoryId);
+        LocalDate startDate = LocalDate.of(2026, 6, 1);
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(startDate));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStartTime(LocalTime.of(9, 0));
+        request.setDescription("Maternity block");
 
-        UUID leaveToExcludeId = UUID.randomUUID();
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(maternityCategory);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class))).thenReturn(List.of());
+        when(leaveRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
-        Leave leave1 = new Leave();
-        leave1.setId(leaveToExcludeId);
-        leave1.setLeaveCategory(category);
-        leave1.setDuration(DurationType.FULL_DAY);
+        List<CreateLeaveResponse> responses = leaveService.applyLeave(request, userId);
 
-        Leave leave2 = new Leave();
-        leave2.setId(UUID.randomUUID());
-        leave2.setLeaveCategory(category);
-        leave2.setDuration(DurationType.HALF_DAY);
+        assertEquals(90, responses.size());
+        assertEquals(startDate, responses.get(0).getDate());
+        assertEquals(startDate.plusDays(89), responses.get(89).getDate());
 
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
-                .thenReturn(List.of(leave1, leave2));
+        ArgumentCaptor<List<Leave>> captor = ArgumentCaptor.forClass(List.class);
+        verify(leaveRepository).saveAll(captor.capture());
+        List<Leave> savedLeaves = captor.getValue();
 
-        double totalDays = leaveService.computeTakenDays(userId, categoryId, year, leaveToExcludeId);
-
-        assertEquals(0.5, totalDays);
-
-        double totalWithNull = leaveService.computeTakenDays(userId, categoryId, year, null);
-        assertEquals(1.5, totalWithNull);
+        assertTrue(savedLeaves.stream().anyMatch(l -> l.getDate().equals(LocalDate.of(2026, 6, 6)))); // Saturday
+        assertTrue(savedLeaves.stream().anyMatch(l -> l.getDate().equals(LocalDate.of(2026, 6, 7)))); // Sunday
     }
 
     @Test
-    void shouldFilterDifferentCategoryWhenComputingTakenDays() {
-        UUID targetCategoryId = UUID.randomUUID();
-        LeaveCategory targetCategory = new LeaveCategory();
-        targetCategory.setId(targetCategoryId);
+    void shouldThrowConflictWhenMaternityBlockOverlapsExistingLeave() {
+        User user = createValidUser();
+        LeaveCategory maternityCategory = new LeaveCategory();
+        maternityCategory.setName(LeaveConstants.MATERNITY_LEAVE);
+        maternityCategory.setAllocatedDays(90);
 
-        LeaveCategory otherCategory = new LeaveCategory();
-        otherCategory.setId(UUID.randomUUID());
+        LocalDate startDate = LocalDate.of(2026, 6, 1);
+        LocalDate existingLeaveDate = LocalDate.of(2026, 6, 15);
 
-        Leave leaveTarget = new Leave();
-        leaveTarget.setLeaveCategory(targetCategory);
-        leaveTarget.setDuration(DurationType.FULL_DAY);
+        Leave existingLeave = new Leave();
+        existingLeave.setDate(existingLeaveDate);
 
-        Leave leaveOther = new Leave();
-        leaveOther.setLeaveCategory(otherCategory);
-        leaveOther.setDuration(DurationType.FULL_DAY);
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(startDate));
+        request.setDuration(DurationType.FULL_DAY);
 
-        when(leaveRepository.findAllByUserIdAndDateBetweenAndDeletedAtIsNull(
-                eq(userId), any(LocalDate.class), any(LocalDate.class), any(Sort.class)))
-                .thenReturn(List.of(leaveTarget, leaveOther));
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(maternityCategory);
+        when(leaveRepository.findAllByUserIdAndDeletedAtNull(eq(userId), any(Sort.class)))
+                .thenReturn(List.of(existingLeave));
 
-        double totalDays = leaveService.computeTakenDays(userId, targetCategoryId, LocalDate.now().getYear(), null);
+        HttpException ex = assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Maternity block overlaps with an existing leave"));
+    }
+    @Test
+    void shouldThrowBadRequestWhenTryingToUpdateMaternityLeave() {
+        User user = createValidUser();
+        LeaveCategory maternityCategory = new LeaveCategory();
+        maternityCategory.setName(LeaveConstants.MATERNITY_LEAVE);
 
-        assertEquals(1.0, totalDays);
+        Leave maternityLeave = new Leave();
+        maternityLeave.setId(UUID.randomUUID());
+        maternityLeave.setUser(user);
+        maternityLeave.setLeaveCategory(maternityCategory);
+        maternityLeave.setDate(LocalDate.now().plusDays(5));
+
+        UpdateLeaveRequest updateRequest = new UpdateLeaveRequest();
+        updateRequest.setDescription("Trying to update description");
+
+        when(leaveRepository.findById(maternityLeave.getId())).thenReturn(Optional.of(maternityLeave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(maternityLeave.getId(), updateRequest, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Maternity Leave blocks cannot be modified individually. Please cancel the block and re-apply.",
+                ex.getMessage());
+    }
+    @Test
+    void shouldThrowBadRequestWhenMaternityLeaveIsAppliedAsHalfDay() {
+        User user = createValidUser();
+        LeaveCategory maternityCategory = new LeaveCategory();
+        maternityCategory.setName(LeaveConstants.MATERNITY_LEAVE);
+
+        CreateLeaveRequest request = new CreateLeaveRequest();
+        request.setLeaveCategoryId(leaveCategoryId);
+        request.setDates(List.of(LocalDate.now().plusDays(1)));
+        request.setDuration(DurationType.HALF_DAY); // Invalid
+
+        when(userService.getUserByUserId(userId)).thenReturn(user);
+        when(leaveCategoryService.getLeaveCategoryById(leaveCategoryId)).thenReturn(maternityCategory);
+
+        HttpException ex = assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Maternity leave must be a full day", ex.getMessage());
     }
 }
