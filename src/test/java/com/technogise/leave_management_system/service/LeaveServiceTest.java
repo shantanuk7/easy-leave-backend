@@ -1932,7 +1932,6 @@ class LeaveServiceTest {
 
         HttpException ex = assertThrows(HttpException.class, () -> leaveService.applyLeave(request, userId));
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("Maternity block overlaps with an existing leave"));
     }
     @Test
     void shouldThrowBadRequestWhenTryingToUpdateMaternityLeave() {

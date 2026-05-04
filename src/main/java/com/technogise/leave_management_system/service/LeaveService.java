@@ -359,7 +359,7 @@ public class LeaveService {
 
         for (LocalDate date : blockDates) {
             if (existingDates.contains(date)) {
-                throw new HttpException(HttpStatus.CONFLICT, "Maternity block overlaps with an existing leave on: " + date);
+                throw new HttpException(HttpStatus.CONFLICT, "Maternity leave range overlaps with an existing leave on: " + date);
             }
         }
     }
