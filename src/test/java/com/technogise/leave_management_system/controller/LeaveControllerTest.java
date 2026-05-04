@@ -243,6 +243,27 @@ public class LeaveControllerTest {
     }
 
     @Test
+    void shouldApplyAscendingSortWhenSortDirIsAsc() throws Exception {
+        Page<LeaveResponse> page = new PageImpl<>(List.of());
+
+        when(leaveService.getAllLeaves(
+                eq(employee.getId()),
+                any(LeaveFilterRequest.class),
+                argThat(pageable ->
+                        pageable.getSort().getOrderFor("date") != null
+                                && pageable.getSort().getOrderFor("date").isAscending()
+                )
+        )).thenReturn(page);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/leaves")
+                        .with(mockUser(employee))
+                        .param("scope", "self")
+                        .param("sort", "date")
+                        .param("sortDir", "asc"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void shouldReturn200AndListOfLeavesWhenManagerRequestsAllEmployeeLeaves() throws Exception {
         LeaveResponse response1 = new LeaveResponse(
                 managerLeave.getId(),

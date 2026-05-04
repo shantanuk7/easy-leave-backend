@@ -13,6 +13,7 @@ import com.technogise.leave_management_system.service.LeaveService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -49,7 +50,9 @@ public class LeaveController {
             @RequestParam(name = "scope", defaultValue = ScopeType.DEFAULT_SCOPE) String scope,
             @RequestParam(name = "empId", required = false) UUID empId,
             @RequestParam(name = "year", required = false) Integer year,
-            @PageableDefault(size = 20, sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(name = "sort", defaultValue = "date") String sortBy,
+            @RequestParam(name = "sortDir", defaultValue = "desc") String sortDir,
+            @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal User user
     ) {
         log.info("GET /api/leaves called by userId={}, scope={}, status={}, empId={}, year={}",
@@ -62,7 +65,17 @@ public class LeaveController {
                 .year(year)
                 .build();
 
-        Page<LeaveResponse> leaves = leaveService.getAllLeaves(user.getId(), filter, pageable);
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                sort
+        );
+
+        Page<LeaveResponse> leaves = leaveService.getAllLeaves(user.getId(), filter, sortedPageable);
 
         log.debug("Returning {} leaves for userId={}", leaves.getTotalElements(), user.getId());
 
