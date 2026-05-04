@@ -44,7 +44,7 @@ public class LeaveController {
     }
 
     @GetMapping
-    public ResponseEntity<SuccessResponse<Page<LeaveResponse>>> findAllLeave(
+    public ResponseEntity<SuccessResponse<Page<LeaveResponse>>> findAllLeaves(
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "scope", defaultValue = ScopeType.DEFAULT_SCOPE) String scope,
             @RequestParam(name = "empId", required = false) UUID empId,
