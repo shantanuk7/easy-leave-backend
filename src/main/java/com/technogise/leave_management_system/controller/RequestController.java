@@ -72,7 +72,7 @@ public class RequestController {
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<SuccessResponse<RequestResponse>> raiseRequest(
+    public ResponseEntity<SuccessResponse<RequestResponse>> handleRequest(
             @AuthenticationPrincipal User user,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateRequestPayload payload
@@ -80,12 +80,13 @@ public class RequestController {
         log.info("PATCH /api/requests/requestId={} called by userId={}",
                 id, user.getId());
 
-        RequestResponse response = requestService.actionRequest(user, id, payload);
+        RequestResponse response = requestService.handleRequest(user, id, payload);
+        String message = requestService.getResponseMessage(response);
 
         log.debug("Request status={} for requestId={}",
                 response.getStatus(), id);
 
         return ResponseEntity.status(HttpStatus.OK)
-                .body(SuccessResponse.success("Request(s) approved successfully", response));
+                .body(SuccessResponse.success(message, response));
     }
 }

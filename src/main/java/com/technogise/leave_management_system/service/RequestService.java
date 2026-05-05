@@ -182,6 +182,13 @@ public class RequestService {
         return mapToRequestResponse(savedRequest);
     }
 
+    public String getResponseMessage(RequestResponse response) {
+        if (response.getStatus() == RequestStatus.REJECTED) {
+            return "Request rejected successfully";
+        }
+        return "Request approved successfully";
+    }
+
     private List<CreateRequestResponse> raiseCompOffRequest(CreateRequestPayload payload, User user) {
         List<LocalDate> validRangeDates = filterValidCompOffDates(payload.getDates());
         List<LocalDate> weekendDates = filterNonWeekendDates(validRangeDates);

@@ -252,8 +252,10 @@ class RequestControllerTest {
                 "Approved"
         );
 
-        when(requestService.actionRequest(eq(manager), eq(requestId), any()))
+        when(requestService.handleRequest(eq(manager), eq(requestId), any()))
                 .thenReturn(response);
+        when(requestService.getResponseMessage(any()))
+                .thenReturn("Request approved successfully");
 
         mockMvc.perform(MockMvcRequestBuilders.patch("/api/requests/{id}", requestId)
                         .with(mockUser(manager))
@@ -261,7 +263,7 @@ class RequestControllerTest {
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Request(s) approved successfully"))
+                .andExpect(jsonPath("$.message").value("Request approved successfully"))
                 .andExpect(jsonPath("$.data.status").value("APPROVED"))
                 .andExpect(jsonPath("$.data.managerRemark").value("Approved"));
     }

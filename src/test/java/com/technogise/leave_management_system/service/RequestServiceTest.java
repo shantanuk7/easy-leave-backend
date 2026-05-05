@@ -791,4 +791,24 @@ public class RequestServiceTest {
 
         assertNull(response.getManagerRemark());
     }
+
+    @Test
+    void shouldReturnRejectedMessageWhenStatusIsRejected() {
+        RequestResponse response = new RequestResponse();
+        response.setStatus(RequestStatus.REJECTED);
+
+        String result = requestService.getResponseMessage(response);
+
+        assertEquals("Request rejected successfully", result);
+    }
+
+    @Test
+    void shouldReturnApprovedMessageWhenStatusIsApproved() {
+        RequestResponse response = new RequestResponse();
+        response.setStatus(RequestStatus.APPROVED);
+
+        String result = requestService.getResponseMessage(response);
+
+        assertEquals("Request approved successfully", result);
+    }
 }
