@@ -9,12 +9,15 @@ import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.entity.AnnualLeave;
 import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
+import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.RequestRepository;
 
@@ -40,6 +43,7 @@ public class RequestService {
     private final LeaveCategoryService leaveCategoryService;
     private final LeaveRepository leaveRepository;
     private final LeaveService leaveService;
+    private final AnnualLeaveRepository annualLeaveRepository;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
@@ -48,13 +52,15 @@ public class RequestService {
                           UserService userService,
                           LeaveCategoryService leaveCategoryService,
                           LeaveRepository leaveRepository,
-                          LeaveService leaveService
+                          LeaveService leaveService,
+                          AnnualLeaveRepository annualLeaveRepository
     ) {
         this.requestRepository = requestRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
         this.leaveRepository = leaveRepository;
         this.leaveService = leaveService;
+        this.annualLeaveRepository = annualLeaveRepository;
     }
 
     private Page<Request> getRequestsForSelf(User user, RequestStatus status, Pageable pageable) {
@@ -158,7 +164,13 @@ public class RequestService {
             return finalRequestDecision(request, manager, payload);
         }
 
-        return handlePastLeaveRequest(request, manager, payload);
+        if (request.getRequestType() == RequestType.PAST_LEAVE) {
+            return handlePastLeaveRequest(request, manager, payload);
+        } else if (request.getRequestType() == RequestType.COMPENSATORY_OFF) {
+            return handleCompOffRequest(request, manager, payload);
+        }
+
+        throw new HttpException(HttpStatus.BAD_REQUEST, "Unsupported request type");
     }
 
     private void validateRequestStatus(Request request) {
@@ -179,6 +191,23 @@ public class RequestService {
 
         UpdateLeaveRequest updateRequest = mapToUpdateLeaveRequest(request);
         leaveService.updateLeave(existingLeave.getId(), updateRequest, existingLeave.getUser().getId());
+
+        return finalRequestDecision(request, manager, payload);
+    }
+
+    private RequestResponse handleCompOffRequest(Request request, User manager, UpdateRequestPayload payload) {
+        int currentYear = LocalDate.now().getYear();
+        UUID userId = request.getRequestedByUser().getId();
+
+        AnnualLeave annualLeave = annualLeaveRepository.findByUserIdAndYear(
+                userId,
+                String.valueOf(currentYear)
+        ).orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Annual record not found for user: " + userId));
+
+        double compOffDuration = (request.getDuration() == DurationType.FULL_DAY) ? 1.0 : 0.5;
+        double updatedCount = annualLeave.getCompensatoryOffCount() + compOffDuration;
+        annualLeave.setCompensatoryOffCount(updatedCount);
+        annualLeaveRepository.save(annualLeave);
 
         return finalRequestDecision(request, manager, payload);
     }

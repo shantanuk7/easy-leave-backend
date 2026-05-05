@@ -1,16 +1,14 @@
 package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.*;
-import com.technogise.leave_management_system.entity.Leave;
-import com.technogise.leave_management_system.entity.LeaveCategory;
-import com.technogise.leave_management_system.entity.Request;
-import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.entity.*;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.AnnualLeaveRepository;
 import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.RequestRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +54,9 @@ public class RequestServiceTest {
 
     @Mock
     private LeaveService leaveService;
+
+    @Mock
+    private AnnualLeaveRepository annualLeaveRepository;
 
     private User employee;
     private User manager;
@@ -776,6 +777,7 @@ public class RequestServiceTest {
         request.setId(UUID.randomUUID());
         request.setRequestedByUser(employee);
         request.setDate(LocalDate.now().minusDays(5));
+        request.setRequestType(RequestType.PAST_LEAVE);
 
         when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
         when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
@@ -784,6 +786,7 @@ public class RequestServiceTest {
         HttpException ex = assertThrows(HttpException.class,
                 () -> requestService.handleRequest(manager, request.getId(), new UpdateRequestPayload()));
 
+        assertEquals("Leave not found", ex.getMessage());
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
     }
 
@@ -855,5 +858,153 @@ public class RequestServiceTest {
         String result = requestService.getResponseMessage(response);
 
         assertEquals("Request approved successfully", result);
+    }
+
+    @Test
+    void shouldHandleCompOffRequestWhenRequestTypeIsCompOff() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setRequestType(RequestType.COMPENSATORY_OFF);
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStatus(RequestStatus.PENDING);
+        request.setCreatedAt(LocalDateTime.now());
+
+        AnnualLeave annualLeave = new AnnualLeave();
+        annualLeave.setCompensatoryOffCount(1.0);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(annualLeaveRepository.findByUserIdAndYear(any(), any()))
+                .thenReturn(Optional.of(annualLeave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertEquals(2.0, annualLeave.getCompensatoryOffCount());
+        assertEquals(RequestStatus.APPROVED, response.getStatus());
+    }
+
+    @Test
+    void shouldUpdateCompOffCountAndApproveRequest() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setRequestType(RequestType.COMPENSATORY_OFF);
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStatus(RequestStatus.PENDING);
+        request.setCreatedAt(LocalDateTime.now());
+
+        AnnualLeave annualLeave = new AnnualLeave();
+        annualLeave.setCompensatoryOffCount(2.0);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(annualLeaveRepository.findByUserIdAndYear(any(), any()))
+                .thenReturn(Optional.of(annualLeave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertEquals(3.0, annualLeave.getCompensatoryOffCount());
+        assertEquals(RequestStatus.APPROVED, response.getStatus());
+        assertEquals("Approved", response.getManagerRemark());
+    }
+
+    @Test
+    void shouldAddHalfDayCompOff() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setRequestType(RequestType.COMPENSATORY_OFF);
+        request.setDuration(DurationType.HALF_DAY);
+        request.setStatus(RequestStatus.PENDING);
+        request.setCreatedAt(LocalDateTime.now());
+
+        AnnualLeave annualLeave = new AnnualLeave();
+        annualLeave.setCompensatoryOffCount(1.0);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(annualLeaveRepository.findByUserIdAndYear(any(), any()))
+                .thenReturn(Optional.of(annualLeave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        requestService.handleRequest(manager, request.getId(), payload);
+
+        assertEquals(1.5, annualLeave.getCompensatoryOffCount());
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenAnnualLeaveDoesNotExist() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setRequestType(RequestType.COMPENSATORY_OFF);
+        request.setDuration(DurationType.FULL_DAY);
+        request.setStatus(RequestStatus.PENDING);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(annualLeaveRepository.findByUserIdAndYear(any(), any()))
+                .thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), payload));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Annual record not found"));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRequestTypeIsUnsupported() {
+        User manager = createManager();
+        User employee = createValidUser();
+
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setRequestType(null);
+        request.setStatus(RequestStatus.PENDING);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), payload));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Unsupported request type", ex.getMessage());
     }
 }
