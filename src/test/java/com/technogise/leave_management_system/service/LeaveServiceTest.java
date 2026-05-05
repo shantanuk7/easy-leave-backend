@@ -1791,4 +1791,21 @@ class LeaveServiceTest {
 
         assertEquals(1.0, totalDays);
     }
+
+    @Test
+    void shouldTriggerIntegrationHandlerUpdateWhenLeaveIsSuccessfullyUpdated() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        Leave leave = createEmployeeLeave(user, category);
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(any())).thenReturn(category);
+        when(leaveRepository.save(any(Leave.class))).thenReturn(leave);
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+
+        leaveService.updateLeave(leave.getId(), request, userId);
+
+        verify(leaveIntegrationHandler, times(1)).handleLeaveUpdate(any(Leave.class));
+    }
 }
