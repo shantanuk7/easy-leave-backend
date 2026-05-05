@@ -98,7 +98,7 @@ public class RequestService {
                 request.getDescription(),
                 request.getStatus(),
                 request.getCreatedAt().toLocalDate(),
-                null
+                request.getManagerRemark()
         );
     }
 
@@ -137,13 +137,13 @@ public class RequestService {
         return savePastLeaveRequests(workingDays, payload, user, leaveCategory);
     }
 
-    private UpdateLeaveRequest mapToUpdateLeaveRequest(Request leave) {
+    private UpdateLeaveRequest mapToUpdateLeaveRequest(Request request) {
         return new UpdateLeaveRequest(
-                leave.getDate(),
-                leave.getStartTime(),
-                leave.getDescription(),
-                leave.getDuration(),
-                leave.getLeaveCategory().getId(),
+                request.getDate(),
+                request.getStartTime(),
+                request.getDescription(),
+                request.getDuration(),
+                request.getLeaveCategory().getId(),
                 "request"
         );
     }
@@ -161,6 +161,9 @@ public class RequestService {
 
         request.setStatus(payload.getStatus());
         request.setActionedByManager(manager);
+        if (payload.getManagerRemark() != null && !payload.getManagerRemark().isBlank()) {
+            request.setManagerRemark(payload.getManagerRemark());
+        }
 
         Request savedRequest = requestRepository.save(request);
 

@@ -35,7 +35,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class RequestServiceTest {
@@ -121,6 +120,42 @@ public class RequestServiceTest {
             date = date.minusDays(1);
         }
         return date;
+    }
+
+    private User createManager() {
+        User manager = new User();
+        manager.setId(UUID.randomUUID());
+        manager.setName("Manager");
+        manager.setRole(UserRole.MANAGER);
+        return manager;
+    }
+
+    private LeaveCategory createCategory() {
+        LeaveCategory category = new LeaveCategory();
+        category.setId(UUID.randomUUID());
+        category.setName("Annual Leave");
+        return category;
+    }
+
+    private Request createRequest(User employee, LeaveCategory category) {
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setDate(LocalDate.now().minusDays(5));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setRequestType(RequestType.PAST_LEAVE);
+        request.setStatus(RequestStatus.PENDING);
+        request.setCreatedAt(LocalDateTime.now());
+        request.setLeaveCategory(category);
+        return request;
+    }
+
+    private Leave createLeave(User employee, LocalDate date) {
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(employee);
+        leave.setDate(date);
+        return leave;
     }
 
     @Test
@@ -618,49 +653,29 @@ public class RequestServiceTest {
 
     @Test
     void shouldApproveRequestAndUpdateLeaveAndReturnResponse() {
-        User manager = new User();
-        manager.setId(UUID.randomUUID());
-        manager.setName("Manager");
-        manager.setRole(UserRole.MANAGER);
-
+        User manager = createManager();
         User employee = createValidUser();
         employee.setName("Employee");
+        LeaveCategory category = createCategory();
 
-        LeaveCategory category = new LeaveCategory();
-        category.setId(UUID.randomUUID());
-        category.setName("Annual Leave");
-
-        Request request = new Request();
-        request.setId(UUID.randomUUID());
-        request.setRequestedByUser(employee);
-        request.setDate(LocalDate.now().minusDays(5));
-        request.setDuration(DurationType.FULL_DAY);
-        request.setRequestType(RequestType.PAST_LEAVE);
-        request.setStatus(RequestStatus.PENDING);
-        request.setCreatedAt(LocalDateTime.now());
-        request.setLeaveCategory(category);
-
-        Leave leave = new Leave();
-        leave.setId(UUID.randomUUID());
-        leave.setUser(employee);
-        leave.setDate(request.getDate());
+        Request request = createRequest(employee, category);
+        Leave leave = createLeave(employee, request.getDate());
 
         UpdateRequestPayload payload = new UpdateRequestPayload();
         payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
 
         when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
         when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
                 .thenReturn(Optional.of(leave));
-
-        when(leaveService.updateLeave(any(), any(), any()))
-                .thenReturn(new UpdateLeaveResponse());
-
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        RequestResponse response = requestService.actionRequest(manager, request.getId(), payload);
+        RequestResponse response =
+                requestService.actionRequest(manager, request.getId(), payload);
 
-        assertEquals(payload.getStatus(), response.getStatus());
-        assertEquals(employee.getName(), response.getEmployeeName());
+        assertEquals(RequestStatus.APPROVED, response.getStatus());
+        assertEquals("Approved", response.getManagerRemark());
+        assertEquals("Employee", response.getEmployeeName());
 
         verify(leaveService).updateLeave(eq(leave.getId()), any(), eq(employee.getId()));
         verify(requestRepository).save(request);
@@ -696,5 +711,55 @@ public class RequestServiceTest {
                 () -> requestService.actionRequest(manager, request.getId(), new UpdateRequestPayload()));
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldNotSetManagerRemarkWhenRemarkIsNull() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        Leave leave = createLeave(employee, request.getDate());
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark(null);
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
+                .thenReturn(Optional.of(leave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.actionRequest(manager, request.getId(), payload);
+
+        assertNull(response.getManagerRemark());
+    }
+
+    @Test
+    void shouldNotSetManagerRemarkWhenRemarkIsBlank() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        Leave leave = createLeave(employee, request.getDate());
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark(" ");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
+                .thenReturn(Optional.of(leave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.actionRequest(manager, request.getId(), payload);
+
+        assertNull(response.getManagerRemark());
     }
 }
