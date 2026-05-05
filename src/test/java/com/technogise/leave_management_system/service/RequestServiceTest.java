@@ -694,6 +694,35 @@ public class RequestServiceTest {
     }
 
     @Test
+    void shouldHandleRejectedRequestWithoutUpdatingLeave() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.REJECTED);
+        payload.setManagerRemark("Not valid");
+
+        when(requestRepository.findById(request.getId()))
+                .thenReturn(Optional.of(request));
+        when(requestRepository.save(any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertEquals(RequestStatus.REJECTED, response.getStatus());
+        assertEquals("Not valid", response.getManagerRemark());
+        assertEquals(employee.getName(), response.getEmployeeName());
+
+        verify(leaveRepository, never()).findByUserIdAndDate(any(), any());
+        verify(leaveService, never()).updateLeave(any(), any(), any());
+        verify(requestRepository).save(request);
+    }
+
+    @Test
     void shouldThrowNotFoundWhenLeaveDoesNotExist() {
         User manager = new User();
         User employee = createValidUser();

@@ -152,6 +152,10 @@ public class RequestService {
         Request request = requestRepository.findById(requestId).orElseThrow(
                 () -> new HttpException(HttpStatus.NOT_FOUND, "Request not found with Id: " + requestId));
 
+        if (payload.getStatus() == RequestStatus.REJECTED) {
+            return finalRequestDecision(request, manager, payload);
+        }
+
         return handlePastLeaveRequest(request, manager, payload);
     }
 
@@ -163,14 +167,18 @@ public class RequestService {
         UpdateLeaveRequest updateRequest = mapToUpdateLeaveRequest(request);
         leaveService.updateLeave(existingLeave.getId(), updateRequest, existingLeave.getUser().getId());
 
+        return finalRequestDecision(request, manager, payload);
+    }
+
+    private RequestResponse finalRequestDecision(Request request, User manager, UpdateRequestPayload payload) {
         request.setStatus(payload.getStatus());
         request.setActionedByManager(manager);
+
         if (payload.getManagerRemark() != null && !payload.getManagerRemark().isBlank()) {
             request.setManagerRemark(payload.getManagerRemark());
         }
 
         Request savedRequest = requestRepository.save(request);
-
         return mapToRequestResponse(savedRequest);
     }
 
