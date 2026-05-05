@@ -155,11 +155,11 @@ class LeaveServiceTest {
     }
 
     private LeaveCategory createAnnualLeaveCategory() {
-        LeaveCategory cat = new LeaveCategory();
-        cat.setId(leaveCategoryId);
-        cat.setName(LeaveConstants.ANNUAL_LEAVE);
-        cat.setAllocatedDays(24);
-        return cat;
+        LeaveCategory category = new LeaveCategory();
+        category.setId(leaveCategoryId);
+        category.setName(LeaveConstants.ANNUAL_LEAVE);
+        category.setAllocatedDays(24);
+        return category;
     }
 
     private Holiday createFixedHoliday() {
