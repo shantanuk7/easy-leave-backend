@@ -3,6 +3,7 @@ import com.technogise.leave_management_system.dto.RequestResponse;
 
 import com.technogise.leave_management_system.dto.CreateRequestPayload;
 import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.dto.UpdateRequestPayload;
 import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.RequestStatus;
@@ -112,7 +113,8 @@ class RequestControllerTest {
                 DurationType.FULL_DAY,
                 "Fever",
                 RequestStatus.PENDING,
-                LocalDate.now()
+                LocalDate.now(),
+                null
         ));
         Page<RequestResponse> mockPage = new PageImpl<>(mockResponse);
         when(requestService.getAllRequests( any(Pageable.class), eq(employee.getId()), eq(ScopeType.SELF), eq(null))).thenReturn(mockPage);
@@ -221,5 +223,63 @@ class RequestControllerTest {
                 .andExpect(jsonPath("$.data[0].requestType").value("COMPENSATORY_OFF"))
                 .andExpect(jsonPath("$.data[0].leaveCategoryName").doesNotExist())
                 .andExpect(jsonPath("$.data[0].status").value("PENDING"));
+    }
+
+    @Test
+    void shouldApproveRequestAndReturn200() throws Exception {
+        User manager = new User();
+        manager.setId(UUID.randomUUID());
+        manager.setName("Manager");
+        manager.setRole(UserRole.MANAGER);
+
+        UUID requestId = UUID.randomUUID();
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setRequestType(RequestType.PAST_LEAVE);
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        RequestResponse response = new RequestResponse(
+                requestId,
+                "Employee",
+                RequestType.PAST_LEAVE,
+                "Annual Leave",
+                LocalDate.now().minusDays(5),
+                DurationType.FULL_DAY,
+                "Sick",
+                RequestStatus.APPROVED,
+                LocalDate.now(),
+                "Approved"
+        );
+
+        when(requestService.actionRequest(eq(manager), eq(requestId), any()))
+                .thenReturn(response);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/api/requests/{id}", requestId)
+                        .with(mockUser(manager))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Request(s) approved successfully"))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"))
+                .andExpect(jsonPath("$.data.managerRemark").value("Approved"));
+    }
+
+    @Test
+    void shouldReturn400WhenPayloadIsInvalid() throws Exception {
+        User manager = new User();
+        manager.setId(UUID.randomUUID());
+        manager.setRole(UserRole.MANAGER);
+
+        UUID requestId = UUID.randomUUID();
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/api/requests/{id}", requestId)
+                        .with(mockUser(manager))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest());
     }
 }
