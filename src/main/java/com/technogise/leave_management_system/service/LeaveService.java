@@ -79,7 +79,7 @@ public class LeaveService {
         return leaveRepository
                 .findAllByUserIdAndDateBetweenAndDeletedAtIsNull(userId, startDate, endDate, Sort.unsorted())
                 .stream()
-                .filter(leave -> leave.getLeaveCategory().getId().equals(categoryId))
+                .filter(leave -> leave.getLeaveCategory() != null && leave.getLeaveCategory().getId().equals(categoryId))
                 .filter(leave -> excludeLeaveId == null || !leave.getId().equals(excludeLeaveId))
                 .mapToDouble(leave -> leave.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5)
                 .sum();
