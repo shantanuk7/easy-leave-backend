@@ -391,7 +391,11 @@ public class LeaveService {
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
         validateLeaveOwnership(leave, userId, "Not allowed to update this leave");
-        validateExistingLeaveDate(leave.getDate());
+        if (REQUEST_TYPE.equalsIgnoreCase(request.getType())) {
+            validateNewRequestLeaveDate(request.getDate());
+        } else {
+            validateExistingLeaveDate(leave.getDate());
+        }
 
         DurationType oldDuration = leave.getDuration();
         String oldCategoryName = leave.getLeaveCategory() != null ? leave.getLeaveCategory().getName() : "";
