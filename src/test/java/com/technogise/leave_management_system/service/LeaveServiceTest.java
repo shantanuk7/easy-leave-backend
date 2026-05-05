@@ -1368,7 +1368,7 @@ class LeaveServiceTest {
 
         assertNotNull(response);
         assertEquals("Updated holiday description", response.getDescription());
-        assertEquals(holiday.getType().getDisplayName(), response.getLeaveCategoryName());
+        assertEquals(holiday.getType().getDisplayName(), response.getType());
 
         verify(annualLeaveService, never()).syncOnLeaveUpdated(any(), any(), any(), any(), any(), anyInt());
     }
