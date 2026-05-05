@@ -694,6 +694,51 @@ public class RequestServiceTest {
     }
 
     @Test
+    void shouldThrowBadRequestWhenRequestAlreadyApproved() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        request.setStatus(RequestStatus.APPROVED);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), payload));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("This request has already been processed and cannot be modified", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRequestAlreadyRejected() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        request.setStatus(RequestStatus.REJECTED);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), payload));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
     void shouldHandleRejectedRequestWithoutUpdatingLeave() {
         User manager = createManager();
         User employee = createValidUser();

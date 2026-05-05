@@ -152,11 +152,24 @@ public class RequestService {
         Request request = requestRepository.findById(requestId).orElseThrow(
                 () -> new HttpException(HttpStatus.NOT_FOUND, "Request not found with Id: " + requestId));
 
+        validateRequestStatus(request);
+
         if (payload.getStatus() == RequestStatus.REJECTED) {
             return finalRequestDecision(request, manager, payload);
         }
 
         return handlePastLeaveRequest(request, manager, payload);
+    }
+
+    private void validateRequestStatus(Request request) {
+        if (request.getStatus() == RequestStatus.APPROVED
+                || request.getStatus() == RequestStatus.REJECTED) {
+
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "This request has already been processed and cannot be modified"
+            );
+        }
     }
 
     private RequestResponse handlePastLeaveRequest(Request request, User manager, UpdateRequestPayload payload) {
