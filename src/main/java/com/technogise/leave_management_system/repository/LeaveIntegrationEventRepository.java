@@ -9,4 +9,5 @@ import java.util.UUID;
 
 public interface LeaveIntegrationEventRepository extends JpaRepository<LeaveIntegrationEvent, UUID> {
     Optional<LeaveIntegrationEvent> findByLeaveIdAndPlatformAndDeletedAtIsNull(UUID leaveId, PlatformType platform);
+    Optional<LeaveIntegrationEvent> findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(UUID leaveId, PlatformType platform);
 }

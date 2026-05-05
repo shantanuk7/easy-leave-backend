@@ -2,10 +2,7 @@ package com.technogise.leave_management_system.service;
 
 import com.technogise.leave_management_system.dto.KimaiTimesheetResponse;
 import com.technogise.leave_management_system.dto.KimaiUserResponse;
-import com.technogise.leave_management_system.entity.Leave;
-import com.technogise.leave_management_system.entity.LeaveCategory;
-import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
-import com.technogise.leave_management_system.entity.User;
+import com.technogise.leave_management_system.entity.*;
 import com.technogise.leave_management_system.enums.*;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -435,10 +432,9 @@ class KimaiServiceTest {
     @Test
     void shouldPatchKimaiTimesheetSuccessfullyForHalfDayLeaveOnUpdate() {
         testLeave.setDuration(DurationType.HALF_DAY);
-
         LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
 
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(existingEvent));
 
@@ -471,10 +467,11 @@ class KimaiServiceTest {
                         && savedEvent.getOperationType() == IntegrationOperationType.UPDATE
         ));
     }
+
     @Test
     void shouldFallbackToSyncLeaveWhenNoPreviousKimaiEventFound() {
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                testLeave.getId(), PlatformType.KIMAI))
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
+                any(), any()))
                 .thenReturn(Optional.empty());
 
         doNothing().when(kimaiService).syncLeave(testLeave);
@@ -492,7 +489,7 @@ class KimaiServiceTest {
         event.setPlatform(PlatformType.KIMAI);
         event.setExternalEventId(null);
 
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(event));
 
@@ -505,14 +502,46 @@ class KimaiServiceTest {
     }
 
     @Test
+    void shouldHandleHolidayDisplayNameWhenLeaveCategoryIsNull() {
+        Holiday optionalHoliday = new Holiday();
+        optionalHoliday.setType(HolidayType.OPTIONAL);
+
+        testLeave.setLeaveCategory(null);
+        testLeave.setHoliday(optionalHoliday);
+
+        LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any()))
+                .thenReturn(Optional.of(existingEvent));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString())).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(KimaiUserResponse.class)).thenReturn(Flux.just(mockKimaiUser));
+
+        WebClient.RequestBodyUriSpec patchUriSpec = mock(WebClient.RequestBodyUriSpec.class);
+        WebClient.RequestHeadersSpec patchHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
+        when(webClient.patch()).thenReturn(patchUriSpec);
+        when(patchUriSpec.uri(anyString(), anyString())).thenReturn(patchUriSpec);
+        when(patchUriSpec.bodyValue(any())).thenReturn(patchHeadersSpec);
+        when(patchHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
+
+        assertDoesNotThrow(() -> kimaiService.updateLeave(testLeave));
+
+        verify(eventRepository).save(argThat(event ->
+                event.getOperationType() == IntegrationOperationType.UPDATE
+                        && event.getStatus() == IntegrationStatus.SUCCESS
+        ));
+    }
+
+    @Test
     void shouldPatchKimaiTimesheetSuccessfullyWhenPreviousEventExists() {
         LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
 
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(existingEvent));
 
-        // getUserIdByEmail
         KimaiUserResponse user = new KimaiUserResponse();
         user.setId(4);
         user.setUsername("Raj");
@@ -522,7 +551,6 @@ class KimaiServiceTest {
         when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToFlux(KimaiUserResponse.class)).thenReturn(Flux.just(user));
 
-        // patch call
         WebClient.RequestBodyUriSpec patchUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestHeadersSpec patchHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
         WebClient.ResponseSpec patchResponseSpec = mock(WebClient.ResponseSpec.class);
@@ -549,7 +577,7 @@ class KimaiServiceTest {
     void shouldSaveFailedEventWhenKimaiPatchCallFails() {
         LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
 
-        when(eventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(existingEvent));
 
@@ -577,5 +605,31 @@ class KimaiServiceTest {
                         && savedEvent.getErrorMessage().equals("Kimai patch failed")
                         && savedEvent.getOperationType() == IntegrationOperationType.UPDATE
         ));
+    }
+
+    @Test
+    void shouldHandleMissingActivityMappingDuringUpdate() {
+        LeaveCategory unknownCategory = new LeaveCategory();
+        unknownCategory.setName("Unknown Category");
+        testLeave.setLeaveCategory(unknownCategory);
+
+        LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any()))
+                .thenReturn(Optional.of(existingEvent));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString())).thenReturn(getHeadersSpec);
+        when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToFlux(KimaiUserResponse.class)).thenReturn(Flux.just(mockKimaiUser));
+
+        kimaiService.updateLeave(testLeave);
+
+        verify(eventRepository).save(argThat(event ->
+                event.getStatus() == IntegrationStatus.FAILED
+                       && event.getErrorMessage().equals("No Kimai activity mapping found for: Unknown Category")
+                      &&  event.getOperationType() == IntegrationOperationType.UPDATE
+        ));
+
+        verify(webClient, never()).patch();
     }
 }
