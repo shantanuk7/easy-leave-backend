@@ -1213,12 +1213,17 @@ class LeaveServiceTest {
     @Test
     void shouldThrowBadRequestWhenAllFieldsInUpdateRequestAreNull() {
         UpdateLeaveRequest emptyRequest = new UpdateLeaveRequest();
+        emptyRequest.setDate(null);
+        emptyRequest.setStartTime(null);
+        emptyRequest.setDescription(null);
+        emptyRequest.setDuration(null);
+        emptyRequest.setLeaveCategoryId(null);
 
         HttpException ex = assertThrows(HttpException.class,
                 () -> leaveService.updateLeave(UUID.randomUUID(), emptyRequest, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("At least one field must be provided to update", ex.getMessage());
+        assertEquals("Update at least one detail to save changes", ex.getMessage());
     }
 
     @Test
