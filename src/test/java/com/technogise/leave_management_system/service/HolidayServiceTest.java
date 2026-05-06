@@ -104,7 +104,7 @@ class HolidayServiceTest {
 
         // Then
         HttpException exception = assertThrows(HttpException.class, () -> holidayService.createHoliday(request));
-        assertEquals("Holiday cannot be created on a weekend day", exception.getMessage());
+        assertEquals("Holiday cannot be set on a weekend", exception.getMessage());
     }
 
     @Test

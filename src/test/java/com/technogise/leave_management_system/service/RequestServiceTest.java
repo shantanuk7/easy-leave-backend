@@ -295,7 +295,7 @@ public class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+        assertEquals("A request already exists for one or more of the selected dates. Please choose different dates.", ex.getMessage());
     }
 
     @Test
@@ -318,7 +318,7 @@ public class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+        assertEquals("A request already exists for one or more of the selected dates. Please choose different dates.", ex.getMessage());
     }
 
     @Test
@@ -504,7 +504,7 @@ public class RequestServiceTest {
                 () -> requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+        assertEquals("A request already exists for one or more of the selected dates. Please choose different dates.", ex.getMessage());
     }
 
     @Test

@@ -1210,7 +1210,7 @@ class LeaveServiceTest {
                 () -> leaveService.updateLeave(UUID.randomUUID(), emptyRequest, userId));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("At least one field must be provided to update", ex.getMessage());
+        assertEquals("Update at least one detail to save changes", ex.getMessage());
     }
 
     @Test
@@ -1731,7 +1731,7 @@ class LeaveServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("Cannot apply leave on weekends or fixed holidays", ex.getMessage());
+        assertEquals("The selected date(s) fall on a weekend or fixed holiday. Please choose a working day.", ex.getMessage());
     }
 
     @Test
@@ -1790,5 +1790,54 @@ class LeaveServiceTest {
         double totalDays = leaveService.computeTakenDays(userId, targetCategoryId, LocalDate.now().getYear(), null);
 
         assertEquals(1.0, totalDays);
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenNewLeaveDateIsInPreviousMonth() {
+        User user = createValidUser();
+        LeaveCategory category = new LeaveCategory();
+        category.setId(leaveCategoryId);
+        category.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().minusMonths(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Past dates can only be selected within the current month.", ex.getMessage());
+    }
+
+    @Test
+    void shouldNotThrowWhenNewLeaveDateIsInCurrentMonth() {
+        LeaveCategory category = new LeaveCategory();
+        category.setId(leaveCategoryId);
+        category.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(createValidUser());
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().withDayOfMonth(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any())).thenReturn(false);
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> leaveService.updateLeave(leave.getId(), request, userId));
     }
 }

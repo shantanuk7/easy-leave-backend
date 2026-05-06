@@ -178,7 +178,7 @@ public class RequestService {
         if (requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
                 userId, dates, activeStatuses)) {
             throw new HttpException(HttpStatus.CONFLICT,
-                    "A request already exists for one of the selected dates");
+                    "A request already exists for one or more of the selected dates. Please choose different dates.");
         }
     }
 
