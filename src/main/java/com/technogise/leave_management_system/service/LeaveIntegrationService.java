@@ -5,4 +5,5 @@ import com.technogise.leave_management_system.entity.Leave;
 public interface LeaveIntegrationService {
     void syncLeave(Leave leave);
     void deleteLeave(Leave leave);
+    void updateLeave(Leave leave);
 }

@@ -174,8 +174,11 @@ class GoogleCalendarServiceTest {
         existingEvent.setExternalEventId("event123");
         existingEvent.setStatus(IntegrationStatus.SUCCESS);
 
-        when(leaveIntegrationEventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(leave.getId(), PlatformType.GOOGLE_CALENDAR))
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.of(existingEvent));
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         when(httpResponse.statusCode()).thenReturn(204);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(httpResponse);
@@ -183,9 +186,9 @@ class GoogleCalendarServiceTest {
         googleCalendarService.deleteLeave(leave);
 
         verify(leaveIntegrationEventRepository).save(argThat(event ->
-                event.getStatus() == IntegrationStatus.SUCCESS && event.getExternalEventId().equals("event123")
+                event.getStatus() == IntegrationStatus.SUCCESS
+                        && "event123".equals(event.getExternalEventId())
                         && event.getOperationType() == IntegrationOperationType.DELETE
-                        && event.getPlatform() == PlatformType.GOOGLE_CALENDAR
         ));
     }
 
@@ -197,12 +200,13 @@ class GoogleCalendarServiceTest {
         existingEvent.setExternalEventId("event123");
         existingEvent.setStatus(IntegrationStatus.SUCCESS);
 
-        when(leaveIntegrationEventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(leave.getId(), PlatformType.GOOGLE_CALENDAR))
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.of(existingEvent));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         when(httpResponse.statusCode()).thenReturn(404);
-        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(httpResponse);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(httpResponse);
 
         googleCalendarService.deleteLeave(leave);
 
@@ -217,10 +221,13 @@ class GoogleCalendarServiceTest {
         existingEvent.setLeave(leave);
         existingEvent.setPlatform(PlatformType.GOOGLE_CALENDAR);
         existingEvent.setExternalEventId("event123");
+        existingEvent.setStatus(IntegrationStatus.SUCCESS);
 
-        when(leaveIntegrationEventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                leave.getId(), PlatformType.GOOGLE_CALENDAR))
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.of(existingEvent));
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         when(httpResponse.statusCode()).thenReturn(200);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
@@ -230,8 +237,51 @@ class GoogleCalendarServiceTest {
 
         verify(leaveIntegrationEventRepository).save(argThat(event ->
                 event.getStatus() == IntegrationStatus.SUCCESS
-                        && event.getExternalEventId().equals("event123")
+                        && "event123".equals(event.getExternalEventId())
                         && event.getOperationType() == IntegrationOperationType.DELETE));
+    }
+
+    @Test
+    void shouldSaveFailedEventWhenUserNotFoundDuringDelete() {
+        LeaveIntegrationEvent existingEvent = new LeaveIntegrationEvent();
+        existingEvent.setExternalEventId("event123");
+        existingEvent.setStatus(IntegrationStatus.SUCCESS);
+
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.of(existingEvent));
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.empty());
+
+        googleCalendarService.deleteLeave(leave);
+
+        verify(leaveIntegrationEventRepository).save(argThat(event ->
+                event.getStatus() == IntegrationStatus.FAILED
+                        && event.getErrorMessage().equals("User not found for leaveId=" + leave.getId())
+                        && event.getOperationType() == IntegrationOperationType.DELETE
+        ));
+    }
+
+    @Test
+    void shouldSaveFailedEventWhenExternalEventIdIsNull() throws Exception {
+        LeaveIntegrationEvent eventWithNullId = new LeaveIntegrationEvent();
+        eventWithNullId.setExternalEventId(null);
+        eventWithNullId.setStatus(IntegrationStatus.SUCCESS);
+
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.of(eventWithNullId));
+
+        googleCalendarService.deleteLeave(leave);
+
+        verify(leaveIntegrationEventRepository).save(argThat(event ->
+                event.getStatus() == IntegrationStatus.FAILED
+                        && event.getErrorMessage().contains("No Google Calendar entry found")
+                        && event.getOperationType() == IntegrationOperationType.DELETE
+        ));
+
+        verify(userRepository, never()).findById(any());
+        verify(httpClient, never()).send(any(), any());
     }
 
     @Test
@@ -240,9 +290,12 @@ class GoogleCalendarServiceTest {
         existingEvent.setLeave(leave);
         existingEvent.setPlatform(PlatformType.GOOGLE_CALENDAR);
         existingEvent.setExternalEventId("event123");
+        existingEvent.setStatus(IntegrationStatus.SUCCESS);
 
-        when(leaveIntegrationEventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                leave.getId(), PlatformType.GOOGLE_CALENDAR)).thenReturn(Optional.of(existingEvent));
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.of(existingEvent));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         when(httpResponse.statusCode()).thenReturn(500);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(httpResponse);
@@ -250,7 +303,9 @@ class GoogleCalendarServiceTest {
         googleCalendarService.deleteLeave(leave);
 
         verify(leaveIntegrationEventRepository).save(argThat(event ->
-                event.getStatus() == IntegrationStatus.FAILED && event.getErrorMessage().contains("500") && event.getOperationType() == IntegrationOperationType.DELETE
+                event.getStatus() == IntegrationStatus.FAILED
+                        && event.getErrorMessage().contains("500")
+                        && event.getOperationType() == IntegrationOperationType.DELETE
         ));
     }
 
@@ -260,28 +315,41 @@ class GoogleCalendarServiceTest {
         existingEvent.setLeave(leave);
         existingEvent.setPlatform(PlatformType.GOOGLE_CALENDAR);
         existingEvent.setExternalEventId("event123");
+        existingEvent.setStatus(IntegrationStatus.SUCCESS);
 
-        when(leaveIntegrationEventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                leave.getId(), PlatformType.GOOGLE_CALENDAR)).thenReturn(Optional.of(existingEvent));
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.of(existingEvent));
 
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new RuntimeException("Connection refused"));
 
         googleCalendarService.deleteLeave(leave);
 
         verify(leaveIntegrationEventRepository).save(argThat(event ->
-                event.getStatus() == IntegrationStatus.FAILED && event.getErrorMessage().equals("Connection refused")
+                event.getStatus() == IntegrationStatus.FAILED
+                        && "Connection refused".equals(event.getErrorMessage())
                         && event.getOperationType() == IntegrationOperationType.DELETE));
     }
 
     @Test
     void shouldQueryRepositoryWithCorrectLeaveIdAndPlatformOnDelete() {
-        when(leaveIntegrationEventRepository.findByLeaveIdAndPlatformAndDeletedAtIsNull(
-                leave.getId(), PlatformType.GOOGLE_CALENDAR))
+        when(leaveIntegrationEventRepository.findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.empty());
 
         googleCalendarService.deleteLeave(leave);
 
-        verify(leaveIntegrationEventRepository).findByLeaveIdAndPlatformAndDeletedAtIsNull(leave.getId(), PlatformType.GOOGLE_CALENDAR);
+        verify(leaveIntegrationEventRepository).findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS);
+    }
+
+    @Test
+    void shouldSkipImplementationAndNotCallApiOnUpdateLeave() throws Exception {
+        googleCalendarService.updateLeave(leave);
+
+        verify(httpClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        verify(leaveIntegrationEventRepository, never()).save(any());
     }
 }

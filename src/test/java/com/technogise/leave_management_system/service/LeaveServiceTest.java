@@ -79,9 +79,6 @@ class LeaveServiceTest {
     @InjectMocks
     private LeaveService leaveService;
 
-    @Mock
-    private LeaveIntegrationHandler integrationHandler;
-
     private UUID userId;
     private UUID leaveCategoryId;
     private Pageable pageable;
@@ -1839,5 +1836,26 @@ class LeaveServiceTest {
         when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertDoesNotThrow(() -> leaveService.updateLeave(leave.getId(), request, userId));
+    }
+
+    @Test
+    void shouldTriggerIntegrationHandlerUpdateWhenLeaveIsSuccessfullyUpdated() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        Leave leave = createEmployeeLeave(user, category);
+
+        leave.setDate(nextWeekday());
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(any())).thenReturn(category);
+        when(leaveRepository.save(any(Leave.class))).thenReturn(leave);
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any()))
+                .thenReturn(false);
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(nextWeekdays(5).get(4));
+        leaveService.updateLeave(leave.getId(), request, userId);
+
+        verify(leaveIntegrationHandler, times(1)).handleLeaveUpdate(any(Leave.class));
     }
 }

@@ -431,6 +431,7 @@ public class LeaveService {
                     savedLeave.getDate().getYear());
         }
 
+        leaveIntegrationHandler.handleLeaveUpdate(savedLeave);
         return mapToUpdateLeaveResponse(savedLeave);
     }
 
