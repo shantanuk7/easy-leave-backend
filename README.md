@@ -672,9 +672,11 @@ Allows an authenticated user to retrieve **leave requests** with pagination supp
 
 #### Scope Behavior
 
-| Scope | Who can use it | Behavior |
-|------|---------------|----------|
-| `SELF` | Any authenticated user | Returns only the logged-in user’s requests |
+| Scope          | Who can use it | Behavior                                   |
+|----------------|---------------|--------------------------------------------|
+| `SELF`         | Any authenticated user | Returns only the logged-in user’s requests |
+| `ORGANIZATION` | Any authenticated user | Returns all employees pending requests     |
+
 
 ---
 
@@ -692,7 +694,10 @@ GET /api/requests?status=PENDING
 ```
 GET /api/requests?page=0&size=10
 ```
-
+4. Fetch all pending requests as manager:
+```
+GET /api/requests?scope=organization&status=PENDING
+```
 ---
 
 #### Response Format
@@ -721,8 +726,8 @@ GET /api/requests?page=0&size=10
     "totalPages": 1
   }
 }
+```
 
-### Raise Request — `POST /api/requests`
 ---
 
 ## Raise Request — POST /api/requests

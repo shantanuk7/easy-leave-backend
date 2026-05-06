@@ -16,6 +16,8 @@ public class KimaiConstants {
             LeaveConstants.MATERNITY_LEAVE, 5,
             LeaveConstants.SABBATICAL_LEAVE, 6,
             LeaveConstants.BEREAVEMENT_LEAVE, 7,
-            LeaveConstants.REJUVENATION_LEAVE, 8
+            LeaveConstants.REJUVENATION_LEAVE, 8,
+            HolidayConstants.FIXED_HOLIDAY,9,
+            HolidayConstants.OPTIONAL_HOLIDAY,10
     );
 }

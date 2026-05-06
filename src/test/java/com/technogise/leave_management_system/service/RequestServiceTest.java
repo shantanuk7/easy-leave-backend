@@ -56,6 +56,7 @@ public class RequestServiceTest {
     private RequestService requestService;
 
     private User employee;
+    private User manager;
     private Pageable pageable;
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
@@ -68,6 +69,11 @@ public class RequestServiceTest {
         employee.setId(UUID.randomUUID());
         employee.setName("Priyansh");
         employee.setRole(UserRole.EMPLOYEE);
+
+        manager = new User();
+        manager.setId(UUID.randomUUID());
+        manager.setName("Priyansh");
+        manager.setRole(UserRole.MANAGER);
         userId = UUID.randomUUID();
         leaveCategoryId = UUID.randomUUID();
         pageable = PageRequest.of(0, 10);
@@ -295,7 +301,7 @@ public class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+        assertEquals("A request already exists for one or more of the selected dates. Please choose different dates.", ex.getMessage());
     }
 
     @Test
@@ -318,7 +324,7 @@ public class RequestServiceTest {
                 () -> requestService.raiseRequest(payload, userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+        assertEquals("A request already exists for one or more of the selected dates. Please choose different dates.", ex.getMessage());
     }
 
     @Test
@@ -342,6 +348,69 @@ public class RequestServiceTest {
         assertEquals("Sick Leave", result.getContent().getFirst().getLeaveCategory());
     }
 
+    @Test
+    void shouldReturnRequestsForOrganizationScope() {
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setName("Sick Leave");
+
+        Request request = buildRequest(manager, leaveCategory);
+        Page<Request> mockPage = new PageImpl<>(List.of(request));
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(requestRepository.findAllByStatus(
+                eq(RequestStatus.PENDING), any(Pageable.class)))
+                .thenReturn(mockPage);
+
+        Page<RequestResponse> result = requestService.getAllRequests(
+                pageable, manager.getId(), ScopeType.ORGANIZATION, RequestStatus.PENDING);
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("Priyansh", result.getContent().getFirst().getEmployeeName());
+        assertEquals("Sick Leave", result.getContent().getFirst().getLeaveCategory());
+    }
+
+    @Test
+    void shouldThrowErrorWhenEmployeeRequestWithScopeOrganization() {
+        when(userService.getUserByUserId(employee.getId())).thenReturn(employee);
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                requestService.getAllRequests(
+                        pageable, employee.getId(), ScopeType.ORGANIZATION, RequestStatus.PENDING));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertEquals("Not Allowed to access this resource", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowErrorWhenManagerRequestWithScopeOrganizationAndStatusApproved() {
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+
+        HttpException ex = assertThrows(HttpException.class, () ->
+                requestService.getAllRequests(
+                        pageable, manager.getId(), ScopeType.ORGANIZATION, RequestStatus.APPROVED));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Managers can only access pending requests", ex.getMessage());
+    }
+    @Test
+    void shouldReturnPendingRequestsWhenStatusIsNullForOrganizationScope() {
+        LeaveCategory leaveCategory = new LeaveCategory();
+        leaveCategory.setName("Sick Leave");
+
+        Request request = buildRequest(manager, leaveCategory);
+        Page<Request> mockPage = new PageImpl<>(List.of(request));
+
+        when(userService.getUserByUserId(manager.getId())).thenReturn(manager);
+        when(requestRepository.findAllByStatus(eq(RequestStatus.PENDING), any(Pageable.class))).thenReturn(mockPage);
+
+        Page<RequestResponse> result = requestService.getAllRequests(pageable, manager.getId(), ScopeType.ORGANIZATION, null);
+
+        assertEquals(1, result.getContent().size());
+        verify(requestRepository).findAllByStatus(
+                eq(RequestStatus.PENDING),
+                any(Pageable.class)
+        );
+    }
     @Test
     void shouldNotThrowConflictWhenPastLeaveRequestExistsWithRejectedStatus() {
         LocalDate lastWeekMonday = LocalDate.now(IST)
@@ -504,7 +573,7 @@ public class RequestServiceTest {
                 () -> requestService.raiseRequest(createCompOffPayload(List.of(weekend)), userId));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
-        assertEquals("A request already exists for one of the selected dates", ex.getMessage());
+        assertEquals("A request already exists for one or more of the selected dates. Please choose different dates.", ex.getMessage());
     }
 
     @Test

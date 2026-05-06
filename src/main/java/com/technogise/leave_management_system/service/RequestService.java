@@ -9,6 +9,7 @@ import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.RequestStatus;
 import com.technogise.leave_management_system.enums.RequestType;
 import com.technogise.leave_management_system.enums.ScopeType;
+import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
 import com.technogise.leave_management_system.repository.RequestRepository;
@@ -45,7 +46,7 @@ public class RequestService {
         this.leaveCategoryService = leaveCategoryService;
     }
 
-    private Page<Request> getRequestsForSelf( User user, RequestStatus status, Pageable pageable) {
+    private Page<Request> getRequestsForSelf(User user, RequestStatus status, Pageable pageable) {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -56,6 +57,21 @@ public class RequestService {
         } else {
             return requestRepository.findAllByRequestedByUserId(user.getId(), sortedPageable);
         }
+    }
+
+    private Page<Request> getRequestsForOrganization(User user, RequestStatus status, Pageable pageable) {
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "date")
+        );
+        if (user.getRole() != UserRole.MANAGER) {
+            throw new HttpException(HttpStatus.FORBIDDEN, "Not Allowed to access this resource");
+        }
+        if (status != null && status != RequestStatus.PENDING) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Managers can only access pending requests");
+        }
+        return requestRepository.findAllByStatus(RequestStatus.PENDING, sortedPageable);
     }
 
     private RequestResponse mapToRequestResponse(Request request) {
@@ -84,6 +100,8 @@ public class RequestService {
         Page<Request> requests;
         if (scope == ScopeType.SELF) {
             requests = getRequestsForSelf(user, status, pageable);
+        } else if (scope == ScopeType.ORGANIZATION) {
+            requests = getRequestsForOrganization(user,status, pageable);
         } else {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Invalid scope");
         }
@@ -178,7 +196,7 @@ public class RequestService {
         if (requestRepository.existsByRequestedByUserIdAndDateInAndStatusIn(
                 userId, dates, activeStatuses)) {
             throw new HttpException(HttpStatus.CONFLICT,
-                    "A request already exists for one of the selected dates");
+                    "A request already exists for one or more of the selected dates. Please choose different dates.");
         }
     }
 

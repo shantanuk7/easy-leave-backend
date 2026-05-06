@@ -79,9 +79,6 @@ class LeaveServiceTest {
     @InjectMocks
     private LeaveService leaveService;
 
-    @Mock
-    private LeaveIntegrationHandler integrationHandler;
-
     private UUID userId;
     private UUID leaveCategoryId;
     private Pageable pageable;
@@ -220,7 +217,6 @@ class LeaveServiceTest {
     private User createValidUser() {
         User user = new User();
         user.setId(userId);
-        user.setName("Test User");
         return user;
     }
 
@@ -1811,7 +1807,7 @@ class LeaveServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("Cannot apply leave on weekends or fixed holidays", ex.getMessage());
+        assertEquals("The selected date(s) fall on a weekend or fixed holiday. Please choose a working day.", ex.getMessage());
     }
 
     @Test
@@ -1870,6 +1866,76 @@ class LeaveServiceTest {
         double totalDays = leaveService.computeTakenDays(userId, targetCategoryId, LocalDate.now().getYear(), null);
 
         assertEquals(1.0, totalDays);
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenNewLeaveDateIsInPreviousMonth() {
+        User user = createValidUser();
+        LeaveCategory category = new LeaveCategory();
+        category.setId(leaveCategoryId);
+        category.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(user);
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().minusMonths(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> leaveService.updateLeave(leave.getId(), request, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Past dates can only be selected within the current month.", ex.getMessage());
+    }
+
+    @Test
+    void shouldNotThrowWhenNewLeaveDateIsInCurrentMonth() {
+        LeaveCategory category = new LeaveCategory();
+        category.setId(leaveCategoryId);
+        category.setName(LeaveConstants.ANNUAL_LEAVE);
+
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(createValidUser());
+        leave.setDate(LocalDate.now().plusDays(3));
+        leave.setLeaveCategory(category);
+        leave.setDuration(DurationType.FULL_DAY);
+
+        UpdateLeaveRequest request = new UpdateLeaveRequest();
+        request.setDate(LocalDate.now().withDayOfMonth(1));
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any())).thenReturn(false);
+        when(leaveRepository.save(any(Leave.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> leaveService.updateLeave(leave.getId(), request, userId));
+    }
+
+    @Test
+    void shouldTriggerIntegrationHandlerUpdateWhenLeaveIsSuccessfullyUpdated() {
+        User user = createValidUser();
+        LeaveCategory category = createValidLeaveCategory();
+        Leave leave = createEmployeeLeave(user, category);
+
+        leave.setDate(nextWeekday());
+
+        when(leaveRepository.findById(leave.getId())).thenReturn(Optional.of(leave));
+        when(leaveCategoryService.getLeaveCategoryById(any())).thenReturn(category);
+        when(leaveRepository.save(any(Leave.class))).thenReturn(leave);
+        when(leaveRepository.existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(any(), any(), any()))
+                .thenReturn(false);
+
+        UpdateLeaveRequest request = createValidUpdateRequest();
+        request.setDate(nextWeekdays(5).get(4));
+        leaveService.updateLeave(leave.getId(), request, userId);
+
+        verify(leaveIntegrationHandler, times(1)).handleLeaveUpdate(any(Leave.class));
     }
 
     @Test

@@ -390,7 +390,7 @@ public class LeaveService {
 
         if (validDates.isEmpty()) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "Dates must be within current month for past dates, or current year for future dates");
+                    "Some selected dates are outside the allowed range.");
         }
 
         List<LocalDate> workingDays = validDates.stream()
@@ -401,7 +401,7 @@ public class LeaveService {
         if (workingDays.isEmpty()) {
             throw new HttpException(
                     HttpStatus.BAD_REQUEST,
-                    "Cannot apply leave on weekends or fixed holidays"
+                    "The selected date(s) fall on a weekend or fixed holiday. Please choose a working day."
             );
         }
 
@@ -423,7 +423,7 @@ public class LeaveService {
         if (newDates.isEmpty()) {
             throw new HttpException(
                     HttpStatus.CONFLICT,
-                    "All selected working days already applied"
+                    "Leave has already been applied for all the selected dates. Please choose different dates."
             );
         }
 
@@ -487,6 +487,7 @@ public class LeaveService {
                     savedLeave.getDate().getYear());
         }
 
+        leaveIntegrationHandler.handleLeaveUpdate(savedLeave);
         return mapToUpdateLeaveResponse(savedLeave);
     }
 
@@ -501,7 +502,7 @@ public class LeaveService {
 
         if (!hasField) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "At least one field must be provided to update");
+                    "Update at least one detail to save changes");
         }
     }
 
@@ -534,16 +535,21 @@ public class LeaveService {
     }
 
     private void validateNewLeaveDate(LocalDate newDate) {
-        if (!isValidLeaveDate(newDate)) {
-            throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "New date must be within the current month for past dates, or within the current year for future dates");
+        LocalDate today = LocalDate.now();
+
+        if (newDate.getYear() != today.getYear()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "The selected date must be within the current year.");
+        }
+
+        if (newDate.isBefore(today) && !newDate.getMonth().equals(today.getMonth())) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Past dates can only be selected within the current month.");
         }
     }
 
     private void validateNewLeaveDateIsNotWeekend(LocalDate newDate) {
         if (isWeekendDay(newDate)) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "Cannot update leave to a weekend date");
+                    "Leave cannot be scheduled on a weekend. Please select a working day.");
         }
     }
 
@@ -552,7 +558,7 @@ public class LeaveService {
                 .existsByUserIdAndDateAndIdNotAndDeletedAtIsNull(userId, newDate, leaveId);
         if (hasConflict) {
             throw new HttpException(HttpStatus.CONFLICT,
-                    "You already have a leave applied on this date");
+                    "Leave already exists for this date");
         }
     }
 
@@ -564,7 +570,7 @@ public class LeaveService {
 
     private void validatePastLeaveDate(LocalDate date) {
         if (date.isBefore(LocalDate.now())) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "Cannot cancel a past leave");
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Leave on a past date cannot be cancelled.");
         }
     }
 

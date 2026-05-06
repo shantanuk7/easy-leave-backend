@@ -53,7 +53,7 @@ public class HolidayService {
 
         if (isWeekend) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
-                    "Holiday cannot be created on a weekend day");
+                    "Holiday cannot be set on a weekend");
         }
     }
 

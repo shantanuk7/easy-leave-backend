@@ -1,6 +1,7 @@
 package com.technogise.leave_management_system.repository;
 
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
+import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,4 +10,10 @@ import java.util.UUID;
 
 public interface LeaveIntegrationEventRepository extends JpaRepository<LeaveIntegrationEvent, UUID> {
     Optional<LeaveIntegrationEvent> findByLeaveIdAndPlatformAndDeletedAtIsNull(UUID leaveId, PlatformType platform);
+    Optional<LeaveIntegrationEvent> findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(UUID leaveId, PlatformType platform);
+    Optional<LeaveIntegrationEvent> findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+            UUID leaveId,
+            PlatformType platform,
+            IntegrationStatus status
+    );
 }

@@ -22,6 +22,9 @@ public interface RequestRepository extends JpaRepository<Request, UUID> {
     @EntityGraph(attributePaths = {"requestedByUser", "leaveCategory"})
     Page<Request> findAllByRequestedByUserIdAndStatus(UUID userId, RequestStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"requestedByUser", "leaveCategory"})
+    Page<Request> findAllByStatus(RequestStatus status, Pageable pageable);
+
     boolean existsByRequestedByUserIdAndDateInAndStatusIn(
             UUID userId,
             List<LocalDate> dates,
