@@ -1,8 +1,7 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.RequestResponse;
-import com.technogise.leave_management_system.dto.CreateRequestPayload;
-import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.dto.*;
+import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
@@ -30,12 +29,12 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class RequestServiceTest {
@@ -54,6 +53,9 @@ public class RequestServiceTest {
 
     @InjectMocks
     private RequestService requestService;
+
+    @Mock
+    private LeaveService leaveService;
 
     private User employee;
     private User manager;
@@ -118,6 +120,42 @@ public class RequestServiceTest {
             date = date.minusDays(1);
         }
         return date;
+    }
+
+    private User createManager() {
+        User manager = new User();
+        manager.setId(UUID.randomUUID());
+        manager.setName("Manager");
+        manager.setRole(UserRole.MANAGER);
+        return manager;
+    }
+
+    private LeaveCategory createCategory() {
+        LeaveCategory category = new LeaveCategory();
+        category.setId(UUID.randomUUID());
+        category.setName("Annual Leave");
+        return category;
+    }
+
+    private Request createRequest(User employee, LeaveCategory category) {
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setDate(LocalDate.now().minusDays(5));
+        request.setDuration(DurationType.FULL_DAY);
+        request.setRequestType(RequestType.PAST_LEAVE);
+        request.setStatus(RequestStatus.PENDING);
+        request.setCreatedAt(LocalDateTime.now());
+        request.setLeaveCategory(category);
+        return request;
+    }
+
+    private Leave createLeave(User employee, LocalDate date) {
+        Leave leave = new Leave();
+        leave.setId(UUID.randomUUID());
+        leave.setUser(employee);
+        leave.setDate(date);
+        return leave;
     }
 
     @Test
@@ -611,5 +649,211 @@ public class RequestServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Compensatory off dates must fall on a weekend (Saturday or Sunday)", ex.getMessage());
+    }
+
+    @Test
+    void shouldApproveRequestAndUpdateLeaveAndReturnResponse() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        Leave leave = createLeave(employee, request.getDate());
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
+                .thenReturn(Optional.of(leave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertEquals(RequestStatus.APPROVED, response.getStatus());
+        assertEquals("Approved", response.getManagerRemark());
+        assertEquals("Employee", response.getEmployeeName());
+
+        verify(leaveService).updateLeave(eq(leave.getId()), any(), eq(employee.getId()));
+        verify(requestRepository).save(request);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenRequestDoesNotExist() {
+        UUID requestId = UUID.randomUUID();
+
+        when(requestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(new User(), requestId, new UpdateRequestPayload()));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRequestAlreadyApproved() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        request.setStatus(RequestStatus.APPROVED);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), payload));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("This request has already been processed and cannot be modified", ex.getMessage());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRequestAlreadyRejected() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        request.setStatus(RequestStatus.REJECTED);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark("Approved");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), payload));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldHandleRejectedRequestWithoutUpdatingLeave() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.REJECTED);
+        payload.setManagerRemark("Not valid");
+
+        when(requestRepository.findById(request.getId()))
+                .thenReturn(Optional.of(request));
+        when(requestRepository.save(any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertEquals(RequestStatus.REJECTED, response.getStatus());
+        assertEquals("Not valid", response.getManagerRemark());
+        assertEquals(employee.getName(), response.getEmployeeName());
+
+        verify(leaveRepository, never()).findByUserIdAndDate(any(), any());
+        verify(leaveService, never()).updateLeave(any(), any(), any());
+        verify(requestRepository).save(request);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenLeaveDoesNotExist() {
+        User manager = new User();
+        User employee = createValidUser();
+
+        Request request = new Request();
+        request.setId(UUID.randomUUID());
+        request.setRequestedByUser(employee);
+        request.setDate(LocalDate.now().minusDays(5));
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
+                .thenReturn(Optional.empty());
+
+        HttpException ex = assertThrows(HttpException.class,
+                () -> requestService.handleRequest(manager, request.getId(), new UpdateRequestPayload()));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void shouldNotSetManagerRemarkWhenRemarkIsNull() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        Leave leave = createLeave(employee, request.getDate());
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark(null);
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
+                .thenReturn(Optional.of(leave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertNull(response.getManagerRemark());
+    }
+
+    @Test
+    void shouldNotSetManagerRemarkWhenRemarkIsBlank() {
+        User manager = createManager();
+        User employee = createValidUser();
+        employee.setName("Employee");
+        LeaveCategory category = createCategory();
+
+        Request request = createRequest(employee, category);
+        Leave leave = createLeave(employee, request.getDate());
+
+        UpdateRequestPayload payload = new UpdateRequestPayload();
+        payload.setStatus(RequestStatus.APPROVED);
+        payload.setManagerRemark(" ");
+
+        when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(leaveRepository.findByUserIdAndDate(employee.getId(), request.getDate()))
+                .thenReturn(Optional.of(leave));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RequestResponse response =
+                requestService.handleRequest(manager, request.getId(), payload);
+
+        assertNull(response.getManagerRemark());
+    }
+
+    @Test
+    void shouldReturnRejectedMessageWhenStatusIsRejected() {
+        RequestResponse response = new RequestResponse();
+        response.setStatus(RequestStatus.REJECTED);
+
+        String result = requestService.getResponseMessage(response);
+
+        assertEquals("Request rejected successfully", result);
+    }
+
+    @Test
+    void shouldReturnApprovedMessageWhenStatusIsApproved() {
+        RequestResponse response = new RequestResponse();
+        response.setStatus(RequestStatus.APPROVED);
+
+        String result = requestService.getResponseMessage(response);
+
+        assertEquals("Request approved successfully", result);
     }
 }

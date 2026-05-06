@@ -1,8 +1,11 @@
 package com.technogise.leave_management_system.service;
 
-import com.technogise.leave_management_system.dto.CreateRequestPayload;
-import com.technogise.leave_management_system.dto.CreateRequestResponse;
 import com.technogise.leave_management_system.dto.RequestResponse;
+import com.technogise.leave_management_system.dto.CreateRequestResponse;
+import com.technogise.leave_management_system.dto.CreateRequestPayload;
+import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
+import com.technogise.leave_management_system.dto.UpdateRequestPayload;
+import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.Request;
 import com.technogise.leave_management_system.entity.User;
@@ -12,6 +15,7 @@ import com.technogise.leave_management_system.enums.ScopeType;
 import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.WeekendDay;
 import com.technogise.leave_management_system.exception.HttpException;
+import com.technogise.leave_management_system.repository.LeaveRepository;
 import com.technogise.leave_management_system.repository.RequestRepository;
 
 import org.springframework.data.domain.Page;
@@ -34,16 +38,23 @@ public class RequestService {
     private final RequestRepository requestRepository;
     private final UserService userService;
     private final LeaveCategoryService leaveCategoryService;
+    private final LeaveRepository leaveRepository;
+    private final LeaveService leaveService;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
 
     public RequestService(RequestRepository requestRepository,
                           UserService userService,
-                          LeaveCategoryService leaveCategoryService) {
+                          LeaveCategoryService leaveCategoryService,
+                          LeaveRepository leaveRepository,
+                          LeaveService leaveService
+    ) {
         this.requestRepository = requestRepository;
         this.userService = userService;
         this.leaveCategoryService = leaveCategoryService;
+        this.leaveRepository = leaveRepository;
+        this.leaveService = leaveService;
     }
 
     private Page<Request> getRequestsForSelf(User user, RequestStatus status, Pageable pageable) {
@@ -86,7 +97,8 @@ public class RequestService {
                 request.getDuration(),
                 request.getDescription(),
                 request.getStatus(),
-                request.getCreatedAt().toLocalDate()
+                request.getCreatedAt().toLocalDate(),
+                request.getManagerRemark()
         );
     }
 
@@ -107,6 +119,7 @@ public class RequestService {
         }
         return requests.map(this::mapToRequestResponse);
     }
+
     @Transactional
     public List<CreateRequestResponse> raiseRequest(CreateRequestPayload payload, UUID userId) {
         User user = userService.getUserByUserId(userId);
@@ -122,6 +135,71 @@ public class RequestService {
         List<LocalDate> workingDays = filterWeekendDates(validDates);
         validateNoDuplicateRequests(workingDays, userId);
         return savePastLeaveRequests(workingDays, payload, user, leaveCategory);
+    }
+
+    private UpdateLeaveRequest mapToUpdateLeaveRequest(Request request) {
+        return new UpdateLeaveRequest(
+                request.getDate(),
+                request.getStartTime(),
+                request.getDescription(),
+                request.getDuration(),
+                request.getLeaveCategory().getId(),
+                "request"
+        );
+    }
+
+    public RequestResponse handleRequest(User manager, UUID requestId, UpdateRequestPayload payload) {
+        Request request = requestRepository.findById(requestId).orElseThrow(
+                () -> new HttpException(HttpStatus.NOT_FOUND, "Request not found with Id: " + requestId));
+
+        validateRequestStatus(request);
+
+        if (payload.getStatus() == RequestStatus.REJECTED) {
+            return finalRequestDecision(request, manager, payload);
+        }
+
+        return handlePastLeaveRequest(request, manager, payload);
+    }
+
+    private void validateRequestStatus(Request request) {
+        if (request.getStatus() == RequestStatus.APPROVED
+                || request.getStatus() == RequestStatus.REJECTED) {
+
+            throw new HttpException(
+                    HttpStatus.BAD_REQUEST,
+                    "This request has already been processed and cannot be modified"
+            );
+        }
+    }
+
+    private RequestResponse handlePastLeaveRequest(Request request, User manager, UpdateRequestPayload payload) {
+        Leave existingLeave = leaveRepository
+                .findByUserIdAndDate(request.getRequestedByUser().getId(), request.getDate())
+                .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found"));
+
+        UpdateLeaveRequest updateRequest = mapToUpdateLeaveRequest(request);
+        leaveService.updateLeave(existingLeave.getId(), updateRequest, existingLeave.getUser().getId());
+
+        return finalRequestDecision(request, manager, payload);
+    }
+
+    private RequestResponse finalRequestDecision(Request request, User manager, UpdateRequestPayload payload) {
+        request.setStatus(payload.getStatus());
+        request.setActionedByManager(manager);
+
+        if (payload.getManagerRemark() != null && !payload.getManagerRemark().isBlank()) {
+            request.setManagerRemark(payload.getManagerRemark());
+        }
+
+        Request savedRequest = requestRepository.save(request);
+        return mapToRequestResponse(savedRequest);
+    }
+
+    public String getResponseMessage(RequestResponse response) {
+        if (response.getStatus() == RequestStatus.REJECTED) {
+            return "Request rejected successfully";
+        }
+        return "Request approved successfully";
     }
 
     private List<CreateRequestResponse> raiseCompOffRequest(CreateRequestPayload payload, User user) {
