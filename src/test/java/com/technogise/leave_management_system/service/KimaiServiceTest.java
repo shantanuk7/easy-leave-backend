@@ -14,6 +14,7 @@ import com.technogise.leave_management_system.enums.UserRole;
 import com.technogise.leave_management_system.enums.HolidayType;
 import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
+import com.technogise.leave_management_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +41,9 @@ import static org.mockito.Mockito.*;
 class KimaiServiceTest {
     @Mock
     private WebClient webClient;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private WebClient.RequestBodyUriSpec requestBodyUriSpec;
@@ -439,6 +443,29 @@ class KimaiServiceTest {
     }
 
     @Test
+    void shouldSaveFailedEventWhenUserNotFoundDuringUpdate() {
+        LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
+
+        when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
+                testLeave.getId(), PlatformType.KIMAI))
+                .thenReturn(Optional.of(existingEvent));
+
+        when(userRepository.findById(testLeave.getUser().getId()))
+                .thenReturn(Optional.empty());
+
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        kimaiService.updateLeave(testLeave);
+
+        verify(eventRepository).save(argThat(event ->
+                event.getStatus() == IntegrationStatus.FAILED
+                        && event.getErrorMessage().contains("User not found for leaveId=")
+                        && event.getOperationType() == IntegrationOperationType.UPDATE
+        ));
+        verify(webClient, never()).get();
+    }
+
+    @Test
     void shouldPatchKimaiTimesheetSuccessfullyForHalfDayLeaveOnUpdate() {
         testLeave.setDuration(DurationType.HALF_DAY);
         LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
@@ -446,6 +473,8 @@ class KimaiServiceTest {
         when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(existingEvent));
+        when(userRepository.findById(testLeave.getUser().getId()))
+                .thenReturn(Optional.of(testLeave.getUser()));
 
         KimaiUserResponse user = new KimaiUserResponse();
         user.setId(4);
@@ -522,6 +551,9 @@ class KimaiServiceTest {
         when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any()))
                 .thenReturn(Optional.of(existingEvent));
 
+        when(userRepository.findById(testLeave.getUser().getId()))
+                .thenReturn(Optional.of(testLeave.getUser()));
+
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(getHeadersSpec);
         when(getHeadersSpec.retrieve()).thenReturn(responseSpec);
@@ -550,6 +582,9 @@ class KimaiServiceTest {
         when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(existingEvent));
+
+        when(userRepository.findById(testLeave.getUser().getId()))
+                .thenReturn(Optional.of(testLeave.getUser()));
 
         KimaiUserResponse user = new KimaiUserResponse();
         user.setId(4);
@@ -589,6 +624,8 @@ class KimaiServiceTest {
         when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(
                 testLeave.getId(), PlatformType.KIMAI))
                 .thenReturn(Optional.of(existingEvent));
+        when(userRepository.findById(testLeave.getUser().getId()))
+                .thenReturn(Optional.of(testLeave.getUser()));
 
         KimaiUserResponse user = new KimaiUserResponse();
         user.setId(4);
@@ -625,6 +662,9 @@ class KimaiServiceTest {
         LeaveIntegrationEvent existingEvent = createKimaiEvent(testLeave);
         when(eventRepository.findFirstByLeaveIdAndPlatformAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any()))
                 .thenReturn(Optional.of(existingEvent));
+
+        when(userRepository.findById(testLeave.getUser().getId()))
+                .thenReturn(Optional.of(testLeave.getUser()));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(getHeadersSpec);

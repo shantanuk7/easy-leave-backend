@@ -6,11 +6,13 @@ import com.technogise.leave_management_system.dto.KimaiTimesheetResponse;
 import com.technogise.leave_management_system.dto.KimaiUserResponse;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveIntegrationEvent;
+import com.technogise.leave_management_system.entity.User;
 import com.technogise.leave_management_system.enums.DurationType;
 import com.technogise.leave_management_system.enums.IntegrationOperationType;
 import com.technogise.leave_management_system.enums.IntegrationStatus;
 import com.technogise.leave_management_system.enums.PlatformType;
 import com.technogise.leave_management_system.repository.LeaveIntegrationEventRepository;
+import com.technogise.leave_management_system.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -25,12 +27,15 @@ import java.util.Optional;
 public class KimaiService implements LeaveIntegrationService {
     private final WebClient webClient;
     private final LeaveIntegrationEventRepository eventRepository;
+    private final UserRepository userRepository;
 
     public KimaiService(WebClient kimaiWebClient,
-                        LeaveIntegrationEventRepository eventRepository
+                        LeaveIntegrationEventRepository eventRepository,
+                        UserRepository userRepository
     ) {
         this.webClient = kimaiWebClient;
         this.eventRepository = eventRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -204,7 +209,11 @@ public class KimaiService implements LeaveIntegrationService {
         updateEvent.setLastAttemptAt(LocalDateTime.now());
 
         try {
-            Integer kimaiUserId = getUserIdByEmail(leave.getUser().getEmail(), leave.getUser().getName());
+            User user = userRepository.findById(leave.getUser().getId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "User not found for leaveId=" + leave.getId()));
+
+            Integer kimaiUserId = getUserIdByEmail(user.getEmail(), user.getName());
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern(KimaiConstants.KIMAI_DATE_TIME_PATTERN);
 
             String categoryName = (leave.getLeaveCategory() != null)
