@@ -43,6 +43,9 @@ public class AnnualLeave {
     @Column(name = "leave_year", nullable = false)
     private String year;
 
+    @Column(name = "compensatory_off_count")
+    private double compensatoryOffCount = 0.0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
