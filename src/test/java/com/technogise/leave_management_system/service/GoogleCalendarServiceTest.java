@@ -346,14 +346,6 @@ class GoogleCalendarServiceTest {
     }
 
     @Test
-    void shouldSkipImplementationAndNotCallApiOnUpdateLeave() throws Exception {
-        googleCalendarService.updateLeave(leave);
-
-        verify(httpClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
-        verify(leaveIntegrationEventRepository, never()).save(any());
-    }
-
-    @Test
     void shouldUpdateSyncEventSuccessfully() throws Exception {
         LeaveIntegrationEvent existingEvent = new LeaveIntegrationEvent();
         existingEvent.setExternalEventId("event-existing-123");
