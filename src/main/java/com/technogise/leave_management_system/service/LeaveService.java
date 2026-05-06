@@ -454,7 +454,7 @@ public class LeaveService {
         }
 
         if (date.isBefore(thirtyDaysAgo) || date.isAfter(today) || date.equals(today)) {
-            throw new HttpException(HttpStatus.BAD_REQUEST, "Date must be within the last 30 days");
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Date must be within the last 30 days excluding today");
         }
     }
 
