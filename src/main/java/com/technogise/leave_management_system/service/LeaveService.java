@@ -55,6 +55,8 @@ public class LeaveService {
     @Value("${leave.optional-holiday.max-days}")
     private int maxOptionalHolidayDays;
 
+    public static final String REQUEST_TYPE = "request";
+
     public LeaveService(LeaveRepository leaveRepository,
                         UserService userService,
                         LeaveCategoryService leaveCategoryService,
@@ -441,6 +443,11 @@ public class LeaveService {
                 .orElseThrow(() -> new HttpException(HttpStatus.NOT_FOUND, "Leave not found with id: " + leaveId));
 
         validateLeaveOwnership(leave, userId, "Not allowed to update this leave");
+        if (REQUEST_TYPE.equalsIgnoreCase(request.getType())) {
+            validateNewRequestLeaveDate(request.getDate());
+        } else {
+            validateExistingLeaveDate(leave.getDate());
+        }
         if (leave.getLeaveCategory() != null && leave.getLeaveCategory().getName().equals(LeaveConstants.MATERNITY_LEAVE)) {
             throw new HttpException(HttpStatus.BAD_REQUEST,
                     "Maternity Leave blocks cannot be modified individually. Please cancel the block and re-apply.");
@@ -462,7 +469,11 @@ public class LeaveService {
         validateDurationForCategory(targetCategory, targetDuration);
 
         if (request.getDate() != null) {
-            validateNewLeaveDate(request.getDate());
+            if (REQUEST_TYPE.equalsIgnoreCase(request.getType())) {
+                validateNewRequestLeaveDate(request.getDate());
+            } else {
+                validateNewLeaveDate(request.getDate());
+            }
             validateNewLeaveDateIsNotWeekend(request.getDate());
             validateNoDateConflict(userId, leaveId, request.getDate());
             leave.setDate(request.getDate());
@@ -489,6 +500,19 @@ public class LeaveService {
 
         leaveIntegrationHandler.handleLeaveUpdate(savedLeave);
         return mapToUpdateLeaveResponse(savedLeave);
+    }
+
+    public void validateNewRequestLeaveDate(LocalDate date) {
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysAgo = today.minusDays(30);
+
+        if (date.getYear() != today.getYear()) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Date must be within the current year");
+        }
+
+        if (date.isBefore(thirtyDaysAgo) || date.isAfter(today) || date.equals(today)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Date must be within the last 30 days excluding today");
+        }
     }
 
     public void validateUpdateRequestNotEmpty(UpdateLeaveRequest request) {

@@ -25,4 +25,5 @@ public class RequestResponse {
     private String description;
     private RequestStatus status;
     private LocalDate appliedDate;
+    private String managerRemark;
 }
