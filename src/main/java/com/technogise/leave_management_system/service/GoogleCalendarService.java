@@ -159,7 +159,7 @@ public class GoogleCalendarService implements LeaveIntegrationService {
         try {
             Optional<LeaveIntegrationEvent> googleCalendarEvent =
                     leaveIntegrationEventRepository
-                            .findTopByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                            .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                                     leave.getId(),
                                     PlatformType.GOOGLE_CALENDAR,
                                     IntegrationStatus.SUCCESS

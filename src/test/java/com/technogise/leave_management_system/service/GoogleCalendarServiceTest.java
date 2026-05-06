@@ -351,7 +351,7 @@ class GoogleCalendarServiceTest {
         existingEvent.setExternalEventId("event-existing-123");
 
         when(leaveIntegrationEventRepository
-                .findTopByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.of(existingEvent));
 
@@ -374,7 +374,7 @@ class GoogleCalendarServiceTest {
         existingEvent.setExternalEventId("event-existing-123");
 
         when(leaveIntegrationEventRepository
-                .findTopByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.of(existingEvent));
 
@@ -388,7 +388,7 @@ class GoogleCalendarServiceTest {
     @Test
     void shouldSetEventAsFailedWhenNoExistingEventFound() {
         when(leaveIntegrationEventRepository
-                .findTopByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
                 .thenReturn(Optional.empty());
 

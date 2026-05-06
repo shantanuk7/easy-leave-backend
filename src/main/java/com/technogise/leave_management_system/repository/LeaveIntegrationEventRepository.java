@@ -16,5 +16,4 @@ public interface LeaveIntegrationEventRepository extends JpaRepository<LeaveInte
             PlatformType platform,
             IntegrationStatus status
     );
-    Optional<LeaveIntegrationEvent> findTopByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(UUID leaveId, PlatformType platform, IntegrationStatus status);
 }
