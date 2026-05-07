@@ -84,6 +84,7 @@ public class LeaveService {
                 .mapToDouble(leave -> leave.getDuration() == DurationType.FULL_DAY ? 1.0 : 0.5)
                 .sum();
     }
+
     void validateNonAnnualBalanceSufficiency(
             LeaveCategory category,
             double requested,
@@ -266,6 +267,10 @@ public class LeaveService {
                 ? holidayService.getHolidayById(request.getHolidayId())
                 : null;
 
+        if (category != null && category.getName().equals(LeaveConstants.MATERNITY_LEAVE)) {
+            return applyMaternityLeaveBlock(request, user, category);
+        }
+
         if (hasHoliday) {
             validateOptionalHolidaysCount(user);
         }
@@ -298,7 +303,8 @@ public class LeaveService {
         List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
 
         if (category != null && category.getName().equalsIgnoreCase(LeaveConstants.ANNUAL_LEAVE)) {
-            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear()); }
+            annualLeaveService.syncOnLeaveCreated(user, request.getDuration(), newDates.size(), LocalDate.now().getYear());
+        }
 
         leaveIntegrationHandler.handleLeaves(savedLeaves);
 
@@ -313,6 +319,52 @@ public class LeaveService {
                         leave.getStartTime(),
                         leave.getDescription()
                 )).toList();
+    }
+
+    private List<CreateLeaveResponse> applyMaternityLeaveBlock(CreateLeaveRequest request, User user, LeaveCategory category) {
+        LocalDate startDate = request.getDates().stream()
+                .min(LocalDate::compareTo)
+                .orElseThrow(() -> new HttpException(HttpStatus.BAD_REQUEST, "Start date is required"));
+
+        if (request.getDuration() != DurationType.FULL_DAY) {
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Maternity leave must be a full day");
+        }
+
+        int totalDays = category.getAllocatedDays();
+        List<LocalDate> maternityDates = startDate.datesUntil(startDate.plusDays(totalDays)).toList();
+        validateNoDateConflictForMaternity(user.getId(), maternityDates);
+
+        List<Leave> leavesToSave = maternityDates.stream().map(date -> {
+            Leave leave = leaveRepository.findByUserIdAndDate(user.getId(), date).orElse(new Leave());
+            leave.setDate(date);
+            leave.setUser(user);
+            leave.setLeaveCategory(category);
+            leave.setDescription(request.getDescription());
+            leave.setStartTime(request.getStartTime());
+            leave.setDuration(DurationType.FULL_DAY);
+            leave.setDeletedAt(null);
+            return leave;
+        }).toList();
+
+        List<Leave> savedLeaves = leaveRepository.saveAll(leavesToSave);
+
+        leaveIntegrationHandler.handleLeaves(savedLeaves);
+
+        return savedLeaves.stream()
+                .map(l -> new CreateLeaveResponse(l.getId(), l.getDate(), category.getName(),
+                        l.getDuration(), l.getStartTime(), l.getDescription()))
+                .toList();
+    }
+
+    private void validateNoDateConflictForMaternity(UUID userId, List<LocalDate> blockDates) {
+        Set<LocalDate> existingDates = leaveRepository.findAllByUserIdAndDeletedAtNull(userId, Sort.unsorted())
+                .stream().map(Leave::getDate).collect(Collectors.toSet());
+
+        for (LocalDate date : blockDates) {
+            if (existingDates.contains(date)) {
+                throw new HttpException(HttpStatus.CONFLICT, "Maternity leave range overlaps with an existing leave on: " + date);
+            }
+        }
     }
 
     public LeaveResponse getLeaveById(UUID leaveId, UUID userId) {
@@ -408,6 +460,11 @@ public class LeaveService {
         } else {
             validateExistingLeaveDate(leave.getDate());
         }
+        if (leave.getLeaveCategory() != null && leave.getLeaveCategory().getName().equals(LeaveConstants.MATERNITY_LEAVE)) {
+            throw new HttpException(HttpStatus.BAD_REQUEST,
+                    "Maternity Leave blocks cannot be modified individually. Please cancel the block and re-apply.");
+        }
+        validateExistingLeaveDate(leave.getDate());
 
         LeaveCategory targetCategory = requestHasHoliday
                 ? null
@@ -607,6 +664,7 @@ public class LeaveService {
             throw new HttpException(HttpStatus.BAD_REQUEST, "Leave on a past date cannot be cancelled.");
         }
     }
+
     @Transactional
     public void deleteLeave(UUID leaveId, UUID userId) {
         Leave leave = leaveRepository.findById(leaveId)
@@ -619,7 +677,8 @@ public class LeaveService {
         leave.setDeletedAt(LocalDateTime.now());
         leaveRepository.save(leave);
 
-        if (leave.getLeaveCategory() != null && leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
+        if (leave.getLeaveCategory() != null
+                && leave.getLeaveCategory().getName().equals(LeaveConstants.ANNUAL_LEAVE)) {
             annualLeaveService.syncOnLeaveDeleted(leave.getUser(), leave.getDuration(), leave.getDate().getYear());
         }
 
