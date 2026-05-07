@@ -213,7 +213,8 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     @Async
     @Override
     public void syncLeave(Leave leave) {
-        User user = leave.getUser();
+        User user = userRepository.findById(leave.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found for leaveId=" + leave.getId()));
         String title = user.getName() + " - " + leave.getLeaveCategory().getName();
         String description = leave.getDescription();
         addLeaveEvent(user, leave, title, description);
@@ -280,7 +281,8 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     @Async
     @Override
     public void updateLeave(Leave leave) {
-        User user = leave.getUser();
+        User user = userRepository.findById(leave.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found for leaveId=" + leave.getId()));
         String title = user.getName() + " - " + leave.getLeaveCategory().getName();
         String description = leave.getDescription();
         updateLeaveEvent(user, leave, title, description);

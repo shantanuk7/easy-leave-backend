@@ -155,6 +155,8 @@ class GoogleCalendarServiceTest {
         when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-1\"}");
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
 
         googleCalendarService.syncLeave(leave);
 
@@ -358,6 +360,8 @@ class GoogleCalendarServiceTest {
         when(httpResponse.statusCode()).thenReturn(200);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
 
         googleCalendarService.updateLeave(leave);
 
@@ -381,12 +385,16 @@ class GoogleCalendarServiceTest {
         when(httpResponse.statusCode()).thenReturn(500);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
 
         assertThrows(RuntimeException.class, () -> googleCalendarService.updateLeave(leave));
     }
 
     @Test
     void shouldSetEventAsFailedWhenNoExistingEventFound() {
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
         when(leaveIntegrationEventRepository
                 .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
