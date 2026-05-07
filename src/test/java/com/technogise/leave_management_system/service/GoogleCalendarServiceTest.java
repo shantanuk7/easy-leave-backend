@@ -155,6 +155,8 @@ class GoogleCalendarServiceTest {
         when(httpResponse.body()).thenReturn("{\"id\":\"event-sync-1\"}");
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(httpResponse);
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
 
         googleCalendarService.syncLeave(leave);
 
@@ -346,10 +348,63 @@ class GoogleCalendarServiceTest {
     }
 
     @Test
-    void shouldSkipImplementationAndNotCallApiOnUpdateLeave() throws Exception {
+    void shouldUpdateSyncEventSuccessfully() throws Exception {
+        LeaveIntegrationEvent existingEvent = new LeaveIntegrationEvent();
+        existingEvent.setExternalEventId("event-existing-123");
+
+        when(leaveIntegrationEventRepository
+                .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.of(existingEvent));
+
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
+
         googleCalendarService.updateLeave(leave);
 
-        verify(httpClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
-        verify(leaveIntegrationEventRepository, never()).save(any());
+        verify(leaveIntegrationEventRepository).save(argThat(event ->
+                event.getExternalEventId().equals("event-existing-123")
+                        && event.getPlatform().equals(PlatformType.GOOGLE_CALENDAR)
+                        && event.getOperationType().equals(IntegrationOperationType.UPDATE)
+        ));
+    }
+
+    @Test
+    void shouldThrowWhenGoogleCalendarApiFailsDuringUpdate() throws Exception {
+        LeaveIntegrationEvent existingEvent = new LeaveIntegrationEvent();
+        existingEvent.setExternalEventId("event-existing-123");
+
+        when(leaveIntegrationEventRepository
+                .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.of(existingEvent));
+
+        when(httpResponse.statusCode()).thenReturn(500);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
+
+        assertThrows(RuntimeException.class, () -> googleCalendarService.updateLeave(leave));
+    }
+
+    @Test
+    void shouldSetEventAsFailedWhenNoExistingEventFound() {
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
+        when(leaveIntegrationEventRepository
+                .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        leave.getId(), PlatformType.GOOGLE_CALENDAR, IntegrationStatus.SUCCESS))
+                .thenReturn(Optional.empty());
+
+        googleCalendarService.updateLeave(leave);
+
+        verify(leaveIntegrationEventRepository).save(argThat(event ->
+                event.getStatus().equals(IntegrationStatus.FAILED)
+                        && event.getErrorMessage().contains(String.valueOf(leave.getId()))
+        ));
     }
 }

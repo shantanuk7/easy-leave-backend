@@ -1,12 +1,7 @@
 package com.technogise.leave_management_system.controller;
 
 import com.technogise.leave_management_system.constants.LeaveConstants;
-import com.technogise.leave_management_system.dto.CreateLeaveRequest;
-import com.technogise.leave_management_system.dto.CreateLeaveResponse;
-import com.technogise.leave_management_system.dto.UpdateLeaveRequest;
-import com.technogise.leave_management_system.dto.UpdateLeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveResponse;
-import com.technogise.leave_management_system.dto.LeaveFilterRequest;
+import com.technogise.leave_management_system.dto.*;
 import com.technogise.leave_management_system.entity.Leave;
 import com.technogise.leave_management_system.entity.LeaveCategory;
 import com.technogise.leave_management_system.entity.User;
@@ -169,7 +164,7 @@ public class LeaveControllerTest {
         UpdateLeaveResponse response = new UpdateLeaveResponse();
         response.setId(UUID.randomUUID());
         response.setDate(LocalDate.now().plusDays(3));
-        response.setLeaveCategoryName(LeaveConstants.ANNUAL_LEAVE);
+        response.setType(LeaveConstants.ANNUAL_LEAVE);
         response.setDuration(DurationType.FULL_DAY);
         response.setStartTime(LocalTime.of(9, 0));
         response.setDescription("Updated description");
@@ -186,7 +181,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                null
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response));
@@ -219,7 +215,8 @@ public class LeaveControllerTest {
                 managerLeave.getDuration(),
                 managerLeave.getStartTime(),
                 managerLeave.getUpdatedAt(),
-                managerLeave.getDescription()
+                managerLeave.getDescription(),
+                null
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response));
@@ -273,7 +270,8 @@ public class LeaveControllerTest {
                 managerLeave.getDuration(),
                 managerLeave.getStartTime(),
                 managerLeave.getUpdatedAt(),
-                managerLeave.getDescription()
+                managerLeave.getDescription(),
+                null
         );
 
         LeaveResponse response2 = new LeaveResponse(
@@ -284,7 +282,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                null
         );
         Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
 
@@ -319,7 +318,8 @@ public class LeaveControllerTest {
                 managerLeave.getDuration(),
                 managerLeave.getStartTime(),
                 managerLeave.getUpdatedAt(),
-                managerLeave.getDescription()
+                managerLeave.getDescription(),
+                null
                 );
         LeaveResponse response2 = new LeaveResponse(
                 employeeLeave.getId(),
@@ -329,7 +329,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                null
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response1, response2));
@@ -406,7 +407,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                null
         );
 
         Page<LeaveResponse> page = new PageImpl<>(List.of(response));
@@ -471,7 +473,8 @@ public class LeaveControllerTest {
                 employeeLeave.getDuration(),
                 employeeLeave.getStartTime(),
                 employeeLeave.getUpdatedAt(),
-                employeeLeave.getDescription()
+                employeeLeave.getDescription(),
+                null
         );
 
         when(leaveService.getLeaveById(employeeLeave.getId(), employee.getId()))
@@ -529,7 +532,7 @@ public class LeaveControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Leave updated successfully"))
                 .andExpect(jsonPath("$.data.date").value(response.getDate().toString()))
-                .andExpect(jsonPath("$.data.leaveCategoryName").value(LeaveConstants.ANNUAL_LEAVE))
+                .andExpect(jsonPath("$.data.type").value(LeaveConstants.ANNUAL_LEAVE))
                 .andExpect(jsonPath("$.data.duration").value("FULL_DAY"))
                 .andExpect(jsonPath("$.data.description").value("Updated description"));
     }

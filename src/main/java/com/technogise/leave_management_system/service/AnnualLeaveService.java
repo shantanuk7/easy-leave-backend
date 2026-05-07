@@ -61,8 +61,8 @@ public class AnnualLeaveService {
     public void syncOnLeaveUpdated(User user, String oldCategoryName, String newCategoryName, DurationType oldDuration,
                                    DurationType newDuration, int year) {
 
-        boolean wasAnnual = oldCategoryName.equals(LeaveConstants.ANNUAL_LEAVE);
-        boolean isAnnual = newCategoryName.equals(LeaveConstants.ANNUAL_LEAVE);
+        boolean wasAnnual = LeaveConstants.ANNUAL_LEAVE.equals(oldCategoryName);
+        boolean isAnnual = LeaveConstants.ANNUAL_LEAVE.equals(newCategoryName);
 
         if (wasAnnual && isAnnual) {
             if (oldDuration == newDuration) {

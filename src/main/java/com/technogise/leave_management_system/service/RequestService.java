@@ -150,7 +150,8 @@ public class RequestService {
                 request.getDescription(),
                 request.getDuration(),
                 request.getLeaveCategory().getId(),
-                "request"
+                "request",
+                null
         );
     }
 

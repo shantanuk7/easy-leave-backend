@@ -148,10 +148,73 @@ public class GoogleCalendarService implements LeaveIntegrationService {
         }
     }
 
+    public void updateLeaveEvent(User user, Leave leave, String title, String description) {
+        LeaveIntegrationEvent integrationEvent = new LeaveIntegrationEvent();
+        integrationEvent.setLeave(leave);
+        integrationEvent.setPlatform(PlatformType.GOOGLE_CALENDAR);
+        integrationEvent.setAttempts(1);
+        integrationEvent.setLastAttemptAt(LocalDateTime.now());
+        integrationEvent.setOperationType(IntegrationOperationType.UPDATE);
+
+        try {
+            Optional<LeaveIntegrationEvent> googleCalendarEvent =
+                    leaveIntegrationEventRepository
+                            .findFirstByLeaveIdAndPlatformAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                                    leave.getId(),
+                                    PlatformType.GOOGLE_CALENDAR,
+                                    IntegrationStatus.SUCCESS
+                            );
+
+            if (googleCalendarEvent.isEmpty()) {
+                log.warn("No existing Google Calendar event found for leaveId={} ", leave.getId());
+                integrationEvent.setStatus(IntegrationStatus.FAILED);
+                integrationEvent.setErrorMessage("No existing Google Calendar event found for leave " + leave.getId());
+                return;
+            }
+
+            String googleCalendarEventId = googleCalendarEvent.get().getExternalEventId();
+
+            String encodedCalendarId = java.net.URLEncoder.encode(calendarId, "UTF-8");
+            String url = calendarApiBase + encodedCalendarId + "/events/" + googleCalendarEventId;
+            String start = leave.getDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            String end = leave.getDate().plusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Authorization", "Bearer " + getValidToken(user))
+                    .header("Content-Type", "application/json")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(buildEventJson(title, description, start, end)))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                integrationEvent.setExternalEventId(googleCalendarEventId);
+                integrationEvent.setStatus(IntegrationStatus.SUCCESS);
+                integrationEvent.setErrorMessage(null);
+                log.info("Successfully updated Google Calendar event {} for leave {}", googleCalendarEventId, leave.getId());
+            } else {
+                integrationEvent.setStatus(IntegrationStatus.FAILED);
+                integrationEvent.setErrorMessage("Google Calendar API error: " + response.statusCode());
+                log.error("Failed to update event in Google Calendar for leave {}", leave.getId());
+                throw new HttpException(HttpStatus.BAD_REQUEST, "Google Calendar API error: " + response.statusCode());
+            }
+
+        } catch (Exception e) {
+            integrationEvent.setStatus(IntegrationStatus.FAILED);
+            integrationEvent.setErrorMessage(e.getMessage());
+            log.error("Exception while updating event in Google Calendar: {}", e.getMessage());
+            throw new HttpException(HttpStatus.BAD_REQUEST, "Failed to update leave in calendar: " + e.getMessage());
+        } finally {
+            leaveIntegrationEventRepository.save(integrationEvent);
+        }
+    }
+
     @Async
     @Override
     public void syncLeave(Leave leave) {
-        User user = leave.getUser();
+        User user = userRepository.findById(leave.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found for leaveId=" + leave.getId()));
         String title = user.getName() + " - " + leave.getLeaveCategory().getName();
         String description = leave.getDescription();
         addLeaveEvent(user, leave, title, description);
@@ -218,6 +281,10 @@ public class GoogleCalendarService implements LeaveIntegrationService {
     @Async
     @Override
     public void updateLeave(Leave leave) {
-        log.info("Google Calendar update triggered for leaveId={}, skipping implementation.", leave.getId());
+        User user = userRepository.findById(leave.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found for leaveId=" + leave.getId()));
+        String title = user.getName() + " - " + leave.getLeaveCategory().getName();
+        String description = leave.getDescription();
+        updateLeaveEvent(user, leave, title, description);
     }
 }
